@@ -1,9 +1,15 @@
 msg = "Hello World"
 print(msg)
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-x = np.linspace(0, 20, 100)  # Create a list of evenly-spaced numbers over the range
-plt.plot(x, np.sin(x))       # Plot the sine of each x point
-plt.show()                   # Display the plot
+N = np.array([1,1,1])
+n = N / np.linalg.norm(N)
+print(n)
+
+reflector = np.add(np.identity(3),-2*np.outer(n,n))
+print(reflector)
+eigen = np.linalg.eigh(reflector)
+print(eigen[0])
+print(np.transpose(eigen[1]))
+print(np.transpose(eigen[1])[0])

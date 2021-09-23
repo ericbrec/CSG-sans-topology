@@ -37,6 +37,24 @@ print(x[1] + (x[3]-x[1])*(1-u))
 print(y[0] + (y[2]-y[0])*u)
 print(y[1] + (y[3]-y[1])*(1-u))
 
+class Solid:
+
+    def __init__(self, boundaries):
+        self.boundaries = boundaries
+
+class Boundary:
+
+    def __init__(self, manifold, domain):
+        self.manifold = manifold
+        self.domain = domain
+
+class Manifold:
+
+    def __init__(self, normal, tangentSpace, point):
+        self.normal = normal
+        self.tangentSpace = tangentSpace
+        self.point = point
+
 class InteractiveCanvas:
 
     showverts = True

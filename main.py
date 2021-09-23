@@ -27,6 +27,16 @@ for i in range(points+1):
 print(x)
 print(y)
 
+nt = (x[2]-x[0])*(y[3]-y[1]) + (y[2]-y[0])*(x[1]-x[3])
+print(nt)
+u = ((x[1]-x[0])*(y[3]-y[1]) + (y[1]-y[0])*(x[1]-x[3]))/nt
+print(u, 1 - u)
+
+print(x[0] + (x[2]-x[0])*u)
+print(x[1] + (x[3]-x[1])*(1-u))
+print(y[0] + (y[2]-y[0])*u)
+print(y[1] + (y[3]-y[1])*(1-u))
+
 class InteractiveCanvas:
 
     showverts = True
@@ -103,4 +113,4 @@ class InteractiveCanvas:
 
 interactor = InteractiveCanvas(x, y)
 
-plt.show()
+# plt.show()

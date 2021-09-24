@@ -1,19 +1,16 @@
-msg = "Hello World"
-print(msg)
-
 import matplotlib.pyplot as plt
 import numpy as np
 
-N = np.array([1,1,0])
+N = np.array([1,2,-3])
 n = N / np.linalg.norm(N)
 print(n)
 
 reflector = np.add(np.identity(3),np.outer(-2*n,n))
-print(reflector)
 eigen = np.linalg.eigh(reflector)
 print(eigen[0])
-print(np.transpose(eigen[1]))
-print(np.transpose(eigen[1])[0])
+print(eigen[0][0])
+print(eigen[1])
+print(np.delete(eigen[1],0,1))
 
 from matplotlib.backend_bases import MouseButton
 
@@ -39,21 +36,68 @@ print(y[1] + (y[3]-y[1])*(1-u))
 
 class Solid:
 
-    def __init__(self, boundaries):
+    def __init__(self, dimension, boundaries):
+        assert boundaries.dimension == dimension
+        self.dimension = dimension
         self.boundaries = boundaries
 
 class Boundary:
 
-    def __init__(self, manifold, domain):
+    def __init__(self, dimension, manifold, domain):
+        assert manifold.dimension == dimension
+        assert domain.dimension == dimension
+        self.dimension = dimension
         self.manifold = manifold
         self.domain = domain
 
 class Manifold:
 
-    def __init__(self, normal, tangentSpace, point):
+    def __init__(self, dimension, normal, tangentSpace, point):
+        assert dimension > 1
+        assert len(normal) == dimension
+        assert len(tangentSpace) == dimension
+        assert (dimension-1 == 1 and type(tangentSpace[0]) != 'list') or \
+            len(tangentSpace[0]) == dimension-1
+        assert len(point) == dimension
+        self.dimension = dimension
         self.normal = normal
         self.tangentSpace = tangentSpace
         self.point = point
+
+    @staticmethod
+    def TangentSpaceFromNormal(normal):
+        # Construct the Householder reflection transform using the normal
+        reflector = np.add(np.identity(3),np.outer(-2*normal,normal))
+        # Compute the eigenvalues and eigenvectors for the symetric transform
+        eigen = np.linalg.eigh(reflector)
+        # Assert the first eigenvalue is negative (the reflection whose eigenvector is the normal)
+        assert(eigen[0][0] < 0.0)
+        # Return the tangent space by removing the first eigenvector column (the negated normal)
+        return np.delete(eigen[1],0,1)
+
+    def Intersect(self, manifold):
+        assert self.dimension == manifold.dimension
+
+        # First, the new self boundary
+        iNormalSelf = np.dot(manifold.normal, self.tangentSpace)
+        normalize = 1.0 / np.linalg.norm(iNormalSelf)
+        iNormalSelf = normalize * iNormalSelf
+        iOffsetSelf = normalize * np.dot(manifold.normal, np.np.subtract(manifold.point,self.point))
+        iPointSelf = iOffsetSelf * iNormalSelf
+
+        # Second, the new other boundary
+        iNormalOther = np.dot(self.normal, manifold.tangentSpace)
+        normalize = 1.0 / np.linalg.norm(iNormalOther)
+        iNormalOther = normalize * iNormalOther
+        iOffsetOther = normalize * np.dot(self.normal, np.np.subtract(self.point,manifold.point))
+        iPointOther = iOffsetOther * iNormalOther
+
+        newDimension = self.dimension - 1
+        assert len(iNormalSelf) == newDimension
+        assert len(iNormalOther) == newDimension
+
+        #if newDimension > 1:
+            #return Boundary(newDimension, Manifold(newDimension,iNormalSelf, Manifold.TangentSpaceFromNormal(iNormalSelf), iPointSelf),
 
 class InteractiveCanvas:
 

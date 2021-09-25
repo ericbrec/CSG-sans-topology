@@ -37,6 +37,7 @@ print(y[1] + (y[3]-y[1])*(1-u))
 class Solid:
 
     def __init__(self, dimension, boundaries):
+        assert dimension > 0
         assert boundaries.dimension == dimension
         self.dimension = dimension
         self.boundaries = boundaries
@@ -44,11 +45,24 @@ class Solid:
 class Boundary:
 
     def __init__(self, dimension, manifold, domain):
+        assert dimension > 1
         assert manifold.dimension == dimension
         assert domain.dimension == dimension
         self.dimension = dimension
         self.manifold = manifold
         self.domain = domain
+
+class Extent:
+
+    def __init__(self, normal, point):
+        assert not isinstance(normal, list)
+        assert not isinstance(point, list)
+        self.normal = normal
+        self.point = point
+    
+    @staticmethod
+    def SortKey(extent):
+        return extent.point 
 
 class Manifold:
 
@@ -56,7 +70,7 @@ class Manifold:
         assert dimension > 1
         assert len(normal) == dimension
         assert len(tangentSpace) == dimension
-        assert (dimension-1 == 1 and type(tangentSpace[0]) != 'list') or \
+        assert (dimension-1 == 1 and not isinstance(tangentSpace[0], list)) or \
             len(tangentSpace[0]) == dimension-1
         assert len(point) == dimension
         self.dimension = dimension
@@ -64,8 +78,34 @@ class Manifold:
         self.tangentSpace = tangentSpace
         self.point = point
 
-    @staticmethod
-    def TangentSpaceFromNormal(normal):
+class Intersection:
+
+    def __init__(self, dimension, manifoldA, manifoldB):
+        assert dimension > 0
+        assert manifoldA.dimension == dimension + 1
+        assert manifoldB.dimension == dimension + 1
+
+        # First, the new potential A boundary
+        normalA = np.dot(manifoldB.normal, manifoldA.tangentSpace)
+        assert len(normalA) == dimension
+        normalize = 1.0 / np.linalg.norm(normalA)
+        normalA = normalize * normalA
+        offsetA = normalize * np.dot(manifoldB.normal, np.np.subtract(manifoldB.point,manifoldA.point))
+        pointA = offsetA * normalA
+
+        # Second, the new potential B boundary
+        normalB = np.dot(manifoldA.normal, manifoldB.tangentSpace)
+        assert len(normalB) == dimension
+        normalize = 1.0 / np.linalg.norm(normalB)
+        normalB = normalize * normalB
+        offsetB = normalize * np.dot(manifoldA.normal, np.np.subtract(manifoldA.point,manifoldB.point))
+        pointB = offsetB * normalB
+
+        self.dimension = dimension
+        self.boundaryA = Boundary(dimension, Manifold(dimension,normalA, Manifold.TangentSpaceFromNormal(normalA), pointA), Solid(dimension, []))
+        self.boundaryB = Boundary(dimension, Manifold(dimension,normalB, Manifold.TangentSpaceFromNormal(normalB), pointB), Solid(dimension, []))
+
+    def TangentSpaceFromNormal(self, normal):
         # Construct the Householder reflection transform using the normal
         reflector = np.add(np.identity(3),np.outer(-2*normal,normal))
         # Compute the eigenvalues and eigenvectors for the symetric transform
@@ -74,31 +114,7 @@ class Manifold:
         assert(eigen[0][0] < 0.0)
         # Return the tangent space by removing the first eigenvector column (the negated normal)
         return np.delete(eigen[1],0,1)
-
-    def Intersect(self, manifold):
-        assert self.dimension == manifold.dimension
-
-        # First, the new self boundary
-        iNormalSelf = np.dot(manifold.normal, self.tangentSpace)
-        normalize = 1.0 / np.linalg.norm(iNormalSelf)
-        iNormalSelf = normalize * iNormalSelf
-        iOffsetSelf = normalize * np.dot(manifold.normal, np.np.subtract(manifold.point,self.point))
-        iPointSelf = iOffsetSelf * iNormalSelf
-
-        # Second, the new other boundary
-        iNormalOther = np.dot(self.normal, manifold.tangentSpace)
-        normalize = 1.0 / np.linalg.norm(iNormalOther)
-        iNormalOther = normalize * iNormalOther
-        iOffsetOther = normalize * np.dot(self.normal, np.np.subtract(self.point,manifold.point))
-        iPointOther = iOffsetOther * iNormalOther
-
-        newDimension = self.dimension - 1
-        assert len(iNormalSelf) == newDimension
-        assert len(iNormalOther) == newDimension
-
-        #if newDimension > 1:
-            #return Boundary(newDimension, Manifold(newDimension,iNormalSelf, Manifold.TangentSpaceFromNormal(iNormalSelf), iPointSelf),
-
+ 
 class InteractiveCanvas:
 
     showverts = True

@@ -24,43 +24,71 @@ print(y[1] + (y[3]-y[1])*(1-u))
 
 class Manifold:
 
-    def __init__(self, normal, tangentSpace, point):
-        assert len(normal) > 1
-        assert len(normal) == len(tangentSpace)
-        assert (len(normal) == 2 and not isinstance(tangentSpace[0], list)) or \
-            len(tangentSpace[0]) == len(normal)-1
-        assert len(normal) == len(point)
-        self.normal = normal
-        self.tangentSpace = tangentSpace
-        self.point = point
+    # If a shift of 1 in the normal direction of one manifold yeilds a shift of 10 in the tangent plane intersection, the manifolds are parallel
+    maxAlignment = 0.99 # 1 - 1/10^2
 
-class Extent:
-
-    def __init__(self, solid, normal, point):
-        assert solid.dimension == 1
-        assert not isinstance(normal, list)
-        assert not isinstance(point, list)
-        self.solid = solid
-        self.twin = None
+    def __init__(self, normal, offset):
         self.normal = normal
-        self.point = point
-        solid.boundaries.append(self)
-    
+        self.point = offset * normal
+        if isinstance(normal,list):
+            self.tangentSpace = Manifold.TangentSpaceFromNormal(normal)
+        else:
+            self.tangentSpace = None
+
     @staticmethod
-    def SortKey(extent):
-        return extent.point 
+    def TangentSpaceFromNormal(normal):
+        # Construct the Householder reflection transform using the normal
+        reflector = np.add(np.identity(3),np.outer(-2*normal,normal))
+        # Compute the eigenvalues and eigenvectors for the symetric transform
+        eigen = np.linalg.eigh(reflector)
+        # Assert the first eigenvalue is negative (the reflection whose eigenvector is the normal)
+        assert(eigen[0][0] < 0.0)
+        # Return the tangent space by removing the first eigenvector column (the negated normal)
+        return np.delete(eigen[1],0,1)
+
+    def Intersect(self, other, booleanOperation = "Intersection"):
+        assert len(self.normal) == len(other.normal)
+
+        # No intersection if the manifolds are parallel
+        alignment = np.dot(self.normal, other.normal)
+        if alignment * alignment > Manifold.maxAlignment:
+            return None, None
+
+        # First, the new self domain manifold
+        normalSelf = np.dot(other.normal, self.tangentSpace)
+        normalize = Solid.booleanOperations[booleanOperation][0] / np.linalg.norm(normalSelf)
+        normalSelf = normalize * normalSelf
+        offsetSelf = normalize * np.dot(other.normal, np.subtract(other.point,self.point))
+
+        # Second, the new other domain manifold
+        normalOther = np.dot(self.normal, other.tangentSpace)
+        normalize = Solid.booleanOperations[booleanOperation][1] / np.linalg.norm(normalOther)
+        normalOther = normalize * normalOther
+        offsetOther = normalize * np.dot(self.normal, np.subtract(self.point,other.point))
+
+        return Manifold(normalSelf, offsetSelf), Manifold(normalOther, offsetOther)
 
 class Boundary:
 
-    def __init__(self, solid, manifold, domain):
-        assert solid.dimension > 1
-        assert len(manifold.normal) == solid.dimension
-        assert domain.dimension == solid.dimension-1
+    def __init__(self, solid, manifold):
+        assert solid.dimension > 0
+        if solid.dimension > 1:
+            assert len(manifold.normal) == solid.dimension
+        else:
+            assert not isinstance(manifold.normal, list)
+
         self.solid = solid
         self.twin = None
         self.manifold = manifold
-        self.domain = domain
+        if solid.dimension > 1:
+            self.domain = Solid(solid.dimension - 1)
+        else:
+            self.domain = None
         solid.boundaries.append(self)
+    
+    @staticmethod
+    def SortKey(boundary):
+        return boundary.manifold.point 
 
 class Solid:
 
@@ -76,17 +104,6 @@ class Solid:
         self.boundaries = []
 
     @staticmethod
-    def TangentSpaceFromNormal(normal):
-        # Construct the Householder reflection transform using the normal
-        reflector = np.add(np.identity(3),np.outer(-2*normal,normal))
-        # Compute the eigenvalues and eigenvectors for the symetric transform
-        eigen = np.linalg.eigh(reflector)
-        # Assert the first eigenvalue is negative (the reflection whose eigenvector is the normal)
-        assert(eigen[0][0] < 0.0)
-        # Return the tangent space by removing the first eigenvector column (the negated normal)
-        return np.delete(eigen[1],0,1)
-
-    @staticmethod
     def Combine(solidA, solidB, booleanOperation = "Intersection"):
         assert solidA.dimension > 0
         assert solidA.dimension == solidB.dimension
@@ -96,34 +113,14 @@ class Solid:
         assert boundaryA.solid.dimension > 1
         assert boundaryA.solid.dimension == boundaryB.solid.dimension
 
-        manifoldA = boundaryA.manifold
-        manifoldB = boundaryB.manifold
+        # Intersect the boundary manifolds to get lower dimension manifolds in their domains
+        manifoldA, manifoldB = boundaryA.manifold.Intersect(boundaryB.manifold, booleanOperation)
 
-        # First, the new A domain boundary
-        normalA = np.dot(manifoldB.normal, manifoldA.tangentSpace)
-        normalize = Solid.booleanOperations[booleanOperation][0] / np.linalg.norm(normalA)
-        normalA = normalize * normalA
-        offsetA = normalize * np.dot(manifoldB.normal, np.np.subtract(manifoldB.point,manifoldA.point))
-        pointA = offsetA * normalA
-
-        # Second, the new B domain boundary
-        normalB = np.dot(manifoldA.normal, manifoldB.tangentSpace)
-        normalize = Solid.booleanOperations[booleanOperation][1] / np.linalg.norm(normalB)
-        normalB = normalize * normalB
-        offsetB = normalize * np.dot(manifoldA.normal, np.np.subtract(manifoldA.point,manifoldB.point))
-        pointB = offsetB * normalB
-
-        # Create new boundaries or extents
-        if (boundaryA.domain.dimension > 1):
-            domainBoundaryA = Boundary(boundaryA.domain, Manifold(normalA, Manifold.TangentSpaceFromNormal(normalA), pointA), Solid(boundaryA.domain.dimension-1))
-            domainBoundaryB = Boundary(boundaryB.domain, Manifold(normalB, Manifold.TangentSpaceFromNormal(normalB), pointB), Solid(boundaryB.domain.dimension-1))
-            domainBoundaryA.twin = domainBoundaryB
-            domainBoundaryB.twin = domainBoundaryA
-        else:
-            domainExtentA = Extent(boundaryA.domain, normalA, pointA)
-            domainExtentB = Extent(boundaryB.domain, normalB, pointB)
-            domainExtentA.twin = domainExtentB
-            domainExtentB.twin = domainExtentA
+        # Create new boundaries
+        domainBoundaryA = Boundary(boundaryA.domain, manifoldA)
+        domainBoundaryB = Boundary(boundaryB.domain, manifoldB)
+        domainBoundaryA.twin = domainBoundaryB
+        domainBoundaryB.twin = domainBoundaryA
  
 class InteractiveCanvas:
 

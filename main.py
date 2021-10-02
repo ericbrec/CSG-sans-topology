@@ -27,6 +27,9 @@ class Manifold:
     # If a shift of 1 in the normal direction of one manifold yeilds a shift of 10 in the tangent plane intersection, the manifolds are parallel
     maxAlignment = 0.99 # 1 - 1/10^2
 
+    # If two points are within 0.01 of each eachother, they are coincident
+    minSeparation = 0.01
+
     def __init__(self, normal, offset):
         self.normal = normal
         self.point = offset * normal
@@ -49,24 +52,27 @@ class Manifold:
     def Intersect(self, other, booleanOperation = "Intersection"):
         assert len(self.normal) == len(other.normal)
 
-        # No intersection if the manifolds are parallel
+        # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have mulitple.
+        intersections = []
+
+        # Ensure manifolds are not parallel
         alignment = np.dot(self.normal, other.normal)
-        if alignment * alignment > Manifold.maxAlignment:
-            return None, None
+        if alignment * alignment < Manifold.maxAlignment:
+            # Compute the intersecting self domain manifold
+            normalSelf = np.dot(other.normal, self.tangentSpace)
+            normalize = Solid.booleanOperations[booleanOperation][0] / np.linalg.norm(normalSelf)
+            normalSelf = normalize * normalSelf
+            offsetSelf = normalize * np.dot(other.normal, np.subtract(other.point,self.point))
 
-        # First, the new self domain manifold
-        normalSelf = np.dot(other.normal, self.tangentSpace)
-        normalize = Solid.booleanOperations[booleanOperation][0] / np.linalg.norm(normalSelf)
-        normalSelf = normalize * normalSelf
-        offsetSelf = normalize * np.dot(other.normal, np.subtract(other.point,self.point))
+            # Compute the intersecting other domain manifold
+            normalOther = np.dot(self.normal, other.tangentSpace)
+            normalize = Solid.booleanOperations[booleanOperation][1] / np.linalg.norm(normalOther)
+            normalOther = normalize * normalOther
+            offsetOther = normalize * np.dot(self.normal, np.subtract(self.point,other.point))
 
-        # Second, the new other domain manifold
-        normalOther = np.dot(self.normal, other.tangentSpace)
-        normalize = Solid.booleanOperations[booleanOperation][1] / np.linalg.norm(normalOther)
-        normalOther = normalize * normalOther
-        offsetOther = normalize * np.dot(self.normal, np.subtract(self.point,other.point))
+            intersections.append([Manifold(normalSelf, offsetSelf), Manifold(normalOther, offsetOther)])
 
-        return Manifold(normalSelf, offsetSelf), Manifold(normalOther, offsetOther)
+        return intersections
 
 class Boundary:
 
@@ -88,7 +94,7 @@ class Boundary:
     
     @staticmethod
     def SortKey(boundary):
-        return boundary.manifold.point 
+        return boundary.manifold.point
 
 class Solid:
 
@@ -114,14 +120,67 @@ class Solid:
         assert boundaryA.solid.dimension == boundaryB.solid.dimension
 
         # Intersect the boundary manifolds to get lower dimension manifolds in their domains
-        manifoldA, manifoldB = boundaryA.manifold.Intersect(boundaryB.manifold, booleanOperation)
+        intersections = boundaryA.manifold.Intersect(boundaryB.manifold, booleanOperation)
 
-        # Create new boundaries
-        domainBoundaryA = Boundary(boundaryA.domain, manifoldA)
-        domainBoundaryB = Boundary(boundaryB.domain, manifoldB)
-        domainBoundaryA.twin = domainBoundaryB
-        domainBoundaryB.twin = domainBoundaryA
- 
+        for intersection in intersections:
+            for boundary in boundaryA.domain.boundaries:
+                pass
+            # Create new domain boundaries
+            domainBoundaryA = Boundary(boundaryA.domain, intersection[0])
+            domainBoundaryB = Boundary(boundaryB.domain, intersection[1])
+            domainBoundaryA.twin = domainBoundaryB
+            domainBoundaryB.twin = domainBoundaryA
+    
+    def Intersect(self, manifold):
+        if self.dimension > 1:
+            assert len(manifold.normal) == self.dimension
+
+            for boundary in self.boundaries:
+                intersections = boundary.manifold.Intersect(manifold)
+                for intersection in intersections:
+                    boundary.domain.Intersect(intersection[0])
+
+            # Create new domain boundaries
+            domainBoundaryA = Boundary(self, intersection[0])
+            #domainBoundaryB = Boundary(boundaryB.domain, intersection[1])
+            #domainBoundaryA.twin = domainBoundaryB
+            #domainBoundaryB.twin = domainBoundaryA
+
+        else:
+            assert not isinstance(manifold.normal, list)
+            if self.boundaries == []:
+                if manifold.normal > 0.0:
+                    self.boundaries.append(Boundary(self,Manifold(-1.0,float('inf'))))
+                    self.boundaries.append(Boundary(self,manifold))
+                else:
+                    self.boundaries.append(Boundary(self,manifold))
+                    self.boundaries.append(Boundary(self,Manifold(1.0,float('inf'))))
+            else:
+                # Make a copy of boundaries, since we might remove one
+                boundaries = self.boundaries
+
+                # Replace existing manifold with new one in boundaries list as appropriate
+                previousBoundary = None
+                for i in range(len(boundaries)):
+                    boundary = boundaries[i]
+                    existingManifold = boundary.manifold
+                    if manifold.point < existingManifold.point + Manifold.minSeparation:
+                        # Check if new point is outside range or coincient
+                        if existingManifold.normal < 0.0 or manifold.point > existingManifold.point - Manifold.minSeparation:
+                            # Skip manifold
+                            pass
+                        else:
+                            # Add new boundary based on manifold and remove old one and its twin
+                            self.boundaries.insert(i, Boundary(self,manifold))
+                            if manifold.normal < 0.0:
+                                self.boundaries.remove(previousBoundary)
+                                previousBoundary.twin.solid.boundaries.remove(previousBoundary.twin)
+                            else:
+                                self.boundaries.remove(boundary)
+                                boundary.twin.solid.boundaries.remove(boundary.twin)
+                        break
+                    previousBoundary = boundary
+
 class InteractiveCanvas:
 
     showverts = True

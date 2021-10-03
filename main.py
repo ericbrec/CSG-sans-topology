@@ -49,7 +49,7 @@ class Manifold:
         # Return the tangent space by removing the first eigenvector column (the negated normal)
         return np.delete(eigen[1], 0, 1)
 
-    def Intersect(self, other, booleanOperation = "Intersection"):
+    def Intersect(self, other, booleanOperation):
         assert len(self.normal) == len(other.normal)
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have mulitple.
@@ -57,7 +57,7 @@ class Manifold:
 
         # Ensure manifolds are not parallel
         alignment = np.dot(self.normal, other.normal)
-        if alignment * alignment < Manifold.maxAlignment:
+        if self != other and alignment * alignment < Manifold.maxAlignment:
             # Compute the intersecting self domain manifold
             normalSelf = np.dot(other.normal, self.tangentSpace)
             normalize = Solid.booleanOperations[booleanOperation][0] / np.linalg.norm(normalSelf)
@@ -102,7 +102,7 @@ class Solid:
     def __init__(self, dimension, boundaries = []):
         assert dimension > 0
         self.dimension = dimension
-        self.boundaries = boundaries
+        self.boundaries = boundaries.copy()
 
     @staticmethod
     def Combine(solidA, solidB, booleanOperation = "Intersection"):
@@ -142,40 +142,41 @@ class Solid:
         
         return solidC
     
-    def Intersect(self, manifold):
-        # Create a new list of boundaries to return.
-        # We need a new list of existing boundaries for three reasons:
-        # 1) The old list can be changed in the process.
-        # 2) The manifold might intersect a solid's existing boundary, but not within the boundary's domain.
-        # 3) In general, it's a bad idea to cause side effects.
-        solidIntersected = False
+    def Intersect(self, manifold, manifoldBoundaries = [], booleanOperation = "Intersection"):
+        # Create lists of new boundaries and unintersected boundaries to return.
         newBoundaries = []
+        oldBoundaries = []
+        solidIntersected = False
 
         if self.dimension > 1:
             assert len(manifold.normal) == self.dimension
 
-            manifoldDomain = Solid(self.dimension-1)
+            manifoldDomain = Solid(self.dimension-1, manifoldBoundaries)
             for boundary in self.boundaries:
                 # Create a new domain for this boundary, so we don't change the existing domain (no side effects).
                 newDomain = Solid(self.dimension-1, boundary.domain.boundaries)
                 # Intersect the boundary with the manifold.
-                intersections = boundary.manifold.Intersect(manifold)
+                intersections = boundary.manifold.Intersect(manifold, booleanOperation)
                 boundaryIntersected = False
                 # For each intersection, intersect the resulting domain manifolds with the our domain and the manifold's domain.
                 for intersection in intersections:
-                    domainIntersected, newDomainBoundaries = newDomain.Intersect(intersection[0])
+                    domainIntersected, newDomainBoundaries, oldDomainBoundaries = newDomain.Intersect(intersection[0])
                     if domainIntersected:
-                        domainIntersected, newManifoldBoundaries = manifoldDomain.Intersect(intersection[1])
+                        domainIntersected, newManifoldBoundaries, oldManifoldBoundaries = manifoldDomain.Intersect(intersection[1])
                     if domainIntersected:
                         # The intersection is within each domain, so adjust the boundaries.
+
+                        # TODO: Figure out how to deal with oldDomainBoundaries. (oldManifoldBoundaries are always empty.)
+
                         newDomain.boundaries = newDomainBoundaries
                         manifoldDomain.boundaries = newManifoldBoundaries
                         boundaryIntersected = True
+
                 if boundaryIntersected:
                     newBoundaries.append(Boundary(self, boundary.manifold, newDomain))
                     solidIntersected = True
                 else:
-                    newBoundaries.append(boundary)
+                    oldBoundaries.append(boundary)
             
             if solidIntersected:
                 newBoundaries.append(Boundary(self, manifold, manifoldDomain))
@@ -183,7 +184,7 @@ class Solid:
         else:
             # This solid is dimension 1, a real number line, and the manifold is a point on that line.
             assert not isinstance(manifold.normal, list)
-            newBoundaries = self.boundaries
+            newBoundaries = self.boundaries.copy()
             if len(newBoundaries) == 0:
                 # The number line started empty, so add missing boundaries at +/- infinity as needed. 
                 if manifold.normal > 0.0:
@@ -215,8 +216,12 @@ class Solid:
                             solidIntersected = True
                         break
                     previousBoundary = boundary
+            
+            if not solidIntersected:
+                oldBoundaries = newBoundaries
+                newBoundaries = []
         
-        return solidIntersected, newBoundaries
+        return solidIntersected, newBoundaries, oldBoundaries
 
 class InteractiveCanvas:
 

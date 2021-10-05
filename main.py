@@ -184,8 +184,7 @@ class Solid:
         else:
             # This solid is dimension 1, a real number line, and the manifold is a point on that line.
             assert not isinstance(manifold.normal, list)
-            newBoundaries = self.boundaries.copy()
-            if len(newBoundaries) == 0:
+            if len(self.boundaries) == 0:
                 # The number line started empty, so add missing boundaries at +/- infinity as needed. 
                 if manifold.normal > 0.0:
                     newBoundaries.append(Boundary(self, Manifold(-1.0, float('inf'))))
@@ -197,9 +196,8 @@ class Solid:
             else:
                 # Replace existing manifold point with the new one as appropriate.
                 # Loop through existing manifold points until you find the first greater than the new manifold point.
-                previousBoundary = None
-                for i in range(len(newBoundaries)):
-                    boundary = newBoundaries[i]
+                for i in range(len(self.boundaries)):
+                    boundary = self.boundaries[i]
                     existingManifold = boundary.manifold
                     if manifold.point < existingManifold.point + Manifold.minSeparation:
                         # Check if new point is outside range or coincient
@@ -208,18 +206,18 @@ class Solid:
                             pass
                         else:
                             # Add new boundary based on manifold and remove old one it's replacing
-                            newBoundaries.insert(i, Boundary(self, manifold))
+                            newBoundaries = self.boundaries.copy()
                             if manifold.normal < 0.0:
-                                newBoundaries.remove(previousBoundary)
+                                newBoundaries.pop(i-1)
+                                newBoundaries.insert(i-1, Boundary(self, manifold))
                             else:
-                                newBoundaries.remove(boundary)
+                                newBoundaries.pop(i)
+                                newBoundaries.insert(i, Boundary(self, manifold))
                             solidIntersected = True
                         break
-                    previousBoundary = boundary
             
             if not solidIntersected:
-                oldBoundaries = newBoundaries
-                newBoundaries = []
+                oldBoundaries = self.boundaries
         
         return solidIntersected, newBoundaries, oldBoundaries
 

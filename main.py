@@ -110,32 +110,37 @@ class Solid:
         assert solidA.dimension == solidB.dimension
 
         solidC = Solid(solidA.dimension)
+        # We need a list of new boundary B domains, since we loop over B boundaries for each boundary A.
+        boundaryBDomains = [None] * len(solidB.boundaries)
+        
         for boundaryA in solidA.boundaries:
-            # Create a new domain for this boundary, so we don't change the existing domain (no side effects).
-            newDomainA = Solid(solidA.dimension-1, boundaryA.domain.boundaries)
-            intersectedA = False
+            # Create a new domain for boundary A, so we don't change the existing domain (no side effects).
+            newDomainA = Solid(solidA.dimension-1)
 
-            for boundaryB in solidB.boundaries:
-                newDomainB = Solid(solidB.dimension-1, boundaryB.domain.boundaries)
-                intersectedB = False
+            for b in len(solidB.boundaries):
+                boundaryB = solidB.boundaries[b]
+                newDomainB = boundaryBDomains[b]
 
+                # Create a new domain for boundary B, so we don't change the existing domain (no side effects).
+                if newDomainB == None:
+                    newDomainB = Solid(solidB.dimension-1)
+                    boundaryBDomains[b] = newDomainB
+
+                # Intersect the boundaryA manifold with the boundaryB manifold.
+                # The results will be a collection of manifold pairs:
+                #   * intersection[0] from the domain of boundaryA;
+                #   * intersection[1] from the domain of boundary B.
+                # Each manifold pair evaluates to the same contour on boundaries A and B.
                 intersections = boundaryA.manifold.Intersect(boundaryB.manifold, booleanOperation)
                 for intersection in intersections:
-                    intersected, newDomainBoundariesA = newDomainA.Intersect(intersection[0])
-                    if intersected:
-                       intersected, newDomainBoundariesB = newDomainB.Intersect(intersection[1])
-                    if intersected:
-                        newDomainA.boundaries = newDomainBoundariesA
-                        newDomainB.boundaries = newDomainBoundariesB
-                        intersectedB = True
+                    intersectionDomainA = boundaryA.domain.Intersect(intersection[0])
+                    if intersectionDomainA:
+                       intersectionDomainB = boundaryB.domain.Intersect(intersection[1])
+                    if intersectionDomainA and intersectionDomainB:
+                        newDomainA.boundaries.append(Boundary(newDomainA,intersection[0],intersectionDomainA))
+                        newDomainB.boundaries.append(Boundary(newDomainB,intersection[1],intersectionDomainB))
 
-                if intersectedB:
-                    solidC.boundaries.append(Boundary(solidC, boundaryB.manifold, newDomainB))
-                    intersectedA = True
-                elif booleanOperation == "Union":
-                    solidC.boundaries.append(boundaryB)
-            
-            if intersectedA:
+            if len(newDomainA.boundaries) > 0:
                 solidC.boundaries.append(Boundary(solidC, boundaryA.manifold, newDomainA))
             elif booleanOperation == "Union" or booleanOperation == "Difference":
                 solidC.boundaries.append(boundaryA)

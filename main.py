@@ -49,7 +49,7 @@ class Manifold:
         # Return the tangent space by removing the first eigenvector column (the negated normal)
         return np.delete(eigen[1], 0, 1)
 
-    def Intersect(self, other, booleanOperation):
+    def Intersect(self, other, booleanOperation = "Intersection"):
         assert len(self.normal) == len(other.normal)
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have mulitple.
@@ -103,49 +103,6 @@ class Solid:
         assert dimension > 0
         self.dimension = dimension
         self.boundaries = boundaries.copy()
-
-    @staticmethod
-    def Combine(solidA, solidB, booleanOperation = "Intersection"):
-        assert solidA.dimension > 1
-        assert solidA.dimension == solidB.dimension
-
-        solidC = Solid(solidA.dimension)
-        # We need a list of new boundary B domains, since we loop over B boundaries for each boundary A.
-        boundaryBDomains = [None] * len(solidB.boundaries)
-        
-        for boundaryA in solidA.boundaries:
-            # Create a new domain for boundary A, so we don't change the existing domain (no side effects).
-            newDomainA = Solid(solidA.dimension-1)
-
-            for b in len(solidB.boundaries):
-                boundaryB = solidB.boundaries[b]
-                newDomainB = boundaryBDomains[b]
-
-                # Create a new domain for boundary B, so we don't change the existing domain (no side effects).
-                if newDomainB == None:
-                    newDomainB = Solid(solidB.dimension-1)
-                    boundaryBDomains[b] = newDomainB
-
-                # Intersect the boundaryA manifold with the boundaryB manifold.
-                # The results will be a collection of manifold pairs:
-                #   * intersection[0] from the domain of boundaryA;
-                #   * intersection[1] from the domain of boundary B.
-                # Each manifold pair evaluates to the same contour on boundaries A and B.
-                intersections = boundaryA.manifold.Intersect(boundaryB.manifold, booleanOperation)
-                for intersection in intersections:
-                    intersectionDomainA = boundaryA.domain.Intersect(intersection[0])
-                    if intersectionDomainA:
-                       intersectionDomainB = boundaryB.domain.Intersect(intersection[1])
-                    if intersectionDomainA and intersectionDomainB:
-                        newDomainA.boundaries.append(Boundary(newDomainA,intersection[0],intersectionDomainA))
-                        newDomainB.boundaries.append(Boundary(newDomainB,intersection[1],intersectionDomainB))
-
-            if len(newDomainA.boundaries) > 0:
-                solidC.boundaries.append(Boundary(solidC, boundaryA.manifold, newDomainA))
-            elif booleanOperation == "Union" or booleanOperation == "Difference":
-                solidC.boundaries.append(boundaryA)
-        
-        return solidC
     
     def Intersect(self, manifold, manifoldBoundaries = [], booleanOperation = "Intersection"):
         # Create lists of new boundaries and unintersected boundaries to return.
@@ -225,6 +182,93 @@ class Solid:
                 oldBoundaries = self.boundaries
         
         return solidIntersected, newBoundaries, oldBoundaries
+
+    def Slice(self, manifold):
+        manifoldDomain = None
+
+        if self.dimension > 1:
+            assert len(manifold.normal) == self.dimension
+
+            manifoldDomain = Solid(self.dimension-1)
+            for boundary in self.boundaries:
+                # Intersect the boundary with the manifold.
+                intersections = boundary.manifold.Intersect(manifold)
+                # For each intersection, slice the boundry domain with the intersection manifold.
+                for intersection in intersections:
+                    if boundary.domain.dimension > 1:
+                        intersectionDomain = boundary.domain.Slice(intersection[0])
+                        if intersectionDomain:
+                            manifoldDomain.boundaries.append(Boundary(manifoldDomain,intersection[1],intersectionDomain))
+                    else:
+                        # This domain is dimension 1, a real number line, and the intersection is a point on that line.
+                        assert not isinstance(intersection[0].normal, list)
+
+                        interior = False
+                        for domainBoundary in boundary.domain.boundaries:
+                            domainBoundaryManifold = domainBoundary.manifold
+                            # Find first domain boundary point to the right of the intersection
+                            if intersection[0].point < domainBoundaryManifold.point + Manifold.minSeparation:
+                                # The intersection is interior if it's inside domain and not coincient
+                                if domainBoundaryManifold.normal > 0.0 and intersection[0].point < domainBoundaryManifold.point - Manifold.minSeparation:
+                                    interior = True
+                                break
+                        
+                        if interior:
+                            # Insert intersection into manifold domain boundaries
+                            for i in range(len(manifoldDomain.boundaries)):
+                                existingManifold = manifoldDomain.boundaries[i].manifold
+                                if intersection[1].point < existingManifold.point:
+                                    break
+                            
+                            manifoldDomain.boundaries.insert(i,Boundary(manifoldDomain,intersection[1]))
+            
+            if len(manifoldDomain.boundaries) == 0:
+                manifoldDomain = None
+        
+        return manifoldDomain
+
+    @staticmethod
+    def Combine(solidA, solidB, booleanOperation = "Intersection"):
+        assert solidA.dimension > 1
+        assert solidA.dimension == solidB.dimension
+
+        solidC = Solid(solidA.dimension)
+        # We need a list of new boundary B domains, since we loop over B boundaries for each boundary A.
+        boundaryBDomains = [None] * len(solidB.boundaries)
+        
+        for boundaryA in solidA.boundaries:
+            # Create a new domain for boundary A, so we don't change the existing domain (no side effects).
+            newDomainA = Solid(solidA.dimension-1)
+
+            for b in len(solidB.boundaries):
+                boundaryB = solidB.boundaries[b]
+                newDomainB = boundaryBDomains[b]
+
+                # Create a new domain for boundary B, so we don't change the existing domain (no side effects).
+                if newDomainB == None:
+                    newDomainB = Solid(solidB.dimension-1)
+                    boundaryBDomains[b] = newDomainB
+
+                # Intersect the boundaryA manifold with the boundaryB manifold.
+                # The results will be a collection of manifold pairs:
+                #   * intersection[0] from the domain of boundaryA;
+                #   * intersection[1] from the domain of boundary B.
+                # Each manifold pair evaluates to the same contour on boundaries A and B.
+                intersections = boundaryA.manifold.Intersect(boundaryB.manifold, booleanOperation)
+                for intersection in intersections:
+                    intersectionDomainA = boundaryA.domain.Intersect(intersection[0])
+                    if intersectionDomainA:
+                       intersectionDomainB = boundaryB.domain.Intersect(intersection[1])
+                    if intersectionDomainA and intersectionDomainB:
+                        newDomainA.boundaries.append(Boundary(newDomainA,intersection[0],intersectionDomainA))
+                        newDomainB.boundaries.append(Boundary(newDomainB,intersection[1],intersectionDomainB))
+
+            if len(newDomainA.boundaries) > 0:
+                solidC.boundaries.append(Boundary(solidC, boundaryA.manifold, newDomainA))
+            elif booleanOperation == "Union" or booleanOperation == "Difference":
+                solidC.boundaries.append(boundaryA)
+        
+        return solidC
 
 class InteractiveCanvas:
 

@@ -2,6 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backend_bases import MouseButton
 
+a = np.array([34.0])
+print(a, np.array(a), type(a), len(a))
+print(a[0])
+print(2*a, np.array(2*a), type(2*a), len(2*a))
+b = np.array([-1, 2])
+c = a - b
+print(c, type(c))
+
 x = []
 y = []
 points = 5
@@ -31,18 +39,22 @@ class Manifold:
     minSeparation = 0.01
 
     def __init__(self, normal, offset):
-        self.normal = normal
+        # Ensure the normal is always an array
+        if np.isscalar(normal):
+            self.normal = np.array([normal])
+        else:
+            self.normal = np.array(normal)
         self.point = offset * normal
-        if isinstance(normal, list):
+        if len(self.normal) > 1:
             self.tangentSpace = Manifold.TangentSpaceFromNormal(normal)
         else:
-            self.tangentSpace = None
+            self.tangentSpace = 1.0
 
     @staticmethod
     def TangentSpaceFromNormal(normal):
         # Construct the Householder reflection transform using the normal
         reflector = np.add(np.identity(3), np.outer(-2*normal, normal))
-        # Compute the eigenvalues and eigenvectors for the symetric transform
+        # Compute the eigenvalues and eigenvectors for the symetric transform (eigenvalues returned in ascending order).
         eigen = np.linalg.eigh(reflector)
         # Assert the first eigenvalue is negative (the reflection whose eigenvector is the normal)
         assert(eigen[0][0] < 0.0)
@@ -50,8 +62,6 @@ class Manifold:
         return np.delete(eigen[1], 0, 1)
 
     def Intersect(self, other, booleanOperation = "Intersection"):
-        assert len(self.normal) == len(other.normal)
-
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have mulitple.
         intersections = []
 
@@ -77,10 +87,7 @@ class Manifold:
 class Boundary:
 
     def __init__(self, manifold, domain = None):
-        if domain:
-            assert len(manifold.normal) - 1 == domain.dimension
-        else:
-            assert not isinstance(manifold.normal, list)
+        assert len(manifold.normal) - 1 == domain.dimension
 
         self.manifold = manifold
         self.domain = domain
@@ -101,7 +108,63 @@ class Solid:
         assert dimension > 0
         self.dimension = dimension
         self.boundaries = []
+    
+    def Points(self):
+        for boundary in self.boundaries:
+            if boundary.domain:
+                for domainPoint in boundary.domain.Points():
+                    point = np.dot(boundary.manifold.tangetSpace, domainPoint) + boundary.manifold.point
+                    yield point
+            else:
+                yield boundary.manifold.point
  
+    def ContainsPoint(self, point):
+        # Return value is -1 for interior, 0 for on boundary, and 1 for exterior
+        containment = -1
+        windingNumber = 0
+        onBoundary = False
+
+        # Intersect a ray from point along the x-axis through self's boundaries.
+        # All dot products with the ray are just the first component, since the ray is along the x-axis.
+        for boundary in self.boundaries:
+            manifold = boundary.manifold
+            # Ensure manifold intersects x-axis
+            if manifold.normal[0]*manifold.normal[0] > 1 - Manifold.maxAlignment:
+                # Calculate distance to manifold
+                vectorToManifold = manifold.point - point
+                distanceToManifold = np.dot(manifold.normal, vectorToManifold) / manifold.normal[0]
+
+                # Check the distance is positive
+                if distanceToManifold > -Manifold.minSeparation:
+                    considerBoundary = True
+                    if boundary.domain:
+                        vectorFromManifold = -vectorToManifold
+                        vectorFromManifold[0] += distanceToManifold
+                        domainPoint = np.dot(manifold.tangentSpace, vectorFromManifold)
+                        considerBoundary = boundary.domain.ContainsPoint(domainPoint) < 1
+                    if considerBoundary:
+                        if distanceToManifold < Manifold.minSeparation:
+                            onBoundary = True
+                        windingNumber += np.sign(manifold.normal[0])
+        
+        if onBoundary:
+            containment = 0
+        elif windingNumber == 0:
+            containment = 1
+        return containment 
+
+    def ContainsSolid(self, solid):
+        # Assumes there is no intersection, though there may be coincience
+        containment = False
+
+        for point in solid.Points():
+            constainsPoint = self.ContainsPoint(point)
+            if constainsPoint != 0:
+                containment = constainsPoint < 0
+                break
+
+        return containment
+
     def Slice(self, manifold):
         assert self.dimension > 1
         assert len(manifold.normal) == self.dimension
@@ -127,8 +190,6 @@ class Solid:
                         manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionDomain))
                 else:
                     # This domain is dimension 1, a real number line, and the intersection is a point on that line.
-                    assert not isinstance(intersection[0].normal, list)
-
                     # Determine if the intersection point is within domain's interior
                     interior = False
                     for domainBoundary in boundary.domain.boundaries:
@@ -184,6 +245,8 @@ class Solid:
                 # Each manifold pair evaluates to the same range on boundaries self and solid.
                 intersections = selfBoundary.manifold.Intersect(solidBoundary.manifold, booleanOperation)
                 for intersection in intersections:
+                    # TODO: Introduce case for domain.dimension == 1, either moving code from Slice method here or creating shared methods for point containment and merge.
+                    # TODO: Or we could have Slice somehow support domain.dimension == 1.
                     intersectionSelfDomain = selfBoundary.domain.Slice(intersection[0])
                     if intersectionSelfDomain:
                        intersectionSolidDomain = solidBoundary.domain.Slice(intersection[1])

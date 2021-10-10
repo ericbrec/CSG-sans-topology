@@ -8,7 +8,7 @@ from matplotlib.backend_bases import MouseButton
 
 a = np.array([34.0])
 print(a, np.array(a), type(a), len(a))
-print(a[0])
+print(a[0], a * np.array([0.5]))
 print(2*a, np.array(2*a), type(2*a), len(2*a))
 b = np.array([-1, 2])
 c = a - b
@@ -42,18 +42,6 @@ class Manifold:
     # If two points are within 0.01 of each eachother, they are coincident
     minSeparation = 0.01
 
-    def __init__(self, normal, offset):
-        # Ensure the normal is always an array
-        if np.isscalar(normal):
-            self.normal = np.array([normal])
-        else:
-            self.normal = np.array(normal)
-        self.point = offset * normal
-        if len(self.normal) > 1:
-            self.tangentSpace = Manifold.TangentSpaceFromNormal(normal)
-        else:
-            self.tangentSpace = 1.0
-
     @staticmethod
     def TangentSpaceFromNormal(normal):
         # Construct the Householder reflection transform using the normal
@@ -65,7 +53,26 @@ class Manifold:
         # Return the tangent space by removing the first eigenvector column (the negated normal)
         return np.delete(eigen[1], 0, 1)
 
-    def Intersect(self, other, booleanOperation = "Intersection"):
+    def __init__(self, normal, offset):
+        # Ensure the normal is always an array
+        if np.isscalar(normal):
+            self.normal = np.array([normal])
+        else:
+            self.normal = np.array(normal)
+        self.normal /= np.linalg.norm(self.normal)
+        self.point = offset * self.normal
+        if len(self.normal) > 1:
+            self.tangentSpace = Manifold.TangentSpaceFromNormal(self.normal)
+        else:
+            self.tangentSpace = 1.0
+
+    def PointFromDomain(self, domainPoint):
+        return np.dot(self.tangentSpace, domainPoint) + self.point
+
+    def DomainFromPoint(self, point):
+        return np.dot(point - self.point, self.tangentSpace)
+
+    def IntersectManifold(self, other, booleanOperation = "Intersection"):
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have mulitple.
         intersections = []
 
@@ -108,6 +115,29 @@ class Solid:
         "Difference": [1.0, -1.0]
     }
 
+    @staticmethod
+    def CreateSolidFromPoints(dimension, points):
+        # Implementation only works for dimension 2 so far.
+        assert dimension == 2
+        assert len(points) > 2
+        assert len(points[0]) == dimension
+
+        solid = Solid(dimension)
+
+        previousPoint = np.array(points[len(points)-1])
+        for point in points:
+            point = np.array(point)
+            vector = point - previousPoint
+            normal = np.array(-vector[1], vector[0])
+            normal /= np.linalg.norm(normal)
+            manifold = Manifold(normal,np.dot(normal,point))
+            domain = Solid(dimension-1)
+            domain.boundaries.append(Boundary(Manifold(-1.0, -manifold.DomainFromPoint(previousPoint))))
+            domain.boundaries.append(Boundary(Manifold(1.0, manifold.DomainFromPoint(point))))
+            solid.boundaries.append(Boundary(manifold, domain))
+
+        return solid
+
     def __init__(self, dimension):
         assert dimension > 0
         self.dimension = dimension
@@ -117,7 +147,7 @@ class Solid:
         for boundary in self.boundaries:
             if boundary.domain:
                 for domainPoint in boundary.domain.Points():
-                    point = np.dot(boundary.manifold.tangetSpace, domainPoint) + boundary.manifold.point
+                    point = boundary.manifold.PointFromDomain(domainPoint)
                     yield point
             else:
                 yield boundary.manifold.point
@@ -183,7 +213,7 @@ class Solid:
             #   * intersection[0] is in the boundary's domain;
             #   * intersection[1] is in the given manifold's domain.
             # Both intersections correspond to the same range (the intersection between the manifolds).
-            intersections = boundary.manifold.Intersect(manifold)
+            intersections = boundary.manifold.IntersectManifold(manifold)
 
             # For each intersection, slice the boundry domain with the intersection manifold.
             # We slice the boundary domain using intersection[0], but we add intersection[1] to the manifold domain. 
@@ -231,7 +261,7 @@ class Solid:
                 #   * intersection[0] from the domain of selfBoundary;
                 #   * intersection[1] from the domain of solidBoundary.
                 # Each manifold pair evaluates to the same range on boundaries self and solid.
-                intersections = selfBoundary.manifold.Intersect(solidBoundary.manifold, booleanOperation)
+                intersections = selfBoundary.manifold.IntersectManifold(solidBoundary.manifold, booleanOperation)
                 for intersection in intersections:
                     if selfBoundary.domain.dimension > 1:
                         intersectionSelfDomain = selfBoundary.domain.Slice(intersection[0])

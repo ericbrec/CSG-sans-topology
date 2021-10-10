@@ -45,7 +45,7 @@ class Manifold:
     @staticmethod
     def TangentSpaceFromNormal(normal):
         # Construct the Householder reflection transform using the normal
-        reflector = np.add(np.identity(3), np.outer(-2*normal, normal))
+        reflector = np.add(np.identity(len(normal)), np.outer(-2*normal, normal))
         # Compute the eigenvalues and eigenvectors for the symetric transform (eigenvalues returned in ascending order).
         eigen = np.linalg.eigh(reflector)
         # Assert the first eigenvalue is negative (the reflection whose eigenvector is the normal)
@@ -59,7 +59,7 @@ class Manifold:
             self.normal = np.array([normal])
         else:
             self.normal = np.array(normal)
-        self.normal /= np.linalg.norm(self.normal)
+        self.normal = self.normal / np.linalg.norm(self.normal)
         self.point = offset * self.normal
         if len(self.normal) > 1:
             self.tangentSpace = Manifold.TangentSpaceFromNormal(self.normal)
@@ -98,7 +98,10 @@ class Manifold:
 class Boundary:
 
     def __init__(self, manifold, domain = None):
-        assert len(manifold.normal) - 1 == domain.dimension
+        if domain:
+            assert len(manifold.normal) - 1 == domain.dimension
+        else:
+            assert len(manifold.normal) == 1
 
         self.manifold = manifold
         self.domain = domain
@@ -128,13 +131,14 @@ class Solid:
         for point in points:
             point = np.array(point)
             vector = point - previousPoint
-            normal = np.array(-vector[1], vector[0])
-            normal /= np.linalg.norm(normal)
+            normal = np.array([-vector[1], vector[0]])
+            normal = normal / np.linalg.norm(normal)
             manifold = Manifold(normal,np.dot(normal,point))
             domain = Solid(dimension-1)
             domain.boundaries.append(Boundary(Manifold(-1.0, -manifold.DomainFromPoint(previousPoint))))
             domain.boundaries.append(Boundary(Manifold(1.0, manifold.DomainFromPoint(point))))
             solid.boundaries.append(Boundary(manifold, domain))
+            previousPoint = point
 
         return solid
 
@@ -187,15 +191,18 @@ class Solid:
             containment = 1
         return containment 
 
-    def ContainsSolid(self, solid):
-        # Assumes there is no intersection, though there may be coincience
+    def ContainsBoundary(self, boundary):
+        # Assumes there is no boundary intersection, though there may be coincience
         containment = False
 
-        for point in solid.Points():
-            constainsPoint = self.ContainsPoint(point)
-            if constainsPoint != 0:
-                containment = constainsPoint < 0
-                break
+        if boundary.domain:
+            for domainPoint in boundary.domain.Points():
+                constainsPoint = self.ContainsPoint(boundary.manifold.PointFromDomain(domainPoint))
+                if constainsPoint != 0:
+                    containment = constainsPoint < 0
+                    break
+        else:
+            containment = self.ContainsPoint(boundary.manifold.point) < 0
 
         return containment
 
@@ -247,7 +254,7 @@ class Solid:
             # Create a new domain for selfBoundary, so we don't change the existing domain (no side effects).
             newSelfDomain = Solid(self.dimension-1)
 
-            for b in len(solid.boundaries):
+            for b in range(len(solid.boundaries)):
                 solidBoundary = solid.boundaries[b]
                 newSolidDomain = solidBoundaryDomains[b]
 
@@ -287,7 +294,7 @@ class Solid:
 
         # Now, we've intersected every solidBoundary with every selfBoundary, creating a new domain for each solidBoundary.
         # If solidBoundary's new domain isn't empty, combine it with solidBoundary's old domain (using "Intersection").
-        for b in len(solid.boundaries):
+        for b in range(len(solid.boundaries)):
             solidBoundary = solid.boundaries[b]
             newSolidDomain = solidBoundaryDomains[b]
             if len(newSolidDomain.boundaries) > 0:
@@ -296,6 +303,21 @@ class Solid:
                 combinedSolid.boundaries.append(solidBoundary)
 
         return combinedSolid
+
+solidA = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,3],[3,3],[3,-1]])
+print("Solid A")
+for point in solidA.Points():
+    print(point)
+
+solidB = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
+print("Solid B")
+for point in solidB.Points():
+    print(point)
+
+solidC = solidA.Combine(solidB)
+print("Solid C")
+for point in solidC.Points():
+    print(point)
 
 class InteractiveCanvas:
 
@@ -371,6 +393,5 @@ class InteractiveCanvas:
         self.canvas.blit(self.ax.bbox)
 
 
-interactor = InteractiveCanvas(x, y)
-
+# interactor = InteractiveCanvas(x, y)
 # plt.show()

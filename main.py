@@ -2,6 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backend_bases import MouseButton
 
+# TODO: Use ContainsSolid to determine whether or not to include boundaries that don't intersect.
+# TODO: Handle inverted boundaries (holes instead of solids).
+# TODO: Update ContainsSolid to be manifold agnostic (it currently assumes a hyperplane).
+
 a = np.array([34.0])
 print(a, np.array(a), type(a), len(a))
 print(a[0])
@@ -190,24 +194,8 @@ class Solid:
                         manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionDomain))
                 else:
                     # This domain is dimension 1, a real number line, and the intersection is a point on that line.
-                    # Determine if the intersection point is within domain's interior
-                    interior = False
-                    for domainBoundary in boundary.domain.boundaries:
-                        domainBoundaryManifold = domainBoundary.manifold
-                        # Find first domain boundary point to the right of the intersection
-                        if intersection[0].point < domainBoundaryManifold.point + Manifold.minSeparation:
-                            # The intersection is interior if it's inside the domain and not coincient
-                            if domainBoundaryManifold.normal > 0.0 and intersection[0].point < domainBoundaryManifold.point - Manifold.minSeparation:
-                                interior = True
-                            break
-                    
-                    if interior:
-                        # Insert intersection into the manifold domain boundaries, in sorted order.
-                        i = 0
-                        while i < len(manifoldDomain.boundaries):
-                            if intersection[1].point < manifoldDomain.boundaries[i].manifold.point:
-                                break
-                            i += 1
+                    # Determine if the intersection point is within domain's interior.
+                    if boundary.domain.ContainsPoint(intersection[0].point):
                         manifoldDomain.boundaries.insert(i,Boundary(intersection[1]))
         
         # Don't return a manifold domain if it's empty
@@ -245,14 +233,20 @@ class Solid:
                 # Each manifold pair evaluates to the same range on boundaries self and solid.
                 intersections = selfBoundary.manifold.Intersect(solidBoundary.manifold, booleanOperation)
                 for intersection in intersections:
-                    # TODO: Introduce case for domain.dimension == 1, either moving code from Slice method here or creating shared methods for point containment and merge.
-                    # TODO: Or we could have Slice somehow support domain.dimension == 1.
-                    intersectionSelfDomain = selfBoundary.domain.Slice(intersection[0])
-                    if intersectionSelfDomain:
-                       intersectionSolidDomain = solidBoundary.domain.Slice(intersection[1])
-                    if intersectionSelfDomain and intersectionSolidDomain:
-                        newSelfDomain.boundaries.append(Boundary(intersection[0],intersectionSelfDomain))
-                        newSolidDomain.boundaries.append(Boundary(intersection[1],intersectionSolidDomain))
+                    if selfBoundary.domain.dimension > 1:
+                        intersectionSelfDomain = selfBoundary.domain.Slice(intersection[0])
+                        if intersectionSelfDomain:
+                            intersectionSolidDomain = solidBoundary.domain.Slice(intersection[1])
+                            if intersectionSolidDomain:
+                                newSelfDomain.boundaries.append(Boundary(intersection[0],intersectionSelfDomain))
+                                newSolidDomain.boundaries.append(Boundary(intersection[1],intersectionSolidDomain))
+                    else:
+                        # The domains are dimension 1, real number lines, and the intersection are points on that line.
+                        # Determine if the intersection points are within domains' interior (ContainsPoint returns -1: interior, 0: boundary, 1: exterior.)
+                        if selfBoundary.domain.ContainsPoint(intersection[0].point) < 1:
+                            if solidBoundary.domain.ContainsPoint(intersection[1].point) < 1:
+                                newSelfDomain.boundaries.append(Boundary(intersection[0]))
+                                newSolidDomain.boundaries.append(Boundary(intersection[1]))
 
             # Now, we've intersected selfBoundary with every solidBoundary, creating a new domain for selfBoundary.
             # If selfBoundary's new domain isn't empty, combine it with selfBoundary's old domain (using "Intersection").

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backend_bases import MouseButton
 
-# TODO: Handle inverted boundaries (holes instead of solids).
+# TODO: Implement intersection cache.
 # TODO: Update ContainsPoint to be manifold agnostic (it currently assumes a hyperplane).
 # TODO: Update ContainsPoint to use integral instead of ray cast to compute winding number.
 
@@ -119,13 +119,13 @@ class Solid:
     }
 
     @staticmethod
-    def CreateSolidFromPoints(dimension, points):
+    def CreateSolidFromPoints(dimension, points, isVoid = False):
         # Implementation only works for dimension 2 so far.
         assert dimension == 2
         assert len(points) > 2
         assert len(points[0]) == dimension
 
-        solid = Solid(dimension)
+        solid = Solid(dimension, isVoid)
 
         previousPoint = np.array(points[len(points)-1])
         for point in points:
@@ -142,9 +142,10 @@ class Solid:
 
         return solid
 
-    def __init__(self, dimension):
+    def __init__(self, dimension, isVoid = False):
         assert dimension > 0
         self.dimension = dimension
+        self.isVoid = isVoid
         self.boundaries = []
     
     def Points(self):
@@ -159,8 +160,17 @@ class Solid:
     def ContainsPoint(self, point):
         # Return value is -1 for interior, 0 for on boundary, and 1 for exterior
         containment = -1
-        windingNumber = 0
         onBoundary = False
+
+        # The winding number is 0 if the point is outside the solid, 1 if it's inside.
+        # Other values indicate issues: 
+        #  * Incomplete boundaries lead to fractional values;
+        #  * Interior-pointing normals lead to negative values;
+        #  * Nested shells lead to absolute values of 2 or greater.
+        windingNumber = 0
+        if self.isVoid:
+            # If the solid is a void, then the winding number starts as 1 to account for the boundary at inifinity.
+            windingNumber = 1
 
         # Intersect a ray from point along the x-axis through self's boundaries.
         # All dot products with the ray are just the first component, since the ray is along the x-axis.
@@ -214,7 +224,7 @@ class Solid:
         # Only manifolds of dimension > 1 have a domain.
         if self.dimension > 1:
             # Create an empty domain for the manifold to return from the method
-            manifoldDomain = Solid(self.dimension-1)
+            manifoldDomain = Solid(self.dimension-1, self.isVoid)
 
             # Intersect each of this solid's boundaries with the manifold.
             for boundary in self.boundaries:
@@ -247,7 +257,7 @@ class Solid:
     def Combine(self, solid, booleanOperation = "Intersection"):
         assert self.dimension == solid.dimension
 
-        combinedSolid = Solid(self.dimension)
+        combinedSolid = Solid(self.dimension, self.isVoid and solid.isVoid)
 
         for boundary in self.boundaries:
             # Slice self boundary manifold by solid. If it intersects, combine the domains.
@@ -279,19 +289,22 @@ class Solid:
 
         return combinedSolid
 
-solidA = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,3],[3,3],[3,-1]])
-print("Solid A")
-for point in solidA.Points():
-    print(point)
+A = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
+notA = Solid.CreateSolidFromPoints(2, [[1,-3],[1,1],[-3,1],[-3,-3]], True)
 
-solidB = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
-print("Solid B")
-for point in solidB.Points():
-    print(point)
+B = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,3],[3,3],[3,-1]])
+notB = Solid.CreateSolidFromPoints(2, [[3,-1],[3,3],[-1,3],[-1,-1]], True)
 
-solidC = solidA.Combine(solidB, "Union")
-print("Solid C")
-for point in solidC.Points():
+# print("A and B")
+# for point in A.Combine(B).Points():
+#     print(point)
+
+# print("A and notB")
+# for point in A.Combine(notB).Points():
+#     print(point)
+
+print("notA and notB")
+for point in notA.Combine(notB).Points():
     print(point)
 
 class InteractiveCanvas:

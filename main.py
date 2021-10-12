@@ -2,17 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backend_bases import MouseButton
 
-# TODO: Implement intersection cache.
 # TODO: Update ContainsPoint to be manifold agnostic (it currently assumes a hyperplane).
 # TODO: Update ContainsPoint to use integral instead of ray cast to compute winding number.
-
-a = np.array([34.0])
-print(a, np.array(a), type(a), len(a))
-print(a[0], a * np.array([0.5]))
-print(2*a, np.array(2*a), type(2*a), len(2*a))
-b = np.array([-1, 2])
-c = a - b
-print(c, type(c))
 
 x = []
 y = []
@@ -36,7 +27,7 @@ print(y[1] + (y[3]-y[1])*(1-u))
 
 class Manifold:
 
-    # If a shift of 1 in the normal direction of one manifold yeilds a shift of 10 in the tangent plane intersection, the manifolds are parallel
+    # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
     maxAlignment = 0.99 # 1 - 1/10^2
 
     # If two points are within 0.01 of each eachother, they are coincident
@@ -46,7 +37,7 @@ class Manifold:
     def TangentSpaceFromNormal(normal):
         # Construct the Householder reflection transform using the normal
         reflector = np.add(np.identity(len(normal)), np.outer(-2*normal, normal))
-        # Compute the eigenvalues and eigenvectors for the symetric transform (eigenvalues returned in ascending order).
+        # Compute the eigenvalues and eigenvectors for the symmetric transform (eigenvalues returned in ascending order).
         eigen = np.linalg.eigh(reflector)
         # Assert the first eigenvalue is negative (the reflection whose eigenvector is the normal)
         assert(eigen[0][0] < 0.0)
@@ -88,9 +79,19 @@ class Manifold:
     def DomainFromPoint(self, point):
         return np.dot(point - self.point, self.tangentSpace)
 
-    def IntersectManifold(self, other):
-        # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have mulitple.
+    def IntersectManifold(self, other, cache = None):
+        # Check manifold intersections cache for previously computed intersections.
+        if cache != None:
+            if (self, other) in cache:
+                #print("Cache hit (self, other):", self, other)
+                return cache[(self, other)]
+            elif (other, self) in cache:
+                #print("Cache hit (other, self):", other, self)
+                return cache[(other, self)]
+
+        # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
         intersections = []
+        intersectionsFlipped = []
 
         # Ensure manifolds are not parallel
         alignment = np.dot(self.normal, other.normal)
@@ -107,7 +108,14 @@ class Manifold:
             normalOther = normalize * normalOther
             offsetOther = normalize * np.dot(self.normal, np.subtract(self.point, other.point))
 
-            intersections.append([Manifold.CreateFromNormal(normalSelf, offsetSelf), Manifold.CreateFromNormal(normalOther, offsetOther)])
+            intersection = [Manifold.CreateFromNormal(normalSelf, offsetSelf), Manifold.CreateFromNormal(normalOther, offsetOther)]
+            intersections.append(intersection)
+            intersectionsFlipped.append([intersection[1], intersection[0]])
+
+        # Store intersections in cache
+        if cache != None:
+            cache[(self,other)] = intersections
+            cache[(other,self)] = intersectionsFlipped
 
         return intersections
 
@@ -185,7 +193,7 @@ class Solid:
         #  * Nested shells lead to absolute values of 2 or greater.
         windingNumber = 0
         if self.isVoid:
-            # If the solid is a void, then the winding number starts as 1 to account for the boundary at inifinity.
+            # If the solid is a void, then the winding number starts as 1 to account for the boundary at infinity.
             windingNumber = 1
 
         # Intersect a ray from point along the x-axis through self's boundaries.
@@ -218,7 +226,7 @@ class Solid:
         return containment 
 
     def ContainsBoundary(self, boundary):
-        # Assumes there is no boundary intersection, though there may be coincience
+        # Assumes there is no boundary intersection, though there may be coincidence
         containment = False
 
         if boundary.domain:
@@ -232,7 +240,7 @@ class Solid:
 
         return containment
 
-    def Slice(self, manifold):
+    def Slice(self, manifold, cache = None):
         assert len(manifold.normal) == self.dimension
 
         manifoldDomain = None
@@ -249,13 +257,13 @@ class Solid:
                 #   * intersection[0] is in the boundary's domain;
                 #   * intersection[1] is in the given manifold's domain.
                 # Both intersections correspond to the same range (the intersection between the manifolds).
-                intersections = boundary.manifold.IntersectManifold(manifold)
+                intersections = boundary.manifold.IntersectManifold(manifold, cache)
 
-                # For each intersection, slice the boundry domain with the intersection manifold.
+                # For each intersection, slice the boundary domain with the intersection manifold.
                 # We slice the boundary domain using intersection[0], but we add intersection[1] to the manifold domain. 
                 for intersection in intersections:
                     if boundary.domain.dimension > 1:
-                        intersectionDomain = boundary.domain.Slice(intersection[0])
+                        intersectionDomain = boundary.domain.Slice(intersection[0], cache)
                         if intersectionDomain:
                             manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionDomain))
                     else:
@@ -270,26 +278,31 @@ class Solid:
         
         return manifoldDomain
 
-    def Intersection(self, solid):
+    def Intersection(self, solid, cache = None):
         assert self.dimension == solid.dimension
+
+        # Manifold intersections are expensive and come in symmetric pairs (m1 intersect m2, m2 intersect m1).
+        # So, we create a manifold intersections cache (dictionary) to store and reuse intersection pairs.
+        if cache == None:
+            cache = {}
 
         combinedSolid = Solid(self.dimension, self.isVoid and solid.isVoid)
 
         for boundary in self.boundaries:
-            # Slice self boundary manifold by solid. If it intersects, combine the domains.
-            newDomain = solid.Slice(boundary.manifold)
+            # Slice self boundary manifold by solid. If it intersects, intersect the domains.
+            newDomain = solid.Slice(boundary.manifold, cache)
             if newDomain:
-                newDomain = boundary.domain.Intersection(newDomain)
+                newDomain = boundary.domain.Intersection(newDomain, cache)
                 if len(newDomain.boundaries) > 0:
                     combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif solid.ContainsBoundary(boundary):
                 combinedSolid.boundaries.append(boundary)
 
         for boundary in solid.boundaries:
-            # Slice solid boundary manifold by self. If it intersects, combine the domains.
-            newDomain = self.Slice(boundary.manifold)
+            # Slice solid boundary manifold by self. If it intersects, intersect the domains.
+            newDomain = self.Slice(boundary.manifold, cache)
             if newDomain:
-                newDomain = boundary.domain.Intersection(newDomain)
+                newDomain = boundary.domain.Intersection(newDomain, cache)
                 if len(newDomain.boundaries) > 0:
                     combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif self.ContainsBoundary(boundary):

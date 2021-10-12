@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backend_bases import MouseButton
 
+# TODO: Drop booleanOperations.
 # TODO: Implement intersection cache.
 # TODO: Update ContainsPoint to be manifold agnostic (it currently assumes a hyperplane).
 # TODO: Update ContainsPoint to use integral instead of ray cast to compute winding number.
@@ -52,19 +53,35 @@ class Manifold:
         assert(eigen[0][0] < 0.0)
         # Return the tangent space by removing the first eigenvector column (the negated normal)
         return np.delete(eigen[1], 0, 1)
+    
+    @staticmethod
+    def CreateFromNormal(normal, offset):
+        manifold = Manifold()
 
-    def __init__(self, normal, offset):
         # Ensure the normal is always an array
         if np.isscalar(normal):
-            self.normal = np.array([normal])
+            manifold.normal = np.array([normal])
         else:
-            self.normal = np.array(normal)
-        self.normal = self.normal / np.linalg.norm(self.normal)
-        self.point = offset * self.normal
-        if len(self.normal) > 1:
-            self.tangentSpace = Manifold.TangentSpaceFromNormal(self.normal)
+            manifold.normal = np.array(normal)
+        manifold.normal = manifold.normal / np.linalg.norm(manifold.normal)
+        manifold.point = offset * manifold.normal
+        if len(manifold.normal) > 1:
+            manifold.tangentSpace = Manifold.TangentSpaceFromNormal(manifold.normal)
         else:
-            self.tangentSpace = 1.0
+            manifold.tangentSpace = 1.0
+        return manifold
+
+    def __init__(self):
+        self.normal = None
+        self.tangentSpace = None
+        self.point = None
+
+    def Flip(self):
+        manifold = Manifold()
+        manifold.normal = -self.normal
+        manifold.tangentSpace = self.tangentSpace
+        manifold.point = self.point
+        return manifold
 
     def PointFromDomain(self, domainPoint):
         return np.dot(self.tangentSpace, domainPoint) + self.point
@@ -91,7 +108,7 @@ class Manifold:
             normalOther = normalize * normalOther
             offsetOther = normalize * np.dot(self.normal, np.subtract(self.point, other.point))
 
-            intersections.append([Manifold(normalSelf, offsetSelf), Manifold(normalOther, offsetOther)])
+            intersections.append([Manifold.CreateFromNormal(normalSelf, offsetSelf), Manifold.CreateFromNormal(normalOther, offsetOther)])
 
         return intersections
 
@@ -133,10 +150,10 @@ class Solid:
             vector = point - previousPoint
             normal = np.array([-vector[1], vector[0]])
             normal = normal / np.linalg.norm(normal)
-            manifold = Manifold(normal,np.dot(normal,point))
+            manifold = Manifold.CreateFromNormal(normal,np.dot(normal,point))
             domain = Solid(dimension-1)
-            domain.boundaries.append(Boundary(Manifold(-1.0, -manifold.DomainFromPoint(previousPoint))))
-            domain.boundaries.append(Boundary(Manifold(1.0, manifold.DomainFromPoint(point))))
+            domain.boundaries.append(Boundary(Manifold.CreateFromNormal(-1.0, -manifold.DomainFromPoint(previousPoint))))
+            domain.boundaries.append(Boundary(Manifold.CreateFromNormal(1.0, manifold.DomainFromPoint(point))))
             solid.boundaries.append(Boundary(manifold, domain))
             previousPoint = point
 
@@ -295,9 +312,9 @@ notA = Solid.CreateSolidFromPoints(2, [[1,-3],[1,1],[-3,1],[-3,-3]], True)
 B = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,3],[3,3],[3,-1]])
 notB = Solid.CreateSolidFromPoints(2, [[3,-1],[3,3],[-1,3],[-1,-1]], True)
 
-# print("A and B")
-# for point in A.Combine(B).Points():
-#     print(point)
+print("A and B")
+for point in A.Combine(B).Points():
+    print(point)
 
 # print("A and notB")
 # for point in A.Combine(notB).Points():

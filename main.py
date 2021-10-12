@@ -157,6 +157,12 @@ class Solid:
         self.dimension = dimension
         self.isVoid = isVoid
         self.boundaries = []
+
+    def Not(self):
+        solid = Solid(self.dimension, not self.isVoid)
+        for boundary in self.boundaries:
+            solid.boundaries.append(Boundary(boundary.manifold.Flip(),boundary.domain))
+        return solid
     
     def Points(self):
         for boundary in self.boundaries:
@@ -264,7 +270,7 @@ class Solid:
         
         return manifoldDomain
 
-    def Combine(self, solid):
+    def Intersection(self, solid):
         assert self.dimension == solid.dimension
 
         combinedSolid = Solid(self.dimension, self.isVoid and solid.isVoid)
@@ -273,7 +279,7 @@ class Solid:
             # Slice self boundary manifold by solid. If it intersects, combine the domains.
             newDomain = solid.Slice(boundary.manifold)
             if newDomain:
-                newDomain = boundary.domain.Combine(newDomain)
+                newDomain = boundary.domain.Intersection(newDomain)
                 if len(newDomain.boundaries) > 0:
                     combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif solid.ContainsBoundary(boundary):
@@ -283,7 +289,7 @@ class Solid:
             # Slice solid boundary manifold by self. If it intersects, combine the domains.
             newDomain = self.Slice(boundary.manifold)
             if newDomain:
-                newDomain = boundary.domain.Combine(newDomain)
+                newDomain = boundary.domain.Intersection(newDomain)
                 if len(newDomain.boundaries) > 0:
                     combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif self.ContainsBoundary(boundary):
@@ -291,22 +297,25 @@ class Solid:
 
         return combinedSolid
 
-A = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
-notA = Solid.CreateSolidFromPoints(2, [[1,-3],[1,1],[-3,1],[-3,-3]], True)
+    def Union(self, solid):
+        return self.Not().Intersection(solid.Not()).Not()
 
+    def Difference(self, solid):
+        return self.Intersection(solid.Not())
+
+A = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
 B = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,3],[3,3],[3,-1]])
-notB = Solid.CreateSolidFromPoints(2, [[3,-1],[3,3],[-1,3],[-1,-1]], True)
 
 print("A and B")
-for point in A.Combine(B).Points():
+for point in A.Intersection(B).Points():
     print(point)
 
-# print("A and notB")
-# for point in A.Combine(notB).Points():
-#     print(point)
+print("A or B")
+for point in A.Union(B).Points():
+    print(point)
 
-print("notA and notB")
-for point in notA.Combine(notB).Points():
+print("A - B")
+for point in A.Difference(B).Points():
     print(point)
 
 class InteractiveCanvas:

@@ -334,20 +334,20 @@ for point in A.Difference(B).Points():
 class InteractiveCanvas:
 
     showverts = True
-    epsilon = 8  # max pixel distance to count as a vertex hit
+    epsilon = 5  # max pixel distance to count as a vertex hit
 
     def __init__(self, x, y):
 
         fig, self.ax = plt.subplots()
         self.ax.set_title('drag vertices to update path')
-        self.ax.set_xlim(-1, 1)
-        self.ax.set_ylim(-1, 1)
+        self.ax.set_xlim(-4, 4)
+        self.ax.set_ylim(-4, 4)
         self.canvas = self.ax.figure.canvas
 
         self._ind = None
 
         self.line, = self.ax.plot(
-            x, y, color='blue', marker='o', markerfacecolor='r', markersize=self.epsilon, animated=True)
+            x, y, 'ro', markersize=self.epsilon, animated=True)
 
         self.canvas.mpl_connect('draw_event', self.on_draw)
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
@@ -404,6 +404,11 @@ class InteractiveCanvas:
         self.ax.draw_artist(self.line)
         self.canvas.blit(self.ax.bbox)
 
+x = []
+y = []
+for point in A.Union(B).Points():
+    x.append(point[0])
+    y.append(point[1])
 
-# interactor = InteractiveCanvas(x, y)
-# plt.show()
+interactor = InteractiveCanvas(x, y)
+plt.show()

@@ -327,23 +327,19 @@ class Solid:
 
 class InteractiveCanvas:
 
-    showverts = True
     epsilon = 5  # max pixel distance to count as a vertex hit
 
-    def __init__(self, solid):
+    def __init__(self, solidA, solidB):
 
         fig, self.ax = plt.subplots(figsize=(6, 6))
-        self.ax.set_title('drag shape to update path')
-        self.ax.set_xlim(-4, 4)
-        self.ax.set_ylim(-4, 4)
+        self.ax.set_title('Drag shape to update path')
         self.canvas = self.ax.figure.canvas
 
         self._ind = None
 
-        self.solid = solid
-
-        for edge in self.solid.Edges():
-            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1])
+        self.solidA = A
+        self.solidB = B
+        self.solid = solidA.Intersection(B)
         
         self.canvas.mpl_connect('draw_event', self.on_draw)
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
@@ -351,44 +347,44 @@ class InteractiveCanvas:
         self.canvas.mpl_connect('button_release_event', self.on_button_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
 
+        self.on_draw(None)
+
     def on_draw(self, event):
         """Callback for draws."""
-        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        #self.ax.draw_artist(self.line)
-        self.canvas.blit(self.ax.bbox)
+        self.ax.cla()
+        self.ax.set(xlim = (-4, 4), ylim = (-4, 4))
+        
+        for edge in self.solid.Edges():
+            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1])
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
-        if (event.inaxes is None
-                or event.button != MouseButton.LEFT
-                or not self.showverts):
+        if event.inaxes is None or event.button != MouseButton.LEFT:
             return
         # self._ind = self.get_ind_under_point(event)
 
     def on_button_release(self, event):
         """Callback for mouse button releases."""
-        if (event.button != MouseButton.LEFT
-                or not self.showverts):
+        if event.button != MouseButton.LEFT:
             return
         # self._ind = None
 
     def on_key_press(self, event):
         """Callback for key presses."""
-        if not event.inaxes:
-            return
-        if event.key == 't':
-            self.showverts = not self.showverts
-            #self.line.set_visible(self.showverts)
-            if not self.showverts:
-                self._ind = None
+        if event.key == 'i':
+            self.solid = self.solidA.Intersection(self.solidB)
+        elif event.key == 'u':
+            self.solid = self.solidA.Union(self.solidB)
+        elif event.key == 'd':
+            self.solid = self.solidA.Difference(self.solidB)
+        self.on_draw(None)
         self.canvas.draw()
 
     def on_mouse_move(self, event):
         """Callback for mouse movements."""
         if (self._ind is None
                 or event.inaxes is None
-                or event.button != MouseButton.LEFT
-                or not self.showverts):
+                or event.button != MouseButton.LEFT):
             return
 
         #vertices = self.pathpatch.get_path().vertices
@@ -396,13 +392,8 @@ class InteractiveCanvas:
         #vertices[self._ind] = event.xdata, event.ydata
         #self.line.set_data(zip(*vertices))
 
-        self.canvas.restore_region(self.background)
-        #self.ax.draw_artist(self.line)
-        self.canvas.blit(self.ax.bbox)
-
 A = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
 B = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
-C = A.Difference(B)
 
-interactor = InteractiveCanvas(C)
+interactor = InteractiveCanvas(A, B)
 plt.show()

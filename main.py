@@ -5,26 +5,6 @@ from matplotlib.backend_bases import MouseButton
 # TODO: Update ContainsPoint to be manifold agnostic (it currently assumes a hyperplane).
 # TODO: Update ContainsPoint to use integral instead of ray cast to compute winding number.
 
-x = []
-y = []
-points = 5
-for i in range(points+1):
-    x.append(np.cos(i*6.28/points))
-    y.append(np.sin(i*6.28/points))
-
-print(x)
-print(y)
-
-nt = (x[2]-x[0])*(y[3]-y[1]) + (y[2]-y[0])*(x[1]-x[3])
-print(nt)
-u = ((x[1]-x[0])*(y[3]-y[1]) + (y[1]-y[0])*(x[1]-x[3]))/nt
-print(u, 1 - u)
-
-print(x[0] + (x[2]-x[0])*u)
-print(x[1] + (x[3]-x[1])*(1-u))
-print(y[0] + (y[2]-y[0])*u)
-print(y[1] + (y[3]-y[1])*(1-u))
-
 class Manifold:
 
     # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
@@ -219,11 +199,13 @@ class Solid:
                 # Check the distance is positive
                 if distanceToManifold > -Manifold.minSeparation:
                     considerBoundary = True
+                    # Don't consider boundary if ray intersection is outside its domain.
                     if boundary.domain:
                         vectorFromManifold = -vectorToManifold
                         vectorFromManifold[0] += distanceToManifold
                         domainPoint = np.dot(vectorFromManifold, manifold.tangentSpace)
                         considerBoundary = boundary.domain.ContainsPoint(domainPoint) < 1
+                    # We intersect this boundary, so accumulate winding number based on sign of dot(ray,normal) == normal[0].
                     if considerBoundary:
                         if distanceToManifold < Manifold.minSeparation:
                             onBoundary = True
@@ -337,9 +319,9 @@ class InteractiveCanvas:
 
         self._ind = None
 
-        self.solidA = A
-        self.solidB = B
-        self.solid = solidA.Intersection(B)
+        self.solidA = solidA
+        self.solidB = solidB
+        self.solid = solidA.Union(solidB)
         
         self.canvas.mpl_connect('draw_event', self.on_draw)
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
@@ -354,8 +336,14 @@ class InteractiveCanvas:
         self.ax.cla()
         self.ax.set(xlim = (-4, 4), ylim = (-4, 4))
         
+        for edge in self.solidA.Edges():
+            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1], width=0.01, head_width=0.0, color="orange")
+
+        for edge in self.solidB.Edges():
+            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1], width=0.01, head_width=0.0, color="yellow")
+
         for edge in self.solid.Edges():
-            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1])
+            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1], width=0.05, head_width=0.0, color="red")
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
@@ -392,8 +380,29 @@ class InteractiveCanvas:
         #vertices[self._ind] = event.xdata, event.ydata
         #self.line.set_data(zip(*vertices))
 
-A = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
-B = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
+def CreateStar(radius, center):
+    vertices = []
+    points = 5
+    for i in range(points):
+        vertices.append([radius*np.cos(((2*i)%points)*6.28/points) + center[0], radius*np.sin(((2*i)%points)*6.28/points) + center[1]])
 
-interactor = InteractiveCanvas(A, B)
+    nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
+    u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt
+
+    solid = Solid.CreateSolidFromPoints(2, vertices)
+    for boundary in solid.boundaries:
+        u0 = boundary.domain.boundaries[0].manifold.point[0]
+        u1 = boundary.domain.boundaries[1].manifold.point[0]
+        boundary.domain.boundaries.append(Boundary(Manifold.CreateFromNormal(1.0, u0 + (1.0 - u)*(u1 - u0))))
+        boundary.domain.boundaries.append(Boundary(Manifold.CreateFromNormal(-1.0, -(u0 + u*(u1 - u0)))))
+
+    return solid
+
+squareA = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
+squareB = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
+
+starA = CreateStar(1.0, [-2.0, -2.0])
+starB = CreateStar(1.0, [2.0, 2.0])
+
+interactor = InteractiveCanvas(squareA, squareB)
 plt.show()

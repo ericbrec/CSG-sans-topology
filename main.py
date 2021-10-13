@@ -150,6 +150,12 @@ class Solid:
             solid.boundaries.append(Boundary(boundary.manifold.Flip(),boundary.domain))
         return solid
     
+    def Translate(self, delta):
+        assert len(delta) == self.dimension
+
+        for boundary in self.boundaries:
+            boundary.manifold.point += delta
+    
     def Points(self):
         for boundary in self.boundaries:
             if boundary.domain:
@@ -312,12 +318,13 @@ class InteractiveCanvas:
     epsilon = 5  # max pixel distance to count as a vertex hit
 
     def __init__(self, solidA, solidB):
+        assert solidA.dimension == solidB.dimension
 
         fig, self.ax = plt.subplots(figsize=(6, 6))
         self.ax.set_title('Drag shape to update path')
         self.canvas = self.ax.figure.canvas
 
-        self._ind = None
+        self.origin = [0.0]*solidB.dimension 
 
         self.solidA = solidA
         self.solidB = solidB
@@ -349,13 +356,23 @@ class InteractiveCanvas:
         """Callback for mouse button presses."""
         if event.inaxes is None or event.button != MouseButton.LEFT:
             return
-        # self._ind = self.get_ind_under_point(event)
+        self.origin[0] = event.xdata
+        self.origin[1] = event.ydata
 
     def on_button_release(self, event):
         """Callback for mouse button releases."""
         if event.button != MouseButton.LEFT:
             return
-        # self._ind = None
+        
+        delta = [0.0]*self.solidB.dimension
+        delta[0] = event.xdata - self.origin[0]
+        delta[1] = event.ydata - self.origin[1]
+        self.solidB.Translate(delta)
+        self.solid = self.solidA.Union(self.solidB)
+
+        self.on_draw(None)
+        self.canvas.draw()
+
 
     def on_key_press(self, event):
         """Callback for key presses."""
@@ -365,26 +382,20 @@ class InteractiveCanvas:
             self.solid = self.solidA.Union(self.solidB)
         elif event.key == 'd':
             self.solid = self.solidA.Difference(self.solidB)
+
         self.on_draw(None)
         self.canvas.draw()
 
     def on_mouse_move(self, event):
         """Callback for mouse movements."""
-        if (self._ind is None
-                or event.inaxes is None
-                or event.button != MouseButton.LEFT):
+        if (event.inaxes is None or event.button != MouseButton.LEFT):
             return
 
-        #vertices = self.pathpatch.get_path().vertices
-
-        #vertices[self._ind] = event.xdata, event.ydata
-        #self.line.set_data(zip(*vertices))
-
-def CreateStar(radius, center):
+def CreateStar(radius, center, angle):
     vertices = []
     points = 5
     for i in range(points):
-        vertices.append([radius*np.cos(((2*i)%points)*6.28/points) + center[0], radius*np.sin(((2*i)%points)*6.28/points) + center[1]])
+        vertices.append([radius*np.cos(angle + ((2*i)%points)*6.28/points) + center[0], radius*np.sin(angle + ((2*i)%points)*6.28/points) + center[1]])
 
     nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
     u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt
@@ -401,8 +412,9 @@ def CreateStar(radius, center):
 squareA = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
 squareB = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
 
-starA = CreateStar(1.0, [-2.0, -2.0])
-starB = CreateStar(1.0, [2.0, 2.0])
+starA = CreateStar(1.0, [-2.0, -2.0], 0.0)
+starB = CreateStar(1.0, [2.0, 2.0], 45.0*6.28/360.0)
 
 interactor = InteractiveCanvas(squareA, squareB)
+#interactor = InteractiveCanvas(starA, starB)
 plt.show()

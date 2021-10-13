@@ -83,10 +83,8 @@ class Manifold:
         # Check manifold intersections cache for previously computed intersections.
         if cache != None:
             if (self, other) in cache:
-                #print("Cache hit (self, other):", self, other)
                 return cache[(self, other)]
             elif (other, self) in cache:
-                #print("Cache hit (other, self):", other, self)
                 return cache[(other, self)]
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
@@ -132,7 +130,7 @@ class Boundary:
     
     @staticmethod
     def SortKey(boundary):
-        return boundary.manifold.point
+        return boundary.manifold.point[0]
 
 class Solid:
 
@@ -180,6 +178,18 @@ class Solid:
                     yield point
             else:
                 yield boundary.manifold.point
+    
+    def Edges(self):
+        if self.dimension > 1:
+            for boundary in self.boundaries:
+                for domainEdge in boundary.domain.Edges():
+                    yield [boundary.manifold.PointFromDomain(domainEdge[0]), boundary.manifold.PointFromDomain(domainEdge[1])]
+        else:
+            self.boundaries.sort(key=Boundary.SortKey)
+            b = 1
+            while b < len(self.boundaries):
+                yield [self.boundaries[b-1].manifold.point, self.boundaries[b].manifold.point]
+                b += 2
  
     def ContainsPoint(self, point):
         # Return value is -1 for interior, 0 for on boundary, and 1 for exterior
@@ -247,7 +257,6 @@ class Solid:
 
         # Only manifolds of dimension > 1 have a domain.
         if self.dimension > 1:
-            # Create an empty domain for the manifold to return from the method
             manifoldDomain = Solid(self.dimension-1, self.isVoid)
 
             # Intersect each of this solid's boundaries with the manifold.
@@ -316,39 +325,26 @@ class Solid:
     def Difference(self, solid):
         return self.Intersection(solid.Not())
 
-A = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
-B = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,3],[3,3],[3,-1]])
-
-print("A and B")
-for point in A.Intersection(B).Points():
-    print(point)
-
-print("A or B")
-for point in A.Union(B).Points():
-    print(point)
-
-print("A - B")
-for point in A.Difference(B).Points():
-    print(point)
-
 class InteractiveCanvas:
 
     showverts = True
     epsilon = 5  # max pixel distance to count as a vertex hit
 
-    def __init__(self, x, y):
+    def __init__(self, solid):
 
-        fig, self.ax = plt.subplots()
-        self.ax.set_title('drag vertices to update path')
+        fig, self.ax = plt.subplots(figsize=(6, 6))
+        self.ax.set_title('drag shape to update path')
         self.ax.set_xlim(-4, 4)
         self.ax.set_ylim(-4, 4)
         self.canvas = self.ax.figure.canvas
 
         self._ind = None
 
-        self.line, = self.ax.plot(
-            x, y, 'ro', markersize=self.epsilon, animated=True)
+        self.solid = solid
 
+        for edge in self.solid.Edges():
+            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1])
+        
         self.canvas.mpl_connect('draw_event', self.on_draw)
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
         self.canvas.mpl_connect('key_press_event', self.on_key_press)
@@ -358,7 +354,7 @@ class InteractiveCanvas:
     def on_draw(self, event):
         """Callback for draws."""
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.ax.draw_artist(self.line)
+        #self.ax.draw_artist(self.line)
         self.canvas.blit(self.ax.bbox)
 
     def on_button_press(self, event):
@@ -382,7 +378,7 @@ class InteractiveCanvas:
             return
         if event.key == 't':
             self.showverts = not self.showverts
-            self.line.set_visible(self.showverts)
+            #self.line.set_visible(self.showverts)
             if not self.showverts:
                 self._ind = None
         self.canvas.draw()
@@ -401,14 +397,12 @@ class InteractiveCanvas:
         #self.line.set_data(zip(*vertices))
 
         self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.line)
+        #self.ax.draw_artist(self.line)
         self.canvas.blit(self.ax.bbox)
 
-x = []
-y = []
-for point in A.Union(B).Points():
-    x.append(point[0])
-    y.append(point[1])
+A = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
+B = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
+C = A.Difference(B)
 
-interactor = InteractiveCanvas(x, y)
+interactor = InteractiveCanvas(C)
 plt.show()

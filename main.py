@@ -4,7 +4,6 @@ import matplotlib.patches as patches
 from matplotlib.path import Path
 from matplotlib.backend_bases import MouseButton
 
-# TODO: Update ContainsPoint to be manifold agnostic (it currently assumes a hyperplane).
 # TODO: Create HyperPlane class as a subclass of Manifold.
 # TODO: Update ContainsPoint to use integral instead of ray cast to compute winding number.
 
@@ -61,6 +60,23 @@ class Manifold:
 
     def DomainFromPoint(self, point):
         return np.dot(point - self.point, self.tangentSpace)
+
+    def IntersectXRay(self, point):
+        assert len(self.normal) == len(point)
+
+        # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
+        intersections = []
+
+        # Ensure manifold intersects x-axis
+        if self.normal[0]*self.normal[0] > 1.0 - Manifold.maxAlignment:
+            vectorToManifold = self.point - point
+            xDistanceToManifold = np.dot(self.normal, vectorToManifold) / self.normal[0]
+            intersectionPoint = np.array(point)
+            intersectionPoint[0] += xDistanceToManifold
+            # Each intersection is of the form [distance to intersection, domain point of intersection, normal at intersection]
+            intersections.append([xDistanceToManifold, self.DomainFromPoint(intersectionPoint), self.normal])
+        
+        return intersections
 
     def IntersectManifold(self, other, cache = None):
         # Check manifold intersections cache for previously computed intersections.
@@ -198,27 +214,21 @@ class Solid:
         # Intersect a ray from point along the x-axis through self's boundaries.
         # All dot products with the ray are just the first component, since the ray is along the x-axis.
         for boundary in self.boundaries:
-            manifold = boundary.manifold
-            # Ensure manifold intersects x-axis
-            if manifold.normal[0]*manifold.normal[0] > 1 - Manifold.maxAlignment:
-                # Calculate distance to manifold
-                vectorToManifold = manifold.point - point
-                distanceToManifold = np.dot(manifold.normal, vectorToManifold) / manifold.normal[0]
-
+            intersections = boundary.manifold.IntersectXRay(point)
+            for intersection in intersections:
+                # Each intersection is of the form [distance to intersection, domain point of intersection, normal at intersection]
+                distanceToManifold = intersection[0]
                 # Check the distance is positive
                 if distanceToManifold > -Manifold.minSeparation:
                     considerBoundary = True
                     # Don't consider boundary if ray intersection is outside its domain.
                     if boundary.domain:
-                        vectorFromManifold = -vectorToManifold
-                        vectorFromManifold[0] += distanceToManifold
-                        domainPoint = np.dot(vectorFromManifold, manifold.tangentSpace)
-                        considerBoundary = boundary.domain.ContainsPoint(domainPoint) < 1
-                    # We intersect this boundary, so accumulate winding number based on sign of dot(ray,normal) == normal[0].
+                        considerBoundary = boundary.domain.ContainsPoint(intersection[1]) < 1
+                    # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
                     if considerBoundary:
                         if distanceToManifold < Manifold.minSeparation:
                             onBoundary = True
-                        windingNumber += np.sign(manifold.normal[0])
+                        windingNumber += np.sign(intersection[2][0])
         
         if onBoundary:
             containment = 0

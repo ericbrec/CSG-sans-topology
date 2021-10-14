@@ -354,14 +354,14 @@ class InteractiveCanvas:
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
-        if event.inaxes is None or event.button != MouseButton.LEFT:
+        if event.inaxes is None or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
         self.origin[0] = event.xdata
         self.origin[1] = event.ydata
 
     def on_button_release(self, event):
         """Callback for mouse button releases."""
-        if event.button != MouseButton.LEFT:
+        if event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
         
         delta = [0.0]*self.solidB.dimension
@@ -388,7 +388,7 @@ class InteractiveCanvas:
 
     def on_mouse_move(self, event):
         """Callback for mouse movements."""
-        if (event.inaxes is None or event.button != MouseButton.LEFT):
+        if event.inaxes is None or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
 def CreateStar(radius, center, angle):
@@ -412,9 +412,9 @@ def CreateStar(radius, center, angle):
 squareA = Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
 squareB = Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
 
-starA = CreateStar(1.0, [-2.0, -2.0], 0.0)
-starB = CreateStar(1.0, [2.0, 2.0], 45.0*6.28/360.0)
+starA = CreateStar(2.0, [-1.0, -1.0], 90.0*6.28/360.0)
+starB = CreateStar(1.0, [2.0, 2.0], 90.0*6.28/360.0)
 
-interactor = InteractiveCanvas(squareA, squareB)
-#interactor = InteractiveCanvas(starA, starB)
+#interactor = InteractiveCanvas(squareA, squareB)
+interactor = InteractiveCanvas(starA, starB)
 plt.show()

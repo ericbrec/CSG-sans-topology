@@ -3,6 +3,7 @@ import numpy as np
 from matplotlib.backend_bases import MouseButton
 
 # TODO: Update ContainsPoint to be manifold agnostic (it currently assumes a hyperplane).
+# TODO: Create HyperPlane class as a subclass of Manifold.
 # TODO: Update ContainsPoint to use integral instead of ray cast to compute winding number.
 
 class Manifold:
@@ -231,10 +232,10 @@ class Solid:
             for domainPoint in boundary.domain.Points():
                 constainsPoint = self.ContainsPoint(boundary.manifold.PointFromDomain(domainPoint))
                 if constainsPoint != 0:
-                    containment = constainsPoint < 0
+                    containment = constainsPoint < 1
                     break
         else:
-            containment = self.ContainsPoint(boundary.manifold.point) < 0
+            containment = self.ContainsPoint(boundary.manifold.point) < 1
 
         return containment
 
@@ -260,13 +261,13 @@ class Solid:
                 # We slice the boundary domain using intersection[0], but we add intersection[1] to the manifold domain. 
                 for intersection in intersections:
                     if boundary.domain.dimension > 1:
-                        intersectionDomain = boundary.domain.Slice(intersection[0], cache)
-                        if intersectionDomain:
-                            manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionDomain))
+                        intersectionSlice = boundary.domain.Slice(intersection[0], cache)
+                        if intersectionSlice:
+                            manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionSlice))
                     else:
                         # This domain is dimension 1, a real number line, and the intersection is a point on that line.
                         # Determine if the intersection point is within domain's interior.
-                        if boundary.domain.ContainsPoint(intersection[0].point) < 0:
+                        if boundary.domain.ContainsPoint(intersection[0].point) < 1:
                             manifoldDomain.boundaries.append(Boundary(intersection[1]))
             
             # Don't return a manifold domain if it's empty
@@ -287,9 +288,9 @@ class Solid:
 
         for boundary in self.boundaries:
             # Slice self boundary manifold by solid. If it intersects, intersect the domains.
-            newDomain = solid.Slice(boundary.manifold, cache)
-            if newDomain:
-                newDomain = boundary.domain.Intersection(newDomain, cache)
+            slice = solid.Slice(boundary.manifold, cache)
+            if slice:
+                newDomain = boundary.domain.Intersection(slice, cache)
                 if len(newDomain.boundaries) > 0:
                     combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif solid.ContainsBoundary(boundary):
@@ -297,9 +298,9 @@ class Solid:
 
         for boundary in solid.boundaries:
             # Slice solid boundary manifold by self. If it intersects, intersect the domains.
-            newDomain = self.Slice(boundary.manifold, cache)
-            if newDomain:
-                newDomain = boundary.domain.Intersection(newDomain, cache)
+            slice = self.Slice(boundary.manifold, cache)
+            if slice:
+                newDomain = boundary.domain.Intersection(slice, cache)
                 if len(newDomain.boundaries) > 0:
                     combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif self.ContainsBoundary(boundary):
@@ -391,11 +392,86 @@ class InteractiveCanvas:
         if event.inaxes is None or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
+class OldInteractiveCanvas:
+
+    showverts = True
+    epsilon = 8  # max pixel distance to count as a vertex hit
+
+    def __init__(self, x, y):
+
+        fig, self.ax = plt.subplots()
+        self.ax.set_title('drag vertices to update path')
+        self.ax.set_xlim(-1, 1)
+        self.ax.set_ylim(-1, 1)
+        self.canvas = self.ax.figure.canvas
+
+        self._ind = None
+
+        self.line, = self.ax.plot(
+            x, y, color='blue', marker='o', markerfacecolor='r', markersize=self.epsilon, animated=True)
+
+        self.canvas.mpl_connect('draw_event', self.on_draw)
+        self.canvas.mpl_connect('button_press_event', self.on_button_press)
+        self.canvas.mpl_connect('key_press_event', self.on_key_press)
+        self.canvas.mpl_connect('button_release_event', self.on_button_release)
+        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
+
+    def on_draw(self, event):
+        """Callback for draws."""
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self.ax.draw_artist(self.line)
+        self.canvas.blit(self.ax.bbox)
+
+    def on_button_press(self, event):
+        """Callback for mouse button presses."""
+        if (event.inaxes is None
+                or event.button != MouseButton.LEFT
+                or not self.showverts):
+            return
+        # self._ind = self.get_ind_under_point(event)
+
+    def on_button_release(self, event):
+        """Callback for mouse button releases."""
+        if (event.button != MouseButton.LEFT
+                or not self.showverts):
+            return
+        # self._ind = None
+
+    def on_key_press(self, event):
+        """Callback for key presses."""
+        if not event.inaxes:
+            return
+        if event.key == 't':
+            self.showverts = not self.showverts
+            self.line.set_visible(self.showverts)
+            if not self.showverts:
+                self._ind = None
+        self.canvas.draw()
+
+    def on_mouse_move(self, event):
+        """Callback for mouse movements."""
+        if (self._ind is None
+                or event.inaxes is None
+                or event.button != MouseButton.LEFT
+                or not self.showverts):
+            return
+
+        vertices = self.pathpatch.get_path().vertices
+
+        vertices[self._ind] = event.xdata, event.ydata
+        self.line.set_data(zip(*vertices))
+
+        self.canvas.restore_region(self.background)
+        self.ax.draw_artist(self.line)
+        self.canvas.blit(self.ax.bbox)
+
+
+
 def CreateStar(radius, center, angle):
     vertices = []
     points = 5
     for i in range(points):
-        vertices.append([radius*np.cos(angle + ((2*i)%points)*6.28/points) + center[0], radius*np.sin(angle + ((2*i)%points)*6.28/points) + center[1]])
+        vertices.append([radius*np.cos(angle - ((2*i)%points)*6.28/points) + center[0], radius*np.sin(angle - ((2*i)%points)*6.28/points) + center[1]])
 
     nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
     u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt
@@ -417,4 +493,5 @@ starB = CreateStar(1.0, [2.0, 2.0], 90.0*6.28/360.0)
 
 #interactor = InteractiveCanvas(squareA, squareB)
 interactor = InteractiveCanvas(starA, starB)
+#interactor = InteractiveCanvas(squareA, starB)
 plt.show()

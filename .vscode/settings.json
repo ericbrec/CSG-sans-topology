@@ -4,6 +4,8 @@
         "eigen",
         "eigh",
         "isscalar",
+        "LINETO",
+        "MOVETO",
         "pyplot",
         "showverts",
         "xdata",

@@ -1,5 +1,7 @@
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.path import Path
 from matplotlib.backend_bases import MouseButton
 
 # TODO: Update ContainsPoint to be manifold agnostic (it currently assumes a hyperplane).
@@ -318,6 +320,18 @@ class InteractiveCanvas:
 
     epsilon = 5  # max pixel distance to count as a vertex hit
 
+    def CreatePathFromSolid(self, solid):
+        vertices = [[0.0,0.0]]
+        commands = [Path.MOVETO]
+       
+        for edge in solid.Edges():
+            vertices.append(edge[0])
+            commands.append(Path.MOVETO)
+            vertices.append(edge[1])
+            commands.append(Path.LINETO)
+        
+        return Path(vertices, commands)
+
     def __init__(self, solidA, solidB):
         assert solidA.dimension == solidB.dimension
 
@@ -329,29 +343,31 @@ class InteractiveCanvas:
 
         self.solidA = solidA
         self.solidB = solidB
-        self.solid = solidA.Union(solidB)
+        self.solidC = solidA.Intersection(solidB)
+
+        self.patchA = patches.PathPatch(self.CreatePathFromSolid(self.solidA), linewidth=1, color="orange")
+        self.patchB = patches.PathPatch(self.CreatePathFromSolid(self.solidB), linewidth=1, color="yellow")
+        self.patchC = patches.PathPatch(self.CreatePathFromSolid(self.solidC), linewidth=3, color="red")
         
+        self.ax.set(xlim = (-4, 4), ylim = (-4, 4))
+
+        self.ax.add_patch(self.patchA)
+        self.ax.add_patch(self.patchB)
+        self.ax.add_patch(self.patchC)
+
         self.canvas.mpl_connect('draw_event', self.on_draw)
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
         self.canvas.mpl_connect('key_press_event', self.on_key_press)
         self.canvas.mpl_connect('button_release_event', self.on_button_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
 
-        self.on_draw(None)
-
     def on_draw(self, event):
         """Callback for draws."""
-        self.ax.cla()
-        self.ax.set(xlim = (-4, 4), ylim = (-4, 4))
-        
-        for edge in self.solidA.Edges():
-            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1], width=0.01, head_width=0.0, color="orange")
-
-        for edge in self.solidB.Edges():
-            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1], width=0.01, head_width=0.0, color="yellow")
-
-        for edge in self.solid.Edges():
-            self.ax.arrow(edge[0][0], edge[0][1], edge[1][0] - edge[0][0], edge[1][1] - edge[0][1], width=0.05, head_width=0.0, color="red")
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self.ax.draw_artist(self.patchA)
+        self.ax.draw_artist(self.patchB)
+        self.ax.draw_artist(self.patchC)
+        #self.canvas.blit(self.ax.bbox)
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
@@ -369,22 +385,22 @@ class InteractiveCanvas:
         delta[0] = event.xdata - self.origin[0]
         delta[1] = event.ydata - self.origin[1]
         self.solidB.Translate(delta)
-        self.solid = self.solidA.Union(self.solidB)
+        self.solidC = self.solidA.Union(self.solidB)
 
-        self.on_draw(None)
+        self.patchB.set_path(self.CreatePathFromSolid(self.solidB))
+        self.patchC.set_path(self.CreatePathFromSolid(self.solidC))
         self.canvas.draw()
-
 
     def on_key_press(self, event):
         """Callback for key presses."""
         if event.key == 'i':
-            self.solid = self.solidA.Intersection(self.solidB)
+            self.solidC = self.solidA.Intersection(self.solidB)
         elif event.key == 'u':
-            self.solid = self.solidA.Union(self.solidB)
+            self.solidC = self.solidA.Union(self.solidB)
         elif event.key == 'd':
-            self.solid = self.solidA.Difference(self.solidB)
+            self.solidC = self.solidA.Difference(self.solidB)
 
-        self.on_draw(None)
+        self.patchC.set_path(self.CreatePathFromSolid(self.solidC))
         self.canvas.draw()
 
     def on_mouse_move(self, event):

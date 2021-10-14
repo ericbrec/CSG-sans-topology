@@ -331,6 +331,16 @@ class InteractiveCanvas:
             commands.append(Path.LINETO)
         
         return Path(vertices, commands)
+    
+    def PerformBooleanOperation(self, key):
+        if key == 'i':
+            solid = self.solidA.Intersection(self.solidB)
+        elif key == 'u':
+            solid = self.solidA.Union(self.solidB)
+        elif key == 'd':
+            solid = self.solidA.Difference(self.solidB)
+
+        return solid
 
     def __init__(self, solidA, solidB):
         assert solidA.dimension == solidB.dimension
@@ -343,10 +353,11 @@ class InteractiveCanvas:
 
         self.solidA = solidA
         self.solidB = solidB
-        self.solidC = solidA.Intersection(solidB)
+        self.key = 'u'
+        self.solidC = self.PerformBooleanOperation(self.key)
 
-        self.patchA = patches.PathPatch(self.CreatePathFromSolid(self.solidA), linewidth=1, color="orange")
-        self.patchB = patches.PathPatch(self.CreatePathFromSolid(self.solidB), linewidth=1, color="yellow")
+        self.patchA = patches.PathPatch(self.CreatePathFromSolid(self.solidA), linewidth=1, color="blue")
+        self.patchB = patches.PathPatch(self.CreatePathFromSolid(self.solidB), linewidth=1, color="orange")
         self.patchC = patches.PathPatch(self.CreatePathFromSolid(self.solidC), linewidth=3, color="red")
         
         self.ax.set(xlim = (-4, 4), ylim = (-4, 4))
@@ -367,7 +378,6 @@ class InteractiveCanvas:
         self.ax.draw_artist(self.patchA)
         self.ax.draw_artist(self.patchB)
         self.ax.draw_artist(self.patchC)
-        #self.canvas.blit(self.ax.bbox)
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
@@ -380,26 +390,15 @@ class InteractiveCanvas:
         """Callback for mouse button releases."""
         if event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
-        
-        delta = [0.0]*self.solidB.dimension
-        delta[0] = event.xdata - self.origin[0]
-        delta[1] = event.ydata - self.origin[1]
-        self.solidB.Translate(delta)
-        self.solidC = self.solidA.Union(self.solidB)
 
-        self.patchB.set_path(self.CreatePathFromSolid(self.solidB))
+        self.solidC = self.PerformBooleanOperation(self.key)
         self.patchC.set_path(self.CreatePathFromSolid(self.solidC))
         self.canvas.draw()
 
     def on_key_press(self, event):
         """Callback for key presses."""
-        if event.key == 'i':
-            self.solidC = self.solidA.Intersection(self.solidB)
-        elif event.key == 'u':
-            self.solidC = self.solidA.Union(self.solidB)
-        elif event.key == 'd':
-            self.solidC = self.solidA.Difference(self.solidB)
-
+        self.key = event.key
+        self.solidC = self.PerformBooleanOperation(self.key)
         self.patchC.set_path(self.CreatePathFromSolid(self.solidC))
         self.canvas.draw()
 
@@ -407,81 +406,21 @@ class InteractiveCanvas:
         """Callback for mouse movements."""
         if event.inaxes is None or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
+        
+        delta = [0.0]*self.solidB.dimension
+        delta[0] = event.xdata - self.origin[0]
+        delta[1] = event.ydata - self.origin[1]
+        self.solidB.Translate(delta)
+        self.origin[0] = event.xdata
+        self.origin[1] = event.ydata
 
-class OldInteractiveCanvas:
-
-    showverts = True
-    epsilon = 8  # max pixel distance to count as a vertex hit
-
-    def __init__(self, x, y):
-
-        fig, self.ax = plt.subplots()
-        self.ax.set_title('drag vertices to update path')
-        self.ax.set_xlim(-1, 1)
-        self.ax.set_ylim(-1, 1)
-        self.canvas = self.ax.figure.canvas
-
-        self._ind = None
-
-        self.line, = self.ax.plot(
-            x, y, color='blue', marker='o', markerfacecolor='r', markersize=self.epsilon, animated=True)
-
-        self.canvas.mpl_connect('draw_event', self.on_draw)
-        self.canvas.mpl_connect('button_press_event', self.on_button_press)
-        self.canvas.mpl_connect('key_press_event', self.on_key_press)
-        self.canvas.mpl_connect('button_release_event', self.on_button_release)
-        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
-
-    def on_draw(self, event):
-        """Callback for draws."""
-        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.ax.draw_artist(self.line)
-        self.canvas.blit(self.ax.bbox)
-
-    def on_button_press(self, event):
-        """Callback for mouse button presses."""
-        if (event.inaxes is None
-                or event.button != MouseButton.LEFT
-                or not self.showverts):
-            return
-        # self._ind = self.get_ind_under_point(event)
-
-    def on_button_release(self, event):
-        """Callback for mouse button releases."""
-        if (event.button != MouseButton.LEFT
-                or not self.showverts):
-            return
-        # self._ind = None
-
-    def on_key_press(self, event):
-        """Callback for key presses."""
-        if not event.inaxes:
-            return
-        if event.key == 't':
-            self.showverts = not self.showverts
-            self.line.set_visible(self.showverts)
-            if not self.showverts:
-                self._ind = None
-        self.canvas.draw()
-
-    def on_mouse_move(self, event):
-        """Callback for mouse movements."""
-        if (self._ind is None
-                or event.inaxes is None
-                or event.button != MouseButton.LEFT
-                or not self.showverts):
-            return
-
-        vertices = self.pathpatch.get_path().vertices
-
-        vertices[self._ind] = event.xdata, event.ydata
-        self.line.set_data(zip(*vertices))
-
+        self.patchB.set_path(self.CreatePathFromSolid(self.solidB))
+        
         self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.line)
+        self.ax.draw_artist(self.patchA)
+        self.ax.draw_artist(self.patchB)
+        self.ax.draw_artist(self.patchC)
         self.canvas.blit(self.ax.bbox)
-
-
 
 def CreateStar(radius, center, angle):
     vertices = []

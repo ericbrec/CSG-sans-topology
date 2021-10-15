@@ -19,7 +19,7 @@ class Boundary:
         if boundary.domain:
             return 0.0
         else:
-            return boundary.manifold.Point(0.0)
+            return (boundary.manifold.Point(0.0), -boundary.manifold.Normal(0.0))
 
 class Solid:
 
@@ -40,8 +40,14 @@ class Solid:
             normal = normal / np.linalg.norm(normal)
             manifold = mf.Hyperplane.CreateFromNormal(normal,np.dot(normal,point))
             domain = Solid(dimension-1)
-            domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(-1.0, -manifold.DomainFromPoint(previousPoint))))
-            domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(1.0, manifold.DomainFromPoint(point))))
+            previousPointDomain = manifold.DomainFromPoint(previousPoint)
+            pointDomain = manifold.DomainFromPoint(point)
+            if previousPointDomain < pointDomain:
+                domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(-1.0, -previousPointDomain)))
+                domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(1.0, pointDomain)))
+            else:
+                domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(-1.0, -pointDomain)))
+                domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(1.0, previousPointDomain)))
             solid.boundaries.append(Boundary(manifold, domain))
             previousPoint = point
 
@@ -81,10 +87,19 @@ class Solid:
                     yield [boundary.manifold.Point(domainEdge[0]), boundary.manifold.Point(domainEdge[1])]
         else:
             self.boundaries.sort(key=Boundary.SortKey)
-            b = 1
-            while b < len(self.boundaries):
-                yield [self.boundaries[b-1].manifold.Point(0.0), self.boundaries[b].manifold.Point(0.0)]
-                b += 2
+            leftB = 0
+            rightB = 0
+            while leftB < len(self.boundaries):
+                if self.boundaries[leftB].manifold.Normal(0.0) < 0.0:
+                    leftPoint = self.boundaries[leftB].manifold.Point(0.0)
+                    while rightB < len(self.boundaries):
+                        rightPoint = self.boundaries[rightB].manifold.Point(0.0)
+                        if leftPoint - mf.Manifold.minSeparation < rightPoint and self.boundaries[rightB].manifold.Normal(0.0) > 0.0:
+                            yield [leftPoint, rightPoint]
+                            rightB += 1
+                            break
+                        rightB += 1
+                leftB += 1
  
     def ContainsPoint(self, point):
         # Return value is -1 for interior, 0 for on boundary, and 1 for exterior

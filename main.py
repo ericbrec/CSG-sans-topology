@@ -4,7 +4,6 @@ import matplotlib.patches as patches
 from matplotlib.path import Path
 from matplotlib.backend_bases import MouseButton
 
-# TODO: Create HyperPlane class as a subclass of Manifold.
 # TODO: Update ContainsPoint to use integral instead of ray cast to compute winding number.
 
 class Manifold:
@@ -14,6 +13,42 @@ class Manifold:
 
     # If two points are within 0.01 of each eachother, they are coincident
     minSeparation = 0.01
+
+    def __init__(self):
+        pass
+
+    def Flip(self):
+        return self
+
+    def GetDimension(self):
+        return 0
+
+    def NormalFromDomain(self, domainPoint):
+        return None
+
+    def PointFromDomain(self, domainPoint):
+        return None
+
+    def DomainFromPoint(self, point):
+        return None
+
+    def Translate(self, delta):
+        assert len(delta) == self.GetDimension()
+
+    def IntersectXRay(self, point):
+        assert len(point) == self.GetDimension()
+
+        # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
+        intersections = []
+        return intersections
+
+    def IntersectManifold(self, other, cache = None):
+
+        # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
+        intersections = []
+        return intersections
+
+class Hyperplane(Manifold):
 
     @staticmethod
     def TangentSpaceFromNormal(normal):
@@ -28,7 +63,7 @@ class Manifold:
     
     @staticmethod
     def CreateFromNormal(normal, offset):
-        manifold = Manifold()
+        manifold = Hyperplane()
 
         # Ensure the normal is always an array
         if np.isscalar(normal):
@@ -38,7 +73,7 @@ class Manifold:
         manifold.normal = manifold.normal / np.linalg.norm(manifold.normal)
         manifold.point = offset * manifold.normal
         if manifold.GetDimension() > 1:
-            manifold.tangentSpace = Manifold.TangentSpaceFromNormal(manifold.normal)
+            manifold.tangentSpace = Hyperplane.TangentSpaceFromNormal(manifold.normal)
         else:
             manifold.tangentSpace = 1.0
         return manifold
@@ -49,7 +84,7 @@ class Manifold:
         self.point = None
 
     def Flip(self):
-        manifold = Manifold()
+        manifold = Hyperplane()
         manifold.normal = -self.normal
         manifold.tangentSpace = self.tangentSpace
         manifold.point = self.point
@@ -73,7 +108,7 @@ class Manifold:
         self.point += delta 
 
     def IntersectXRay(self, point):
-        assert len(self.normal) == len(point)
+        assert len(point) == self.GetDimension()
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
         intersections = []
@@ -116,7 +151,7 @@ class Manifold:
             normalOther = normalize * normalOther
             offsetOther = normalize * np.dot(self.normal, np.subtract(self.point, other.point))
 
-            intersection = [Manifold.CreateFromNormal(normalSelf, offsetSelf), Manifold.CreateFromNormal(normalOther, offsetOther)]
+            intersection = [Hyperplane.CreateFromNormal(normalSelf, offsetSelf), Hyperplane.CreateFromNormal(normalOther, offsetOther)]
             intersections.append(intersection)
             intersectionsFlipped.append([intersection[1], intersection[0]])
 
@@ -162,10 +197,10 @@ class Solid:
             vector = point - previousPoint
             normal = np.array([-vector[1], vector[0]])
             normal = normal / np.linalg.norm(normal)
-            manifold = Manifold.CreateFromNormal(normal,np.dot(normal,point))
+            manifold = Hyperplane.CreateFromNormal(normal,np.dot(normal,point))
             domain = Solid(dimension-1)
-            domain.boundaries.append(Boundary(Manifold.CreateFromNormal(-1.0, -manifold.DomainFromPoint(previousPoint))))
-            domain.boundaries.append(Boundary(Manifold.CreateFromNormal(1.0, manifold.DomainFromPoint(point))))
+            domain.boundaries.append(Boundary(Hyperplane.CreateFromNormal(-1.0, -manifold.DomainFromPoint(previousPoint))))
+            domain.boundaries.append(Boundary(Hyperplane.CreateFromNormal(1.0, manifold.DomainFromPoint(point))))
             solid.boundaries.append(Boundary(manifold, domain))
             previousPoint = point
 
@@ -277,7 +312,7 @@ class Solid:
             # Intersect each of this solid's boundaries with the manifold.
             for boundary in self.boundaries:
                 # Start by intersecting the boundary's manifold with the given manifold.
-                # The Manifold.Intersect returns a collection of manifold pairs:
+                # IntersectManifold returns a collection of manifold pairs:
                 #   * intersection[0] is in the boundary's domain;
                 #   * intersection[1] is in the given manifold's domain.
                 # Both intersections correspond to the same range (the intersection between the manifolds).
@@ -459,8 +494,8 @@ def CreateStar(radius, center, angle):
     for boundary in solid.boundaries:
         u0 = boundary.domain.boundaries[0].manifold.point[0]
         u1 = boundary.domain.boundaries[1].manifold.point[0]
-        boundary.domain.boundaries.append(Boundary(Manifold.CreateFromNormal(1.0, u0 + (1.0 - u)*(u1 - u0))))
-        boundary.domain.boundaries.append(Boundary(Manifold.CreateFromNormal(-1.0, -(u0 + u*(u1 - u0)))))
+        boundary.domain.boundaries.append(Boundary(Hyperplane.CreateFromNormal(1.0, u0 + (1.0 - u)*(u1 - u0))))
+        boundary.domain.boundaries.append(Boundary(Hyperplane.CreateFromNormal(-1.0, -(u0 + u*(u1 - u0)))))
 
     return solid
 

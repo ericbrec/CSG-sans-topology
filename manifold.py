@@ -17,10 +17,16 @@ class Manifold:
     def GetDimension(self):
         return 0
 
-    def NormalFromDomain(self, domainPoint):
+    def Normal(self, domainPoint):
         return None
+    
+    def TangentSpace(self, domainPoint):
+        return None
+    
+    def FirstCofactor(self, domainPoint):
+        return 0.0
 
-    def PointFromDomain(self, domainPoint):
+    def Point(self, domainPoint):
         return None
 
     def DomainFromPoint(self, point):
@@ -57,40 +63,51 @@ class Hyperplane(Manifold):
     
     @staticmethod
     def CreateFromNormal(normal, offset):
-        manifold = Hyperplane()
+        hyperplane = Hyperplane()
 
         # Ensure the normal is always an array
         if np.isscalar(normal):
-            manifold.normal = np.array([normal])
+            hyperplane.normal = np.array([normal])
         else:
-            manifold.normal = np.array(normal)
-        manifold.normal = manifold.normal / np.linalg.norm(manifold.normal)
-        manifold.point = offset * manifold.normal
-        if manifold.GetDimension() > 1:
-            manifold.tangentSpace = Hyperplane.TangentSpaceFromNormal(manifold.normal)
+            hyperplane.normal = np.array(normal)
+        hyperplane.normal = hyperplane.normal / np.linalg.norm(hyperplane.normal)
+        hyperplane.point = offset * hyperplane.normal
+        if hyperplane.GetDimension() > 1:
+            hyperplane.tangentSpace = Hyperplane.TangentSpaceFromNormal(hyperplane.normal)
+            # The first (0,0) cofactor of matrix formed by the normal and tangent space is the determinant of the tangent space with the first row deleted.
+            hyperplane.firstCofactor = np.linalg.det(np.delete(hyperplane.tangentSpace, 0, 0))
         else:
-            manifold.tangentSpace = 1.0
-        return manifold
+            hyperplane.tangentSpace = 1.0
+            hyperplane.firstCofactor = 1.0
+        return hyperplane
 
     def __init__(self):
         self.normal = None
         self.tangentSpace = None
+        self.firstCofactor = 0.0
         self.point = None
 
     def Flip(self):
-        manifold = Hyperplane()
-        manifold.normal = -self.normal
-        manifold.tangentSpace = self.tangentSpace
-        manifold.point = self.point
-        return manifold
+        hyperplane = Hyperplane()
+        hyperplane.normal = -self.normal
+        hyperplane.tangentSpace = self.tangentSpace
+        hyperplane.firstCofactor = self.firstCofactor
+        hyperplane.point = self.point
+        return hyperplane
 
     def GetDimension(self):
         return len(self.normal)
 
-    def NormalFromDomain(self, domainPoint):
+    def Normal(self, domainPoint):
         return self.normal
+    
+    def TangentSpace(self, domainPoint):
+        return self.tangentSpace
+    
+    def FirstCofactor(self, domainPoint):
+        return self.firstCofactor
 
-    def PointFromDomain(self, domainPoint):
+    def Point(self, domainPoint):
         return np.dot(self.tangentSpace, domainPoint) + self.point
 
     def DomainFromPoint(self, point):
@@ -107,7 +124,7 @@ class Hyperplane(Manifold):
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
         intersections = []
 
-        # Ensure manifold intersects x-axis
+        # Ensure hyperplane intersects x-axis
         if self.normal[0]*self.normal[0] > 1.0 - Manifold.maxAlignment:
             vectorToManifold = self.point - point
             xDistanceToManifold = np.dot(self.normal, vectorToManifold) / self.normal[0]
@@ -119,6 +136,8 @@ class Hyperplane(Manifold):
         return intersections
 
     def IntersectManifold(self, other, cache = None):
+        assert isinstance(other, Hyperplane)
+
         # Check manifold intersections cache for previously computed intersections.
         if cache != None:
             if (self, other) in cache:
@@ -133,13 +152,13 @@ class Hyperplane(Manifold):
         # Ensure manifolds are not parallel
         alignment = np.dot(self.normal, other.normal)
         if self != other and alignment * alignment < Manifold.maxAlignment:
-            # Compute the intersecting self domain manifold
+            # Compute the intersecting self domain hyperplane
             normalSelf = np.dot(other.normal, self.tangentSpace)
             normalize = 1.0 / np.linalg.norm(normalSelf)
             normalSelf = normalize * normalSelf
             offsetSelf = normalize * np.dot(other.normal, np.subtract(other.point, self.point))
 
-            # Compute the intersecting other domain manifold
+            # Compute the intersecting other domain hyperplane
             normalOther = np.dot(self.normal, other.tangentSpace)
             normalize = 1.0 / np.linalg.norm(normalOther)
             normalOther = normalize * normalOther

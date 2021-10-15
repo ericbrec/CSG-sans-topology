@@ -19,7 +19,7 @@ class Boundary:
         if boundary.domain:
             return 0.0
         else:
-            return boundary.manifold.PointFromDomain(0.0)
+            return boundary.manifold.Point(0.0)
 
 class Solid:
 
@@ -69,21 +69,21 @@ class Solid:
         for boundary in self.boundaries:
             if boundary.domain:
                 for domainPoint in boundary.domain.Points():
-                    point = boundary.manifold.PointFromDomain(domainPoint)
+                    point = boundary.manifold.Point(domainPoint)
                     yield point
             else:
-                yield boundary.manifold.PointFromDomain(0.0)
+                yield boundary.manifold.Point(0.0)
     
     def Edges(self):
         if self.dimension > 1:
             for boundary in self.boundaries:
                 for domainEdge in boundary.domain.Edges():
-                    yield [boundary.manifold.PointFromDomain(domainEdge[0]), boundary.manifold.PointFromDomain(domainEdge[1])]
+                    yield [boundary.manifold.Point(domainEdge[0]), boundary.manifold.Point(domainEdge[1])]
         else:
             self.boundaries.sort(key=Boundary.SortKey)
             b = 1
             while b < len(self.boundaries):
-                yield [self.boundaries[b-1].manifold.PointFromDomain(0.0), self.boundaries[b].manifold.PointFromDomain(0.0)]
+                yield [self.boundaries[b-1].manifold.Point(0.0), self.boundaries[b].manifold.Point(0.0)]
                 b += 2
  
     def ContainsPoint(self, point):
@@ -117,7 +117,7 @@ class Solid:
                     if considerBoundary:
                         if intersection[0] < mf.Manifold.minSeparation:
                             onBoundary = True
-                        windingNumber += np.sign(boundary.manifold.NormalFromDomain(intersection[1])[0])
+                        windingNumber += np.sign(boundary.manifold.Normal(intersection[1])[0])
         
         if onBoundary:
             containment = 0
@@ -130,13 +130,13 @@ class Solid:
         if boundary.domain:
             # If boundary has a domain, loop through the boundary points of its domain until one is clearly inside or outside.
             for domainPoint in boundary.domain.Points():
-                constainsPoint = self.ContainsPoint(boundary.manifold.PointFromDomain(domainPoint))
+                constainsPoint = self.ContainsPoint(boundary.manifold.Point(domainPoint))
                 if constainsPoint != 0:
                     containment = constainsPoint < 1
                     break
         else:
             # Otherwise, the boundary is a single point, so just determine if it's inside or outside.
-            containment = self.ContainsPoint(boundary.manifold.PointFromDomain(0.0)) < 1
+            containment = self.ContainsPoint(boundary.manifold.Point(0.0)) < 1
 
         return containment
 
@@ -168,7 +168,7 @@ class Solid:
                     else:
                         # This domain is dimension 1, a real number line, and the intersection is a point on that line.
                         # Determine if the intersection point is within domain's interior.
-                        if boundary.domain.ContainsPoint(intersection[0].PointFromDomain(0.0)) < 1:
+                        if boundary.domain.ContainsPoint(intersection[0].Point(0.0)) < 1:
                             manifoldDomain.boundaries.append(Boundary(intersection[1]))
             
             # Don't return a manifold domain if it's empty

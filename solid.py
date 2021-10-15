@@ -25,7 +25,7 @@ class Solid:
 
     @staticmethod
     def CreateSolidFromPoints(dimension, points, isVoid = False):
-        # Implementation only works for dimension 2 so far.
+        # CreateSolidFromPoints only works for dimension 2 so far.
         assert dimension == 2
         assert len(points) > 2
         assert len(points[0]) == dimension
@@ -107,16 +107,15 @@ class Solid:
             intersections = boundary.manifold.IntersectXRay(point)
             for intersection in intersections:
                 # Each intersection is of the form [distance to intersection, domain point of intersection].
-                distanceToManifold = intersection[0]
-                # Check the distance is positive
-                if distanceToManifold > -mf.Manifold.minSeparation:
+                # First, check the distance is positive.
+                if intersection[0] > -mf.Manifold.minSeparation:
                     considerBoundary = True
-                    # Don't consider boundary if ray intersection is outside its domain.
                     if boundary.domain:
+                        # Only include the boundary if the ray intersection is inside its domain.
                         considerBoundary = boundary.domain.ContainsPoint(intersection[1]) < 1
                     # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
                     if considerBoundary:
-                        if distanceToManifold < mf.Manifold.minSeparation:
+                        if intersection[0] < mf.Manifold.minSeparation:
                             onBoundary = True
                         windingNumber += np.sign(boundary.manifold.NormalFromDomain(intersection[1])[0])
         
@@ -127,16 +126,16 @@ class Solid:
         return containment 
 
     def ContainsBoundary(self, boundary):
-        # Assumes there is no boundary intersection, though there may be coincidence
         containment = False
-
         if boundary.domain:
+            # If boundary has a domain, loop through the boundary points of its domain until one is clearly inside or outside.
             for domainPoint in boundary.domain.Points():
                 constainsPoint = self.ContainsPoint(boundary.manifold.PointFromDomain(domainPoint))
                 if constainsPoint != 0:
                     containment = constainsPoint < 1
                     break
         else:
+            # Otherwise, the boundary is a single point, so just determine if it's inside or outside.
             containment = self.ContainsPoint(boundary.manifold.PointFromDomain(0.0)) < 1
 
         return containment

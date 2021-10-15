@@ -37,7 +37,7 @@ class Manifold:
             manifold.normal = np.array(normal)
         manifold.normal = manifold.normal / np.linalg.norm(manifold.normal)
         manifold.point = offset * manifold.normal
-        if len(manifold.normal) > 1:
+        if manifold.GetDimension() > 1:
             manifold.tangentSpace = Manifold.TangentSpaceFromNormal(manifold.normal)
         else:
             manifold.tangentSpace = 1.0
@@ -55,11 +55,22 @@ class Manifold:
         manifold.point = self.point
         return manifold
 
+    def GetDimension(self):
+        return len(self.normal)
+
+    def NormalFromDomain(self, domainPoint):
+        return self.normal
+
     def PointFromDomain(self, domainPoint):
         return np.dot(self.tangentSpace, domainPoint) + self.point
 
     def DomainFromPoint(self, point):
         return np.dot(point - self.point, self.tangentSpace)
+
+    def Translate(self, delta):
+        assert len(delta) == self.GetDimension()
+
+        self.point += delta 
 
     def IntersectXRay(self, point):
         assert len(self.normal) == len(point)
@@ -73,8 +84,8 @@ class Manifold:
             xDistanceToManifold = np.dot(self.normal, vectorToManifold) / self.normal[0]
             intersectionPoint = np.array(point)
             intersectionPoint[0] += xDistanceToManifold
-            # Each intersection is of the form [distance to intersection, domain point of intersection, normal at intersection]
-            intersections.append([xDistanceToManifold, self.DomainFromPoint(intersectionPoint), self.normal])
+            # Each intersection is of the form [distance to intersection, domain point of intersection].
+            intersections.append([xDistanceToManifold, self.DomainFromPoint(intersectionPoint)])
         
         return intersections
 
@@ -120,16 +131,19 @@ class Boundary:
 
     def __init__(self, manifold, domain = None):
         if domain:
-            assert len(manifold.normal) - 1 == domain.dimension
+            assert manifold.GetDimension() - 1 == domain.dimension
         else:
-            assert len(manifold.normal) == 1
+            assert manifold.GetDimension() == 1
 
         self.manifold = manifold
         self.domain = domain
     
     @staticmethod
     def SortKey(boundary):
-        return boundary.manifold.point[0]
+        if boundary.domain:
+            return 0.0
+        else:
+            return boundary.manifold.PointFromDomain(0.0)
 
 class Solid:
 
@@ -173,7 +187,7 @@ class Solid:
         assert len(delta) == self.dimension
 
         for boundary in self.boundaries:
-            boundary.manifold.point += delta
+            boundary.manifold.Translate(delta)
     
     def Points(self):
         for boundary in self.boundaries:
@@ -182,7 +196,7 @@ class Solid:
                     point = boundary.manifold.PointFromDomain(domainPoint)
                     yield point
             else:
-                yield boundary.manifold.point
+                yield boundary.manifold.PointFromDomain(0.0)
     
     def Edges(self):
         if self.dimension > 1:
@@ -193,7 +207,7 @@ class Solid:
             self.boundaries.sort(key=Boundary.SortKey)
             b = 1
             while b < len(self.boundaries):
-                yield [self.boundaries[b-1].manifold.point, self.boundaries[b].manifold.point]
+                yield [self.boundaries[b-1].manifold.PointFromDomain(0.0), self.boundaries[b].manifold.PointFromDomain(0.0)]
                 b += 2
  
     def ContainsPoint(self, point):
@@ -216,7 +230,7 @@ class Solid:
         for boundary in self.boundaries:
             intersections = boundary.manifold.IntersectXRay(point)
             for intersection in intersections:
-                # Each intersection is of the form [distance to intersection, domain point of intersection, normal at intersection]
+                # Each intersection is of the form [distance to intersection, domain point of intersection].
                 distanceToManifold = intersection[0]
                 # Check the distance is positive
                 if distanceToManifold > -Manifold.minSeparation:
@@ -228,7 +242,7 @@ class Solid:
                     if considerBoundary:
                         if distanceToManifold < Manifold.minSeparation:
                             onBoundary = True
-                        windingNumber += np.sign(intersection[2][0])
+                        windingNumber += np.sign(boundary.manifold.NormalFromDomain(intersection[1])[0])
         
         if onBoundary:
             containment = 0
@@ -247,12 +261,12 @@ class Solid:
                     containment = constainsPoint < 1
                     break
         else:
-            containment = self.ContainsPoint(boundary.manifold.point) < 1
+            containment = self.ContainsPoint(boundary.manifold.PointFromDomain(0.0)) < 1
 
         return containment
 
     def Slice(self, manifold, cache = None):
-        assert len(manifold.normal) == self.dimension
+        assert manifold.GetDimension() == self.dimension
 
         manifoldDomain = None
 
@@ -279,7 +293,7 @@ class Solid:
                     else:
                         # This domain is dimension 1, a real number line, and the intersection is a point on that line.
                         # Determine if the intersection point is within domain's interior.
-                        if boundary.domain.ContainsPoint(intersection[0].point) < 1:
+                        if boundary.domain.ContainsPoint(intersection[0].PointFromDomain(0.0)) < 1:
                             manifoldDomain.boundaries.append(Boundary(intersection[1]))
             
             # Don't return a manifold domain if it's empty

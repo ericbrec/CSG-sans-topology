@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.integrate as integrate
 import manifold as mf
 
 # TODO: Update ContainsPoint to use integral instead of ray cast to compute winding number.
@@ -101,6 +102,12 @@ class Solid:
                         rightB += 1
                 leftB += 1
  
+    def VolumeIntegral(self, f):
+        sum = 0.0
+        for boundary in self.boundaries:
+            sum += boundary.domain.VolumeIntegral()
+        return sum
+
     def ContainsPoint(self, point):
         # Return value is -1 for interior, 0 for on boundary, and 1 for exterior
         containment = -1

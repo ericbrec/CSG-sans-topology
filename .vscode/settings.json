@@ -8,10 +8,12 @@
         "LINETO",
         "MOVETO",
         "pyplot",
+        "scipy",
         "showverts",
         "xdata",
         "xlim",
         "ydata",
         "ylim"
-    ]
+    ],
+    "terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "Bypass"]
 }

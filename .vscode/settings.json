@@ -4,6 +4,8 @@
         "Cofactor",
         "eigen",
         "eigh",
+        "epsabs",
+        "epsrel",
         "isscalar",
         "LINETO",
         "MOVETO",

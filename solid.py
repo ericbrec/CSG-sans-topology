@@ -105,20 +105,25 @@ class Solid:
                         rightB += 1
                 leftB += 1
  
-    def VolumeIntegral(self, f, args=(), *quadArgs):
-
+    def VolumeIntegral(self, f, args=(), epsabs=None, epsrel=None, *quadArgs):
         if not isinstance(args, tuple):
             args = (args,)
+        if epsabs is None:
+            epsabs = Solid.minSeparation
+        if epsrel is None:
+            epsrel = Solid.minSeparation
 
+        # Initialize the return value for the integral
         sum = 0.0
-        if self.dimension > 1:
-            for boundary in self.boundaries:
-                # x0 is the first coordinate of an arbitrary domain point
-                x0 = next(boundary.domain.Points())[0]
 
+        if len(self.boundaries) > 0:
+            # Select the first coordinate of an arbitrary point within the volume boundary (the domain of f)
+            x0 = next(self.Points())[0]
+
+            for boundary in self.boundaries:
                 # domainF is the integrand you get by applying the divergence theorem: VolumeIntegral(divergence(F)) = SurfaceIntegral(dot(F, n)).
                 # Let F = [Integral(f) from x0 to x holding other coordinates fixed, 0...0]. divergence(F) = f by construction, and dot(F, n) = Integral(f) * n[0].
-                # Note that the choice of x0 is arbitrary as long as it's in the domain of f and doesn't change across the surface integral.
+                # Note that the choice of x0 is arbitrary as long as it's in the domain of f and doesn't change across all surface integral boundaries.
                 # Thus, we have VolumeIntegral(f) = SurfaceIntegral(Integral(f) * n[0]).
                 # The surface normal, n, is the cross product of the boundary manifold's tangent space divided by its length.
                 # The surface differential, dS, is the length of cross product of the boundary manifold's tangent space times the differentials of the manifold's domain variables.
@@ -139,23 +144,18 @@ class Solid:
                         return f(evalPoint, *args)
 
                     # Calculate Integral(f) * first cofactor. Note that quad returns a tuple: (integral, error bound).
-                    return integrate.quad(fHat, x0, point[0], *quadArgs)[0] * boundary.manifold.FirstCofactor(domainPoint)
+                    returnValue = 0.0
+                    firstCofactor = boundary.manifold.FirstCofactor(domainPoint)
+                    if abs(x0 - point[0]) > epsabs and abs(firstCofactor) > epsabs:
+                        returnValue = integrate.quad(fHat, x0, point[0], epsabs=epsabs, epsrel=epsrel, *quadArgs)[0] * firstCofactor
+                    return returnValue
 
-                # Add the contribution to the Volume integral from this boundary.
-                contribution = boundary.domain.VolumeIntegral(domainF)
-                print(boundary.manifold.normal, contribution)
-                sum += contribution
-        else:
-            # Volume is dimension 1, so this is just a set of regular integrals.
-            x0 = None
-            for boundary in self.boundaries:
-                if x0 is None:
-                    x0 = boundary.manifold.Point(0.0)[0]
+                if boundary.domain:
+                    # Add the contribution to the Volume integral from this boundary.
+                    sum += boundary.domain.VolumeIntegral(domainF)
                 else:
-                    # Add the contribution to the integral from this boundary.
-                    contribution = integrate.quad(f, x0, boundary.manifold.Point(0.0)[0], args, *quadArgs)[0] * boundary.manifold.FirstCofactor(0.0)
-                    print(boundary.manifold.normal, contribution)
-                    sum += contribution
+                    # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
+                    sum += domainF(0.0)
 
         return sum
 

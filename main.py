@@ -139,18 +139,19 @@ def CreateStar(radius, center, angle):
     return star
 
 triangleA = sld.Solid.CreateSolidFromPoints(2, [[1,0],[0,0],[0,1]])
+volume = triangleA.VolumeIntegral(lambda x: 1.0)
 print(triangleA.VolumeIntegral(lambda x: 1.0), 0.5)
 
-# squareA = sld.Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
-# print(squareA.VolumeIntegral(lambda x: 1.0), 4.0*4.0)
-# squareB = sld.Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
-# print(squareB.VolumeIntegral(lambda x: 1.0), 3.0*3.0)
+squareA = sld.Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
+print(squareA.VolumeIntegral(lambda x: 1.0), 4.0*4.0)
+squareB = sld.Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
+print(squareB.VolumeIntegral(lambda x: 1.0), 3.0*3.0)
 
-# starArea = 10.0 * np.tan(np.pi / 10.0) / (3.0 - np.tan(np.pi / 10.0)**2)
-# starA = CreateStar(2.0, [-1.0, -1.0], 90.0*6.28/360.0)
-# print(starA.VolumeIntegral(lambda x: 1.0), starArea * 4.0)
-# starB = CreateStar(1.0, [2.0, 2.0], 90.0*6.28/360.0)
-# print(starB.VolumeIntegral(lambda x: 1.0), starArea)
+starArea = 10.0 * np.tan(np.pi / 10.0) / (3.0 - np.tan(np.pi / 10.0)**2)
+starA = CreateStar(2.0, [-1.0, -1.0], 90.0*6.28/360.0)
+print(starA.VolumeIntegral(lambda x: 1.0), starArea * 4.0)
+starB = CreateStar(1.0, [2.0, 2.0], 90.0*6.28/360.0)
+print(starB.VolumeIntegral(lambda x: 1.0), starArea)
 quit()
 
 #interactor = InteractiveCanvas(squareA, squareB)

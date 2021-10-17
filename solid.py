@@ -159,6 +159,49 @@ class Solid:
 
         return sum
 
+    def SurfaceIntegral(self, f, args=(), epsabs=None, epsrel=None, *quadArgs):
+        if not isinstance(args, tuple):
+            args = (args,)
+        if epsabs is None:
+            epsabs = Solid.minSeparation
+        if epsrel is None:
+            epsrel = Solid.minSeparation
+
+        # Initialize the return value for the integral
+        sum = 0.0
+
+        if len(self.boundaries) > 0:
+            # Select an arbitrary point within the volume boundary (the domain of f) to determine the dimension of f.
+            point = next(self.Points())
+            fValue = f(point, *args)
+            fIsVector = False
+            if not np.isscalar(fValue):
+                assert len(fValue) == self.dimension
+                fIsVector = True
+            
+            def integrand(domainPoint):
+                if np.isscalar(domainPoint):
+                    point = boundary.manifold.Point(np.array([domainPoint]))
+                else:
+                    point = boundary.manifold.Point(domainPoint)
+                fValue = f(point, *args)
+                returnValue = boundary.manifold.Determinant(domainPoint)
+                if fIsVector:
+                    returnValue *= np.dot(fValue, boundary.manifold.Normal(domainPoint))
+                else:
+                    returnValue *= fValue
+                return returnValue
+
+            for boundary in self.boundaries:
+                if boundary.domain:
+                    # Add the contribution to the Volume integral from this boundary.
+                    sum += boundary.domain.VolumeIntegral(integrand)
+                else:
+                    # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
+                    sum += integrand(0.0)
+
+        return sum
+
     def ContainsPoint(self, point):
         # Return value is -1 for interior, 0 for on boundary, and 1 for exterior
         containment = -1

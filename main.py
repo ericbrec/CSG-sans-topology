@@ -139,19 +139,24 @@ def CreateStar(radius, center, angle):
     return star
 
 triangleA = sld.Solid.CreateSolidFromPoints(2, [[1,0],[0,0],[0,1]])
-volume = triangleA.VolumeIntegral(lambda x: 1.0)
 print(triangleA.VolumeIntegral(lambda x: 1.0), 0.5)
+print(triangleA.SurfaceIntegral(lambda x: 1.0), 2 + np.sqrt(2.0))
 
 squareA = sld.Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
 print(squareA.VolumeIntegral(lambda x: 1.0), 4.0*4.0)
+print(squareA.SurfaceIntegral(lambda x: 1.0), 4.0*4.0)
 squareB = sld.Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
 print(squareB.VolumeIntegral(lambda x: 1.0), 3.0*3.0)
+print(squareB.SurfaceIntegral(lambda x: 1.0), 3.0*4.0)
 
 starArea = 10.0 * np.tan(np.pi / 10.0) / (3.0 - np.tan(np.pi / 10.0)**2)
+starPerimeter = 10.0 * np.cos(2.0*np.pi/5.0) * (np.tan(2.0*np.pi/5.0) - np.tan(np.pi/5.0))
 starA = CreateStar(2.0, [-1.0, -1.0], 90.0*6.28/360.0)
 print(starA.VolumeIntegral(lambda x: 1.0), starArea * 4.0)
+print(starA.SurfaceIntegral(lambda x: 1.0), starPerimeter * 2.0)
 starB = CreateStar(1.0, [2.0, 2.0], 90.0*6.28/360.0)
 print(starB.VolumeIntegral(lambda x: 1.0), starArea)
+print(starB.SurfaceIntegral(lambda x: 1.0), starPerimeter)
 quit()
 
 #interactor = InteractiveCanvas(squareA, squareB)

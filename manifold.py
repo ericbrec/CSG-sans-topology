@@ -19,6 +19,9 @@ class Manifold:
     
     def FirstCofactor(self, domainPoint):
         return 0.0
+    
+    def Determinant(self, domainPoint):
+        return 0.0
 
     def Point(self, domainPoint):
         return None
@@ -68,26 +71,25 @@ class Hyperplane(Manifold):
         hyperplane.point = offset * hyperplane.normal
         if hyperplane.GetDimension() > 1:
             hyperplane.tangentSpace = Hyperplane.TangentSpaceFromNormal(hyperplane.normal)
-            # The first (0,0) cofactor of matrix formed by the normal and tangent space is the determinant of the tangent space with the first row deleted.
-            # The sign of the first cofactor must match the sign of the first component of the normal.
-            hyperplane.firstCofactor = np.sign(hyperplane.normal[0]) * abs(np.linalg.det(np.delete(hyperplane.tangentSpace, 0, 0)))
         else:
             hyperplane.tangentSpace = 1.0
-            hyperplane.firstCofactor = hyperplane.normal[0]
+        # The matrix constructed by TangentSpaceFromNormal is orthonormal, so the determinant is 1.
+        # We need to store the determinant in case we flip the normal.
+        hyperplane.determinant = 1.0
         return hyperplane
 
     def __init__(self):
         self.normal = None
-        self.tangentSpace = None
-        self.firstCofactor = 0.0
         self.point = None
+        self.tangentSpace = None
+        self.determinant = 0.0
 
     def Flip(self):
         hyperplane = Hyperplane()
         hyperplane.normal = -self.normal
-        hyperplane.tangentSpace = self.tangentSpace
-        hyperplane.firstCofactor = self.firstCofactor
         hyperplane.point = self.point
+        hyperplane.tangentSpace = self.tangentSpace
+        hyperplane.determinant = -self.determinant
         return hyperplane
 
     def GetDimension(self):
@@ -100,7 +102,12 @@ class Hyperplane(Manifold):
         return self.tangentSpace
     
     def FirstCofactor(self, domainPoint):
-        return self.firstCofactor
+        # The first (0,0) cofactor of matrix formed by the normal and tangent space is the determinant of the tangent space with the first row deleted.
+        # The matrix constructed by TangentSpaceFromNormal is orthonormal, so the first cofactor is simply normal[0].
+        return self.normal[0]
+    
+    def Determinant(self, domainPoint):
+        return self.determinant
 
     def Point(self, domainPoint):
         return np.dot(self.tangentSpace, domainPoint) + self.point

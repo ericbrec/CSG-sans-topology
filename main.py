@@ -15,9 +15,15 @@ class InteractiveCanvas:
         commands = [Path.MOVETO]
        
         for edge in solid.Edges():
+            middle = 0.5 * (edge[0] + edge[1])
+            normal = middle + 0.1 * edge[2]
             vertices.append(edge[0])
             commands.append(Path.MOVETO)
             vertices.append(edge[1])
+            commands.append(Path.LINETO)
+            vertices.append(middle)
+            commands.append(Path.MOVETO)
+            vertices.append(normal)
             commands.append(Path.LINETO)
         
         return Path(vertices, commands)
@@ -29,6 +35,8 @@ class InteractiveCanvas:
             solid = self.solidA.Union(self.solidB)
         elif key == 'd':
             solid = self.solidA.Difference(self.solidB)
+        else:
+            solid = self.solidC
 
         return solid
 
@@ -130,11 +138,20 @@ def CreateStar(radius, center, angle):
 
     return star
 
-squareA = sld.Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
-squareB = sld.Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
+triangleA = sld.Solid.CreateSolidFromPoints(2, [[1,0],[0,0],[0,1]])
+print(triangleA.VolumeIntegral(lambda x: 1.0), 0.5)
 
-starA = CreateStar(2.0, [-1.0, -1.0], 90.0*6.28/360.0)
-starB = CreateStar(1.0, [2.0, 2.0], 90.0*6.28/360.0)
+# squareA = sld.Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
+# print(squareA.VolumeIntegral(lambda x: 1.0), 4.0*4.0)
+# squareB = sld.Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
+# print(squareB.VolumeIntegral(lambda x: 1.0), 3.0*3.0)
+
+# starArea = 10.0 * np.tan(np.pi / 10.0) / (3.0 - np.tan(np.pi / 10.0)**2)
+# starA = CreateStar(2.0, [-1.0, -1.0], 90.0*6.28/360.0)
+# print(starA.VolumeIntegral(lambda x: 1.0), starArea * 4.0)
+# starB = CreateStar(1.0, [2.0, 2.0], 90.0*6.28/360.0)
+# print(starB.VolumeIntegral(lambda x: 1.0), starArea)
+quit()
 
 #interactor = InteractiveCanvas(squareA, squareB)
 interactor = InteractiveCanvas(starA, starB)

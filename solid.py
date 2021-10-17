@@ -24,6 +24,9 @@ class Boundary:
 
 class Solid:
 
+    # If two points are within 0.01 of each eachother, they are coincident
+    minSeparation = 0.01
+
     @staticmethod
     def CreateSolidFromPoints(dimension, points, isVoid = False):
         # CreateSolidFromPoints only works for dimension 2 so far.
@@ -39,17 +42,17 @@ class Solid:
             vector = point - previousPoint
             normal = np.array([-vector[1], vector[0]])
             normal = normal / np.linalg.norm(normal)
-            manifold = mf.Hyperplane.CreateFromNormal(normal,np.dot(normal,point))
+            hyperplane = mf.Hyperplane.CreateFromNormal(normal,np.dot(normal,point))
             domain = Solid(dimension-1)
-            previousPointDomain = manifold.DomainFromPoint(previousPoint)
-            pointDomain = manifold.DomainFromPoint(point)
+            previousPointDomain = hyperplane.DomainFromPoint(previousPoint)
+            pointDomain = hyperplane.DomainFromPoint(point)
             if previousPointDomain < pointDomain:
                 domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(-1.0, -previousPointDomain)))
                 domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(1.0, pointDomain)))
             else:
                 domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(-1.0, -pointDomain)))
                 domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(1.0, previousPointDomain)))
-            solid.boundaries.append(Boundary(manifold, domain))
+            solid.boundaries.append(Boundary(hyperplane, domain))
             previousPoint = point
 
         return solid
@@ -85,7 +88,7 @@ class Solid:
         if self.dimension > 1:
             for boundary in self.boundaries:
                 for domainEdge in boundary.domain.Edges():
-                    yield [boundary.manifold.Point(domainEdge[0]), boundary.manifold.Point(domainEdge[1])]
+                    yield [boundary.manifold.Point(domainEdge[0]), boundary.manifold.Point(domainEdge[1]), boundary.manifold.Normal(domainEdge[0])]
         else:
             self.boundaries.sort(key=Boundary.SortKey)
             leftB = 0
@@ -95,17 +98,65 @@ class Solid:
                     leftPoint = self.boundaries[leftB].manifold.Point(0.0)
                     while rightB < len(self.boundaries):
                         rightPoint = self.boundaries[rightB].manifold.Point(0.0)
-                        if leftPoint - mf.Manifold.minSeparation < rightPoint and self.boundaries[rightB].manifold.Normal(0.0) > 0.0:
+                        if leftPoint - Solid.minSeparation < rightPoint and self.boundaries[rightB].manifold.Normal(0.0) > 0.0:
                             yield [leftPoint, rightPoint]
                             rightB += 1
                             break
                         rightB += 1
                 leftB += 1
  
-    def VolumeIntegral(self, f):
+    def VolumeIntegral(self, f, args=(), *quadArgs):
+
+        if not isinstance(args, tuple):
+            args = (args,)
+
         sum = 0.0
-        for boundary in self.boundaries:
-            sum += boundary.domain.VolumeIntegral()
+        if self.dimension > 1:
+            for boundary in self.boundaries:
+                # x0 is the first coordinate of an arbitrary domain point
+                x0 = next(boundary.domain.Points())[0]
+
+                # domainF is the integrand you get by applying the divergence theorem: VolumeIntegral(divergence(F)) = SurfaceIntegral(dot(F, n)).
+                # Let F = [Integral(f) from x0 to x holding other coordinates fixed, 0...0]. divergence(F) = f by construction, and dot(F, n) = Integral(f) * n[0].
+                # Note that the choice of x0 is arbitrary as long as it's in the domain of f and doesn't change across the surface integral.
+                # Thus, we have VolumeIntegral(f) = SurfaceIntegral(Integral(f) * n[0]).
+                # The surface normal, n, is the cross product of the boundary manifold's tangent space divided by its length.
+                # The surface differential, dS, is the length of cross product of the boundary manifold's tangent space times the differentials of the manifold's domain variables.
+                # The length of the cross product appears in the numerator and denominator of the SurfaceIntegral and cancels.
+                # What's left multiplying Integral(f) is the first coordinate of the cross product plus the domain differentials (volume integral).
+                # The first coordinate of the cross product of the boundary manifold's tangent space is the first cofactor of the tangent space.
+                # And so, SurfaceIntegral(dot(F, n)) = VolumeIntegral(Integral(f) * first cofactor) over the boundary manifold's domain.
+                def domainF(domainPoint):
+                    if np.isscalar(domainPoint):
+                        point = boundary.manifold.Point(np.array([domainPoint]))
+                    else:
+                        point = boundary.manifold.Point(domainPoint)
+
+                    # fHat passes the scalar given by integrate.quad into the first coordinate of the vector for f. 
+                    def fHat(x):
+                        evalPoint = np.array(point)
+                        evalPoint[0] = x
+                        return f(evalPoint, *args)
+
+                    # Calculate Integral(f) * first cofactor. Note that quad returns a tuple: (integral, error bound).
+                    return integrate.quad(fHat, x0, point[0], *quadArgs)[0] * boundary.manifold.FirstCofactor(domainPoint)
+
+                # Add the contribution to the Volume integral from this boundary.
+                contribution = boundary.domain.VolumeIntegral(domainF)
+                print(boundary.manifold.normal, contribution)
+                sum += contribution
+        else:
+            # Volume is dimension 1, so this is just a set of regular integrals.
+            x0 = None
+            for boundary in self.boundaries:
+                if x0 is None:
+                    x0 = boundary.manifold.Point(0.0)[0]
+                else:
+                    # Add the contribution to the integral from this boundary.
+                    contribution = integrate.quad(f, x0, boundary.manifold.Point(0.0)[0], args, *quadArgs)[0] * boundary.manifold.FirstCofactor(0.0)
+                    print(boundary.manifold.normal, contribution)
+                    sum += contribution
+
         return sum
 
     def ContainsPoint(self, point):
@@ -130,14 +181,14 @@ class Solid:
             for intersection in intersections:
                 # Each intersection is of the form [distance to intersection, domain point of intersection].
                 # First, check the distance is positive.
-                if intersection[0] > -mf.Manifold.minSeparation:
+                if intersection[0] > -Solid.minSeparation:
                     considerBoundary = True
                     if boundary.domain:
                         # Only include the boundary if the ray intersection is inside its domain.
                         considerBoundary = boundary.domain.ContainsPoint(intersection[1]) < 1
                     # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
                     if considerBoundary:
-                        if intersection[0] < mf.Manifold.minSeparation:
+                        if intersection[0] < Solid.minSeparation:
                             onBoundary = True
                         windingNumber += np.sign(boundary.manifold.Normal(intersection[1])[0])
         

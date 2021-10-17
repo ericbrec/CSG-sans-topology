@@ -2,12 +2,6 @@ import numpy as np
 
 class Manifold:
 
-    # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
-    maxAlignment = 0.99 # 1 - 1/10^2
-
-    # If two points are within 0.01 of each eachother, they are coincident
-    minSeparation = 0.01
-
     def __init__(self):
         pass
 
@@ -29,9 +23,6 @@ class Manifold:
     def Point(self, domainPoint):
         return None
 
-    def DomainFromPoint(self, point):
-        return None
-
     def Translate(self, delta):
         assert len(delta) == self.GetDimension()
 
@@ -49,6 +40,9 @@ class Manifold:
         return intersections
 
 class Hyperplane(Manifold):
+
+    # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
+    maxAlignment = 0.99 # 1 - 1/10^2
 
     @staticmethod
     def TangentSpaceFromNormal(normal):
@@ -75,10 +69,11 @@ class Hyperplane(Manifold):
         if hyperplane.GetDimension() > 1:
             hyperplane.tangentSpace = Hyperplane.TangentSpaceFromNormal(hyperplane.normal)
             # The first (0,0) cofactor of matrix formed by the normal and tangent space is the determinant of the tangent space with the first row deleted.
-            hyperplane.firstCofactor = np.linalg.det(np.delete(hyperplane.tangentSpace, 0, 0))
+            # The sign of the first cofactor must match the sign of the first component of the normal.
+            hyperplane.firstCofactor = np.sign(hyperplane.normal[0]) * abs(np.linalg.det(np.delete(hyperplane.tangentSpace, 0, 0)))
         else:
             hyperplane.tangentSpace = 1.0
-            hyperplane.firstCofactor = 1.0
+            hyperplane.firstCofactor = hyperplane.normal[0]
         return hyperplane
 
     def __init__(self):
@@ -125,7 +120,7 @@ class Hyperplane(Manifold):
         intersections = []
 
         # Ensure hyperplane intersects x-axis
-        if self.normal[0]*self.normal[0] > 1.0 - Manifold.maxAlignment:
+        if self.normal[0]*self.normal[0] > 1.0 - Hyperplane.maxAlignment:
             vectorToManifold = self.point - point
             xDistanceToManifold = np.dot(self.normal, vectorToManifold) / self.normal[0]
             intersectionPoint = np.array(point)
@@ -151,7 +146,7 @@ class Hyperplane(Manifold):
 
         # Ensure manifolds are not parallel
         alignment = np.dot(self.normal, other.normal)
-        if self != other and alignment * alignment < Manifold.maxAlignment:
+        if self != other and alignment * alignment < Hyperplane.maxAlignment:
             # Compute the intersecting self domain hyperplane
             normalSelf = np.dot(other.normal, self.tangentSpace)
             normalize = 1.0 / np.linalg.norm(normalSelf)

@@ -17,11 +17,16 @@ class Manifold:
     def TangentSpace(self, domainPoint):
         return None
     
+    def CofactorNormal(self, domainPoint):
+        # The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
+        return None
+    
     def FirstCofactor(self, domainPoint):
         return 0.0
     
     def Determinant(self, domainPoint):
-        return 0.0
+        # The determinant is the length of the cofactor normal, which corresponds to the normal dotted with the cofactor normal.
+        return np.dot(self.Normal(domainPoint), self.CofactorNormal(domainPoint))
 
     def Point(self, domainPoint):
         return None
@@ -73,23 +78,18 @@ class Hyperplane(Manifold):
             hyperplane.tangentSpace = Hyperplane.TangentSpaceFromNormal(hyperplane.normal)
         else:
             hyperplane.tangentSpace = 1.0
-        # The matrix constructed by TangentSpaceFromNormal is orthonormal, so the determinant is 1.
-        # We need to store the determinant in case we flip the normal.
-        hyperplane.determinant = 1.0
         return hyperplane
 
     def __init__(self):
         self.normal = None
         self.point = None
         self.tangentSpace = None
-        self.determinant = 0.0
 
     def Flip(self):
         hyperplane = Hyperplane()
         hyperplane.normal = -self.normal
         hyperplane.point = self.point
         hyperplane.tangentSpace = self.tangentSpace
-        hyperplane.determinant = -self.determinant
         return hyperplane
 
     def GetDimension(self):
@@ -101,13 +101,13 @@ class Hyperplane(Manifold):
     def TangentSpace(self, domainPoint):
         return self.tangentSpace
     
-    def FirstCofactor(self, domainPoint):
-        # The first (0,0) cofactor of matrix formed by the normal and tangent space is the determinant of the tangent space with the first row deleted.
-        # The matrix constructed by TangentSpaceFromNormal is orthonormal, so the first cofactor is simply normal[0].
-        return self.normal[0]
+    def CofactorNormal(self, domainPoint):
+        # The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
+        # The matrix constructed by TangentSpaceFromNormal is orthonormal, so the cofactor normal is simply the normal.
+        return self.normal
     
-    def Determinant(self, domainPoint):
-        return self.determinant
+    def FirstCofactor(self, domainPoint):
+        return self.normal[0]
 
     def Point(self, domainPoint):
         return np.dot(self.tangentSpace, domainPoint) + self.point

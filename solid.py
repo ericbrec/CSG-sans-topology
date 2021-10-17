@@ -187,9 +187,9 @@ class Solid:
                 fValue = f(point, *args)
                 returnValue = boundary.manifold.Determinant(domainPoint)
                 if fIsVector:
-                    returnValue *= np.dot(fValue, boundary.manifold.Normal(domainPoint))
+                    returnValue = np.dot(fValue, boundary.manifold.CofactorNormal(domainPoint))
                 else:
-                    returnValue *= fValue
+                    returnValue = fValue * np.dot(boundary.manifold.Normal(domainPoint), boundary.manifold.CofactorNormal(domainPoint))
                 return returnValue
 
             for boundary in self.boundaries:

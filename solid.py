@@ -2,8 +2,6 @@ import numpy as np
 import scipy.integrate as integrate
 import manifold as mf
 
-# TODO: Update ContainsPoint to use integral instead of ray cast to compute winding number.
-
 class Boundary:
 
     def __init__(self, manifold, domain = None):
@@ -212,32 +210,53 @@ class Solid:
         #  * Incomplete boundaries lead to fractional values;
         #  * Interior-pointing normals lead to negative values;
         #  * Nested shells lead to absolute values of 2 or greater.
-        windingNumber = 0
+        windingNumber = 0.0
         if self.isVoid:
             # If the solid is a void, then the winding number starts as 1 to account for the boundary at infinity.
-            windingNumber = 1
+            windingNumber = 1.0
 
-        # Intersect a ray from point along the x-axis through self's boundaries.
-        # All dot products with the ray are just the first component, since the ray is along the x-axis.
-        for boundary in self.boundaries:
-            intersections = boundary.manifold.IntersectXRay(point)
-            for intersection in intersections:
-                # Each intersection is of the form [distance to intersection, domain point of intersection].
-                # First, check the distance is positive.
-                if intersection[0] > -Solid.minSeparation:
-                    considerBoundary = True
-                    if boundary.domain:
-                        # Only include the boundary if the ray intersection is inside its domain.
-                        considerBoundary = boundary.domain.ContainsPoint(intersection[1]) < 1
-                    # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
-                    if considerBoundary:
-                        if intersection[0] < Solid.minSeparation:
-                            onBoundary = True
-                        windingNumber += np.sign(boundary.manifold.Normal(intersection[1])[0])
-        
+        if True:
+            # Intersect a ray from point along the x-axis through self's boundaries.
+            # All dot products with the ray are just the first component, since the ray is along the x-axis.
+            for boundary in self.boundaries:
+                intersections = boundary.manifold.IntersectXRay(point)
+                for intersection in intersections:
+                    # Each intersection is of the form [distance to intersection, domain point of intersection].
+                    # First, check the distance is positive.
+                    if intersection[0] > -Solid.minSeparation:
+                        considerBoundary = True
+                        if boundary.domain:
+                            # Only include the boundary if the ray intersection is inside its domain.
+                            considerBoundary = boundary.domain.ContainsPoint(intersection[1]) < 1
+                        # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
+                        if considerBoundary:
+                            if intersection[0] < Solid.minSeparation:
+                                onBoundary = True
+                            windingNumber += np.sign(boundary.manifold.Normal(intersection[1])[0])
+        else:
+            nSphereArea = 2.0
+            if self.dimension % 2 == 0:
+                nSphereArea *= np.pi
+            dimension = self.dimension
+            while dimension > 2:
+                nSphereArea *= 2.0 * np.pi / (dimension - 2.0)
+                dimension -= 2
+                
+            def windingIntegrand(boundaryPoint, onBoundaryList):
+                vector = boundaryPoint - point
+                vectorLength = np.linalg.norm(vector)
+                if np.abs(vectorLength) < Solid.minSeparation:
+                    onBoundaryList[0] = True
+                    vectorLength = 1.0
+                return vector / (vectorLength**self.dimension)
+
+            onBoundaryList = [onBoundary]
+            windingNumber += self.SurfaceIntegral(windingIntegrand, onBoundaryList) / nSphereArea
+            onBoundary = onBoundaryList[0]
+
         if onBoundary:
             containment = 0
-        elif windingNumber == 0:
+        elif abs(windingNumber) < 0.5:
             containment = 1
         return containment 
 

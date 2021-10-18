@@ -8,7 +8,10 @@ class Manifold:
     def Flip(self):
         return self
 
-    def GetDimension(self):
+    def GetDomainDimension(self):
+        return self.GetRangeDimension() - 1
+
+    def GetRangeDimension(self):
         return 0
 
     def Normal(self, domainPoint):
@@ -32,10 +35,10 @@ class Manifold:
         return None
 
     def Translate(self, delta):
-        assert len(delta) == self.GetDimension()
+        assert len(delta) == self.GetRangeDimension()
 
     def IntersectXRay(self, point):
-        assert len(point) == self.GetDimension()
+        assert len(point) == self.GetRangeDimension()
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
         intersections = []
@@ -74,7 +77,7 @@ class Hyperplane(Manifold):
             hyperplane.normal = np.array(normal)
         hyperplane.normal = hyperplane.normal / np.linalg.norm(hyperplane.normal)
         hyperplane.point = offset * hyperplane.normal
-        if hyperplane.GetDimension() > 1:
+        if hyperplane.GetRangeDimension() > 1:
             hyperplane.tangentSpace = Hyperplane.TangentSpaceFromNormal(hyperplane.normal)
         else:
             hyperplane.tangentSpace = 1.0
@@ -92,7 +95,7 @@ class Hyperplane(Manifold):
         hyperplane.tangentSpace = self.tangentSpace
         return hyperplane
 
-    def GetDimension(self):
+    def GetRangeDimension(self):
         return len(self.normal)
 
     def Normal(self, domainPoint):
@@ -116,12 +119,12 @@ class Hyperplane(Manifold):
         return np.dot(point - self.point, self.tangentSpace)
 
     def Translate(self, delta):
-        assert len(delta) == self.GetDimension()
+        assert len(delta) == self.GetRangeDimension()
 
         self.point += delta 
 
     def IntersectXRay(self, point):
-        assert len(point) == self.GetDimension()
+        assert len(point) == self.GetRangeDimension()
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
         intersections = []

@@ -6,9 +6,9 @@ class Boundary:
 
     def __init__(self, manifold, domain = None):
         if domain:
-            assert manifold.GetDimension() - 1 == domain.dimension
+            assert manifold.GetDomainDimension() == domain.dimension
         else:
-            assert manifold.GetDimension() == 1
+            assert manifold.GetDomainDimension() == 0
 
         self.manifold = manifold
         self.domain = domain
@@ -200,17 +200,15 @@ class Solid:
 
         return sum
 
-    def ContainsPoint(self, point):
-        # Return value is -1 for interior, 0 for on boundary, and 1 for exterior
-        containment = -1
-        onBoundary = False
-
+    def WindingNumber(self, point):
+        # Return value is a tuple: winding number, onBoundary
         # The winding number is 0 if the point is outside the solid, 1 if it's inside.
         # Other values indicate issues: 
         #  * Incomplete boundaries lead to fractional values;
         #  * Interior-pointing normals lead to negative values;
         #  * Nested shells lead to absolute values of 2 or greater.
         windingNumber = 0.0
+        onBoundary = False
         if self.isVoid:
             # If the solid is a void, then the winding number starts as 1 to account for the boundary at infinity.
             windingNumber = 1.0
@@ -227,7 +225,7 @@ class Solid:
                         considerBoundary = True
                         if boundary.domain:
                             # Only include the boundary if the ray intersection is inside its domain.
-                            considerBoundary = boundary.domain.ContainsPoint(intersection[1]) < 1
+                            considerBoundary = boundary.domain.ContainsPoint(intersection[1], True)
                         # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
                         if considerBoundary:
                             if intersection[0] < Solid.minSeparation:
@@ -254,10 +252,14 @@ class Solid:
             windingNumber += self.SurfaceIntegral(windingIntegrand, onBoundaryList) / nSphereArea
             onBoundary = onBoundaryList[0]
 
+        return windingNumber, onBoundary 
+
+    def ContainsPoint(self, point, includeBoundary = False):
+        windingNumber, onBoundary = self.WindingNumber(point)
         if onBoundary:
-            containment = 0
-        elif abs(windingNumber) < 0.5:
-            containment = 1
+            containment = includeBoundary
+        else:
+            containment = windingNumber > 0.5
         return containment 
 
     def ContainsBoundary(self, boundary):
@@ -265,18 +267,18 @@ class Solid:
         if boundary.domain:
             # If boundary has a domain, loop through the boundary points of its domain until one is clearly inside or outside.
             for domainPoint in boundary.domain.Points():
-                constainsPoint = self.ContainsPoint(boundary.manifold.Point(domainPoint))
-                if constainsPoint != 0:
-                    containment = constainsPoint < 1
+                windingNumber, onBoundary = self.WindingNumber(boundary.manifold.Point(domainPoint))
+                if not onBoundary:
+                    containment = windingNumber > 0.5
                     break
         else:
             # Otherwise, the boundary is a single point, so just determine if it's inside or outside.
-            containment = self.ContainsPoint(boundary.manifold.Point(0.0)) < 1
+            containment = self.ContainsPoint(boundary.manifold.Point(0.0))
 
         return containment
 
     def Slice(self, manifold, cache = None):
-        assert manifold.GetDimension() == self.dimension
+        assert manifold.GetRangeDimension() == self.dimension
 
         manifoldDomain = None
 
@@ -303,7 +305,7 @@ class Solid:
                     else:
                         # This domain is dimension 1, a real number line, and the intersection is a point on that line.
                         # Determine if the intersection point is within domain's interior.
-                        if boundary.domain.ContainsPoint(intersection[0].Point(0.0)) < 1:
+                        if boundary.domain.ContainsPoint(intersection[0].Point(0.0)):
                             manifoldDomain.boundaries.append(Boundary(intersection[1]))
             
             # Don't return a manifold domain if it's empty

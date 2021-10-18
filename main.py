@@ -31,10 +31,13 @@ class InteractiveCanvas:
     def PerformBooleanOperation(self, key):
         if key == 'i':
             solid = self.solidA.Intersection(self.solidB)
+            self.key = key
         elif key == 'u':
             solid = self.solidA.Union(self.solidB)
+            self.key = key
         elif key == 'd':
             solid = self.solidA.Difference(self.solidB)
+            self.key = key
         else:
             solid = self.solidC
 
@@ -51,8 +54,7 @@ class InteractiveCanvas:
 
         self.solidA = solidA
         self.solidB = solidB
-        self.key = 'u'
-        self.solidC = self.PerformBooleanOperation(self.key)
+        self.solidC = self.PerformBooleanOperation('u')
 
         self.patchA = patches.PathPatch(self.CreatePathFromSolid(self.solidA), linewidth=1, color="blue")
         self.patchB = patches.PathPatch(self.CreatePathFromSolid(self.solidB), linewidth=1, color="orange")

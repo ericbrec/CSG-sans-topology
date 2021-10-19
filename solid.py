@@ -73,15 +73,20 @@ class Solid:
         for boundary in self.boundaries:
             boundary.manifold.Translate(delta)
     
-    def Points(self):
-        for boundary in self.boundaries:
+    def AnyPointAndNormal(self):
+        point = None
+        normal = None
+        if len(self.boundaries) > 0:
+            boundary = self.boundaries[0]
             if boundary.domain:
-                for domainPoint in boundary.domain.Points():
-                    point = boundary.manifold.Point(domainPoint)
-                    yield point
+                domainPoint, domainNormal = boundary.domain.AnyPointAndNormal()
             else:
-                yield boundary.manifold.Point(0.0)
-    
+                domainPoint = 0.0
+            point = boundary.manifold.Point(domainPoint)
+            normal = boundary.manifold.Normal(domainPoint)
+
+        return point, normal
+
     def Edges(self):
         if self.dimension > 1:
             for boundary in self.boundaries:
@@ -116,7 +121,7 @@ class Solid:
 
         if len(self.boundaries) > 0:
             # Select the first coordinate of an arbitrary point within the volume boundary (the domain of f)
-            x0 = next(self.Points())[0]
+            x0 = (self.AnyPointAndNormal())[0][0]
 
             for boundary in self.boundaries:
                 # domainF is the integrand you get by applying the divergence theorem: VolumeIntegral(divergence(F)) = SurfaceIntegral(dot(F, n)).
@@ -168,47 +173,36 @@ class Solid:
         # Initialize the return value for the integral
         sum = 0.0
 
-        if len(self.boundaries) > 0:
-            # Select an arbitrary point within the volume boundary (the domain of f) to determine the dimension of f.
-            point = next(self.Points())
-            fValue = f(point, *args)
-            fIsVector = False
-            if not np.isscalar(fValue):
-                assert len(fValue) == self.dimension
-                fIsVector = True
-            
+        for boundary in self.boundaries:
             def integrand(domainPoint):
                 if np.isscalar(domainPoint):
-                    point = boundary.manifold.Point(np.array([domainPoint]))
+                    evalPoint = np.array([domainPoint])
+                    point = boundary.manifold.Point(evalPoint)
+                    normal = boundary.manifold.Normal(evalPoint)
                 else:
                     point = boundary.manifold.Point(domainPoint)
-                fValue = f(point, *args)
-                returnValue = boundary.manifold.Determinant(domainPoint)
-                if fIsVector:
-                    returnValue = np.dot(fValue, boundary.manifold.CofactorNormal(domainPoint))
-                else:
-                    returnValue = fValue * np.dot(boundary.manifold.Normal(domainPoint), boundary.manifold.CofactorNormal(domainPoint))
-                return returnValue
+                    normal = boundary.manifold.Normal(domainPoint)
+                fValue = f(point, normal, *args)
+                return np.dot(fValue, boundary.manifold.CofactorNormal(domainPoint))
 
-            for boundary in self.boundaries:
-                if boundary.domain:
-                    # Add the contribution to the Volume integral from this boundary.
-                    sum += boundary.domain.VolumeIntegral(integrand)
-                else:
-                    # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
-                    sum += integrand(0.0)
+            if boundary.domain:
+                # Add the contribution to the Volume integral from this boundary.
+                sum += boundary.domain.VolumeIntegral(integrand)
+            else:
+                # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
+                sum += integrand(0.0)
 
         return sum
 
     def WindingNumber(self, point):
-        # Return value is a tuple: winding number, onBoundary
+        # Return value is a tuple: winding number, onBoundaryNormal
         # The winding number is 0 if the point is outside the solid, 1 if it's inside.
         # Other values indicate issues: 
         #  * Incomplete boundaries lead to fractional values;
         #  * Interior-pointing normals lead to negative values;
         #  * Nested shells lead to absolute values of 2 or greater.
         windingNumber = 0.0
-        onBoundary = False
+        onBoundaryNormal = None
         if self.isVoid:
             # If the solid is a void, then the winding number starts as 1 to account for the boundary at infinity.
             windingNumber = 1.0
@@ -225,11 +219,11 @@ class Solid:
                         considerBoundary = True
                         if boundary.domain:
                             # Only include the boundary if the ray intersection is inside its domain.
-                            considerBoundary = boundary.domain.ContainsPoint(intersection[1], True)
+                            considerBoundary = boundary.domain.ContainsPoint(intersection[1])
                         # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
                         if considerBoundary:
                             if intersection[0] < Solid.minSeparation:
-                                onBoundary = True
+                                onBoundaryNormal = boundary.manifold.Normal(intersection[1])
                             windingNumber += np.sign(boundary.manifold.Normal(intersection[1])[0])
         else:
             nSphereArea = 2.0
@@ -240,25 +234,24 @@ class Solid:
                 nSphereArea *= 2.0 * np.pi / (dimension - 2.0)
                 dimension -= 2
                 
-            def windingIntegrand(boundaryPoint, onBoundaryList):
+            def windingIntegrand(boundaryPoint, boundaryNormal, onBoundaryNormalList):
                 vector = boundaryPoint - point
                 vectorLength = np.linalg.norm(vector)
                 if np.abs(vectorLength) < Solid.minSeparation:
-                    onBoundaryList[0] = True
+                    onBoundaryNormalList[0] = boundaryNormal
                     vectorLength = 1.0
                 return vector / (vectorLength**self.dimension)
 
-            onBoundaryList = [onBoundary]
-            windingNumber += self.SurfaceIntegral(windingIntegrand, onBoundaryList) / nSphereArea
-            onBoundary = onBoundaryList[0]
+            onBoundaryNormalList = [onBoundaryNormal]
+            windingNumber += self.SurfaceIntegral(windingIntegrand, True, onBoundaryNormalList) / nSphereArea
+            onBoundaryNormal = onBoundaryNormalList[0]
 
-        return windingNumber, onBoundary 
+        return windingNumber, onBoundaryNormal 
 
-    def ContainsPoint(self, point, includeBoundary = False):
-        windingNumber, onBoundary = self.WindingNumber(point)
-        if onBoundary:
-            containment = includeBoundary
-        else:
+    def ContainsPoint(self, point):
+        windingNumber, onBoundaryNormal = self.WindingNumber(point)
+        containment = True
+        if onBoundaryNormal is None:
             containment = windingNumber > 0.5
         return containment 
 
@@ -267,9 +260,10 @@ class Solid:
         if boundary.domain:
             # If boundary has a domain, loop through the boundary points of its domain until one is clearly inside or outside.
             for domainPoint in boundary.domain.Points():
-                windingNumber, onBoundary = self.WindingNumber(boundary.manifold.Point(domainPoint))
-                if not onBoundary:
+                windingNumber, onBoundaryNormal = self.WindingNumber(boundary.manifold.Point(domainPoint))
+                if onBoundaryNormal is None:
                     containment = windingNumber > 0.5
+                else:
                     break
         else:
             # Otherwise, the boundary is a single point, so just determine if it's inside or outside.

@@ -177,11 +177,10 @@ class Solid:
             def integrand(domainPoint):
                 if np.isscalar(domainPoint):
                     evalPoint = np.array([domainPoint])
-                    point = boundary.manifold.Point(evalPoint)
-                    normal = boundary.manifold.Normal(evalPoint)
                 else:
-                    point = boundary.manifold.Point(domainPoint)
-                    normal = boundary.manifold.Normal(domainPoint)
+                    evalPoint = domainPoint
+                point = boundary.manifold.Point(evalPoint)
+                normal = boundary.manifold.Normal(evalPoint)
                 fValue = f(point, normal, *args)
                 return np.dot(fValue, boundary.manifold.CofactorNormal(domainPoint))
 
@@ -197,17 +196,18 @@ class Solid:
     def WindingNumber(self, point):
         # Return value is a tuple: winding number, onBoundaryNormal
         # The winding number is 0 if the point is outside the solid, 1 if it's inside.
-        # Other values indicate issues: 
-        #  * Incomplete boundaries lead to fractional values;
-        #  * Interior-pointing normals lead to negative values;
-        #  * Nested shells lead to absolute values of 2 or greater.
+        #   Other values indicate issues: 
+        #   * Incomplete boundaries lead to fractional values;
+        #   * Interior-pointing normals lead to negative values;
+        #   * Nested shells lead to absolute values of 2 or greater.
+        # OnBoundaryNormal is None or the boundary normal if the point lies on a boundary. 
         windingNumber = 0.0
         onBoundaryNormal = None
         if self.isVoid:
             # If the solid is a void, then the winding number starts as 1 to account for the boundary at infinity.
             windingNumber = 1.0
 
-        if True:
+        if False:
             # Intersect a ray from point along the x-axis through self's boundaries.
             # All dot products with the ray are just the first component, since the ray is along the x-axis.
             for boundary in self.boundaries:
@@ -243,7 +243,7 @@ class Solid:
                 return vector / (vectorLength**self.dimension)
 
             onBoundaryNormalList = [onBoundaryNormal]
-            windingNumber += self.SurfaceIntegral(windingIntegrand, True, onBoundaryNormalList) / nSphereArea
+            windingNumber += self.SurfaceIntegral(windingIntegrand, onBoundaryNormalList) / nSphereArea
             onBoundaryNormal = onBoundaryNormalList[0]
 
         return windingNumber, onBoundaryNormal 
@@ -258,17 +258,15 @@ class Solid:
     def ContainsBoundary(self, boundary):
         containment = False
         if boundary.domain:
-            # If boundary has a domain, loop through the boundary points of its domain until one is clearly inside or outside.
-            for domainPoint in boundary.domain.Points():
-                windingNumber, onBoundaryNormal = self.WindingNumber(boundary.manifold.Point(domainPoint))
-                if onBoundaryNormal is None:
-                    containment = windingNumber > 0.5
-                else:
-                    break
+            domainPoint, domainNormal = boundary.domain.AnyPointAndNormal()
         else:
-            # Otherwise, the boundary is a single point, so just determine if it's inside or outside.
-            containment = self.ContainsPoint(boundary.manifold.Point(0.0))
-
+            domainPoint = 0.0
+        windingNumber, onBoundaryNormal = self.WindingNumber(boundary.manifold.Point(domainPoint))
+        if onBoundaryNormal is None:
+            containment = windingNumber > 0.5
+        else:
+            # Boundaries are coincident at the point, so containment is based on alignment of normals.
+            containment = np.dot(onBoundaryNormal, boundary.manifold.Normal(domainPoint)) > 0.0
         return containment
 
     def Slice(self, manifold, cache = None):
@@ -297,9 +295,10 @@ class Solid:
                         if intersectionSlice:
                             manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionSlice))
                     else:
-                        # This domain is dimension 1, a real number line, and the intersection is a point on that line.
-                        # Determine if the intersection point is within domain's interior.
-                        if boundary.domain.ContainsPoint(intersection[0].Point(0.0)):
+                        # This domain is dimension 1, a real number line.
+                        # The intersection is a boundary point on that line (a point and normal).
+                        # If the boundary point is within the domain, add its twin to the manifoldDomain.
+                        if boundary.domain.ContainsBoundary(Boundary(intersection[0])):
                             manifoldDomain.boundaries.append(Boundary(intersection[1]))
             
             # Don't return a manifold domain if it's empty

@@ -3,6 +3,13 @@ import scipy.integrate as integrate
 import manifold as mf
 
 class Boundary:
+    
+    @staticmethod
+    def SortKey(boundary):
+        if boundary.domain:
+            return 0.0
+        else:
+            return (boundary.manifold.Point(0.0), -boundary.manifold.Normal(0.0))
 
     def __init__(self, manifold, domain = None):
         if domain:
@@ -12,13 +19,6 @@ class Boundary:
 
         self.manifold = manifold
         self.domain = domain
-    
-    @staticmethod
-    def SortKey(boundary):
-        if boundary.domain:
-            return 0.0
-        else:
-            return (boundary.manifold.Point(0.0), -boundary.manifold.Normal(0.0))
 
 class Solid:
 
@@ -207,7 +207,7 @@ class Solid:
             # If the solid is a void, then the winding number starts as 1 to account for the boundary at infinity.
             windingNumber = 1.0
 
-        if False:
+        if True:
             # Intersect a ray from point along the x-axis through self's boundaries.
             # All dot products with the ray are just the first component, since the ray is along the x-axis.
             for boundary in self.boundaries:
@@ -320,20 +320,26 @@ class Solid:
         for boundary in self.boundaries:
             # Slice self boundary manifold by solid. If it intersects, intersect the domains.
             slice = solid.Slice(boundary.manifold, cache)
+            newDomain = None
             if slice:
                 newDomain = boundary.domain.Intersection(slice, cache)
-                if len(newDomain.boundaries) > 0:
-                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
+                if len(newDomain.boundaries) == 0:
+                    newDomain = None
+            if newDomain:
+                combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif solid.ContainsBoundary(boundary):
                 combinedSolid.boundaries.append(boundary)
 
         for boundary in solid.boundaries:
             # Slice solid boundary manifold by self. If it intersects, intersect the domains.
             slice = self.Slice(boundary.manifold, cache)
+            newDomain = None
             if slice:
                 newDomain = boundary.domain.Intersection(slice, cache)
-                if len(newDomain.boundaries) > 0:
-                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
+                if len(newDomain.boundaries) == 0:
+                    newDomain = None
+            if newDomain:
+                combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif self.ContainsBoundary(boundary):
                 combinedSolid.boundaries.append(boundary)
 

@@ -91,6 +91,7 @@ class InteractiveCanvas:
         if event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
+        print(self.key)
         self.solidC = self.PerformBooleanOperation(self.key)
         self.patchC.set_path(self.CreatePathFromSolid(self.solidC))
         self.canvas.draw()
@@ -109,7 +110,7 @@ class InteractiveCanvas:
         
         delta = [0.0]*self.solidB.dimension
         delta[0] = event.xdata - self.origin[0]
-        delta[1] = event.ydata - self.origin[1]
+        delta[1] = 0.0 # event.ydata - self.origin[1]
         self.solidB.Translate(delta)
         self.origin[0] = event.xdata
         self.origin[1] = event.ydata
@@ -151,9 +152,10 @@ squareA = sld.Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
 print(squareA.VolumeIntegral(lambda x: 1.0), 4.0*4.0)
 print(squareA.SurfaceIntegral(lambda x, n: n), 4.0*4.0)
 print(squareA.WindingNumber(np.array([0.,0.])))
-squareB = sld.Solid.CreateSolidFromPoints(2, [[-1,-1],[-1,2],[2,2],[2,-1]])
-print(squareB.VolumeIntegral(lambda x: 1.0), 3.0*3.0)
-print(squareB.SurfaceIntegral(lambda x, n: n), 3.0*4.0)
+print(squareA.WindingNumber(np.array([-0.23870968,1.])))
+squareB = sld.Solid.CreateSolidFromPoints(2, [[1,1],[3,1],[3,-1],[1,-1]])
+print(squareB.VolumeIntegral(lambda x: 1.0), 2.0*2.0)
+print(squareB.SurfaceIntegral(lambda x, n: n), 2.0*4.0)
 
 starArea = 10.0 * np.tan(np.pi / 10.0) / (3.0 - np.tan(np.pi / 10.0)**2)
 starPerimeter = 10.0 * np.cos(2.0*np.pi/5.0) * (np.tan(2.0*np.pi/5.0) - np.tan(np.pi/5.0))
@@ -165,7 +167,7 @@ starB = CreateStar(1.0, [2.0, 2.0], 90.0*6.28/360.0)
 print(starB.VolumeIntegral(lambda x: 1.0), starArea)
 print(starB.SurfaceIntegral(lambda x, n: n), starPerimeter)
 
-#interactor = InteractiveCanvas(squareA, squareB)
-interactor = InteractiveCanvas(starA, starB)
+interactor = InteractiveCanvas(squareA, squareB)
+#interactor = InteractiveCanvas(starA, starB)
 #interactor = InteractiveCanvas(squareA, starB)
 plt.show()

@@ -80,7 +80,7 @@ class Hyperplane(Manifold):
         if hyperplane.GetRangeDimension() > 1:
             hyperplane.tangentSpace = Hyperplane.TangentSpaceFromNormal(hyperplane.normal)
         else:
-            hyperplane.tangentSpace = 1.0
+            hyperplane.tangentSpace = np.array([1.0])
         return hyperplane
 
     def __init__(self):

@@ -211,8 +211,7 @@ class Solid:
                     onBoundaryNormal = boundary.manifold.Normal(0.0)
                     break
                 else:
-                    windingNumber += boundary.manifold.Normal(0.0)[0] * np.sign(separation)
-            windingNumber /= 1.0
+                    windingNumber += boundary.manifold.Normal(0.0)[0] * np.sign(separation) / 2.0
         elif True:
             # Intersect a ray from point along the x-axis through self's boundaries.
             # All dot products with the ray are just the first component, since the ray is along the x-axis.
@@ -256,6 +255,7 @@ class Solid:
 
     def ContainsPoint(self, point):
         windingNumber, onBoundaryNormal = self.WindingNumber(point)
+        # The default is to include points on the boundary (onBoundaryNormal is not None).
         containment = True
         if onBoundaryNormal is None:
             containment = windingNumber > 0.5
@@ -283,6 +283,7 @@ class Solid:
         # Only manifolds of dimension > 1 have a domain.
         if self.dimension > 1:
             manifoldDomain = Solid(self.dimension-1, self.isVoid)
+            intersectionAlignment = None
 
             # Intersect each of this solid's boundaries with the manifold.
             for boundary in self.boundaries:
@@ -299,18 +300,22 @@ class Solid:
                     if isinstance(intersection, list):
                         if boundary.domain.dimension > 1:
                             intersectionSlice = boundary.domain.Slice(intersection[0], cache)
-                            if intersectionSlice:
+                            if isinstance(intersectionSlice, Solid):
                                 manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionSlice))
+                            elif np.isscalar(intersectionSlice) and intersectionSlice > 0.0:
+                                pass # Probably need to add boundary domain mapped from intersection[0] to intersection[1]
                         else:
                             # This domain is dimension 1, a real number line.
                             # The intersection is a boundary point on that line (a point and normal).
                             # If the boundary point is within the domain, add its twin to the manifoldDomain.
                             if boundary.domain.ContainsBoundary(Boundary(intersection[0])):
                                 manifoldDomain.boundaries.append(Boundary(intersection[1]))
+                    elif np.isscalar(intersection):
+                        intersectionAlignment = intersection
             
-            # Don't return a manifold domain if it's empty
+            # Manifold without any intersections needs to report coincidence alignment (if any). 
             if len(manifoldDomain.boundaries) == 0:
-                manifoldDomain = None
+                manifoldDomain = intersectionAlignment
         
         return manifoldDomain
 
@@ -328,26 +333,38 @@ class Solid:
             # Slice self boundary manifold by solid. If it intersects, intersect the domains.
             slice = solid.Slice(boundary.manifold, cache)
             newDomain = None
-            if slice:
+            if isinstance(slice, Solid):
                 newDomain = boundary.domain.Intersection(slice, cache)
                 if len(newDomain.boundaries) == 0:
                     newDomain = None
             if newDomain:
+                # Boundary intersects solid, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
+            elif np.isscalar(slice):
+                # Boundary is coincident with solid, so its containment is based on alignment of normals.
+                if slice > 0.0:
+                    combinedSolid.boundaries.append(boundary)
             elif solid.ContainsBoundary(boundary):
+                # Boundary is separate from solid, so its containment is based on being wholly contained within solid. 
                 combinedSolid.boundaries.append(boundary)
 
         for boundary in solid.boundaries:
             # Slice solid boundary manifold by self. If it intersects, intersect the domains.
             slice = self.Slice(boundary.manifold, cache)
             newDomain = None
-            if slice:
+            if isinstance(slice, Solid):
                 newDomain = boundary.domain.Intersection(slice, cache)
                 if len(newDomain.boundaries) == 0:
                     newDomain = None
             if newDomain:
+                # Boundary intersects self, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
+            elif np.isscalar(slice):
+                # Boundary is coincident with self, so its containment is based on alignment of normals.
+                if slice > 0.0:
+                    combinedSolid.boundaries.append(boundary)
             elif self.ContainsBoundary(boundary):
+                # Boundary is separate from self, so its containment is based on being wholly contained within self. 
                 combinedSolid.boundaries.append(boundary)
 
         return combinedSolid

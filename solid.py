@@ -204,7 +204,16 @@ class Solid:
             # If the solid is a void, then the winding number starts as 1 to account for the boundary at infinity.
             windingNumber = 1.0
 
-        if True:
+        if self.dimension == 1:
+            for boundary in self.boundaries:
+                separation = (boundary.manifold.Point(0.0) - point)[0]
+                if abs(separation) < mf.Manifold.minSeparation:
+                    onBoundaryNormal = boundary.manifold.Normal(0.0)
+                    break
+                else:
+                    windingNumber += boundary.manifold.Normal(0.0)[0] * np.sign(separation)
+            windingNumber /= 1.0
+        elif True:
             # Intersect a ray from point along the x-axis through self's boundaries.
             # All dot products with the ray are just the first component, since the ray is along the x-axis.
             for boundary in self.boundaries:

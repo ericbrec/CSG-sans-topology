@@ -83,7 +83,7 @@ class Hyperplane(Manifold):
         if hyperplane.GetRangeDimension() > 1:
             hyperplane.tangentSpace = Hyperplane.TangentSpaceFromNormal(hyperplane.normal)
         else:
-            hyperplane.tangentSpace = np.array([1.0])
+            hyperplane.tangentSpace = np.array([0.0])
         return hyperplane
 
     def __init__(self):
@@ -182,7 +182,7 @@ class Hyperplane(Manifold):
             # These two hyperplanes are coincident.
             coincident = True
 
-        # Manifolds with multiple intersections ignore coincident spots. 
+        # Manifolds without intersections need to report coincidence. 
         if len(intersections) == 0 and coincident:
             intersections.append(alignment)
             intersectionsFlipped.append(alignment)

@@ -22,9 +22,6 @@ class Boundary:
 
 class Solid:
 
-    # If two points are within 0.01 of each eachother, they are coincident
-    minSeparation = 0.01
-
     @staticmethod
     def CreateSolidFromPoints(dimension, points, isVoid = False):
         # CreateSolidFromPoints only works for dimension 2 so far.
@@ -101,7 +98,7 @@ class Solid:
                     leftPoint = self.boundaries[leftB].manifold.Point(0.0)
                     while rightB < len(self.boundaries):
                         rightPoint = self.boundaries[rightB].manifold.Point(0.0)
-                        if leftPoint - Solid.minSeparation < rightPoint and self.boundaries[rightB].manifold.Normal(0.0) > 0.0:
+                        if leftPoint - mf.Manifold.minSeparation < rightPoint and self.boundaries[rightB].manifold.Normal(0.0) > 0.0:
                             yield [leftPoint, rightPoint]
                             rightB += 1
                             break
@@ -112,9 +109,9 @@ class Solid:
         if not isinstance(args, tuple):
             args = (args,)
         if epsabs is None:
-            epsabs = Solid.minSeparation
+            epsabs = mf.Manifold.minSeparation
         if epsrel is None:
-            epsrel = Solid.minSeparation
+            epsrel = mf.Manifold.minSeparation
 
         # Initialize the return value for the integral
         sum = 0.0
@@ -166,9 +163,9 @@ class Solid:
         if not isinstance(args, tuple):
             args = (args,)
         if epsabs is None:
-            epsabs = Solid.minSeparation
+            epsabs = mf.Manifold.minSeparation
         if epsrel is None:
-            epsrel = Solid.minSeparation
+            epsrel = mf.Manifold.minSeparation
 
         # Initialize the return value for the integral
         sum = 0.0
@@ -215,14 +212,14 @@ class Solid:
                 for intersection in intersections:
                     # Each intersection is of the form [distance to intersection, domain point of intersection].
                     # First, check the distance is positive.
-                    if intersection[0] > -Solid.minSeparation:
+                    if intersection[0] > -mf.Manifold.minSeparation:
                         considerBoundary = True
                         if boundary.domain:
                             # Only include the boundary if the ray intersection is inside its domain.
                             considerBoundary = boundary.domain.ContainsPoint(intersection[1])
                         # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
                         if considerBoundary:
-                            if intersection[0] < Solid.minSeparation:
+                            if intersection[0] < mf.Manifold.minSeparation:
                                 onBoundaryNormal = boundary.manifold.Normal(intersection[1])
                             windingNumber += np.sign(boundary.manifold.Normal(intersection[1])[0])
         else:
@@ -237,7 +234,7 @@ class Solid:
             def windingIntegrand(boundaryPoint, boundaryNormal, onBoundaryNormalList):
                 vector = boundaryPoint - point
                 vectorLength = np.linalg.norm(vector)
-                if np.abs(vectorLength) < Solid.minSeparation:
+                if np.abs(vectorLength) < mf.Manifold.minSeparation:
                     onBoundaryNormalList[0] = boundaryNormal
                     vectorLength = 1.0
                 return vector / (vectorLength**self.dimension)
@@ -281,7 +278,7 @@ class Solid:
             # Intersect each of this solid's boundaries with the manifold.
             for boundary in self.boundaries:
                 # Start by intersecting the boundary's manifold with the given manifold.
-                # IntersectManifold returns a collection of manifold pairs:
+                # IntersectManifold returns a collection of manifold pairs (or an alignment value if coincident):
                 #   * intersection[0] is in the boundary's domain;
                 #   * intersection[1] is in the given manifold's domain.
                 # Both intersections correspond to the same range (the intersection between the manifolds).
@@ -290,16 +287,17 @@ class Solid:
                 # For each intersection, slice the boundary domain with the intersection manifold.
                 # We slice the boundary domain using intersection[0], but we add intersection[1] to the manifold domain. 
                 for intersection in intersections:
-                    if boundary.domain.dimension > 1:
-                        intersectionSlice = boundary.domain.Slice(intersection[0], cache)
-                        if intersectionSlice:
-                            manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionSlice))
-                    else:
-                        # This domain is dimension 1, a real number line.
-                        # The intersection is a boundary point on that line (a point and normal).
-                        # If the boundary point is within the domain, add its twin to the manifoldDomain.
-                        if boundary.domain.ContainsBoundary(Boundary(intersection[0])):
-                            manifoldDomain.boundaries.append(Boundary(intersection[1]))
+                    if isinstance(intersection, list):
+                        if boundary.domain.dimension > 1:
+                            intersectionSlice = boundary.domain.Slice(intersection[0], cache)
+                            if intersectionSlice:
+                                manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionSlice))
+                        else:
+                            # This domain is dimension 1, a real number line.
+                            # The intersection is a boundary point on that line (a point and normal).
+                            # If the boundary point is within the domain, add its twin to the manifoldDomain.
+                            if boundary.domain.ContainsBoundary(Boundary(intersection[0])):
+                                manifoldDomain.boundaries.append(Boundary(intersection[1]))
             
             # Don't return a manifold domain if it's empty
             if len(manifoldDomain.boundaries) == 0:

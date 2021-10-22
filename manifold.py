@@ -2,6 +2,12 @@ import numpy as np
 
 class Manifold:
 
+    # If two points are within 0.01 of each eachother, they are coincident
+    minSeparation = 0.01
+
+    # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
+    maxAlignment = 0.99 # 1 - 1/10^2
+
     def __init__(self):
         pass
 
@@ -51,9 +57,6 @@ class Manifold:
         return intersections
 
 class Hyperplane(Manifold):
-
-    # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
-    maxAlignment = 0.99 # 1 - 1/10^2
 
     @staticmethod
     def TangentSpaceFromNormal(normal):
@@ -130,7 +133,7 @@ class Hyperplane(Manifold):
         intersections = []
 
         # Ensure hyperplane intersects x-axis
-        if self.normal[0]*self.normal[0] > 1.0 - Hyperplane.maxAlignment:
+        if self.normal[0]*self.normal[0] > 1.0 - Manifold.maxAlignment:
             vectorToManifold = self.point - point
             xDistanceToManifold = np.dot(self.normal, vectorToManifold) / self.normal[0]
             intersectionPoint = np.array(point)
@@ -154,9 +157,12 @@ class Hyperplane(Manifold):
         intersections = []
         intersectionsFlipped = []
 
+        # Initialize coincident marker
+        coincident = False
+
         # Ensure manifolds are not parallel
         alignment = np.dot(self.normal, other.normal)
-        if self != other and alignment * alignment < Hyperplane.maxAlignment:
+        if alignment * alignment < Manifold.maxAlignment:
             # Compute the intersecting self domain hyperplane
             normalSelf = np.dot(other.normal, self.tangentSpace)
             normalize = 1.0 / np.linalg.norm(normalSelf)
@@ -172,6 +178,14 @@ class Hyperplane(Manifold):
             intersection = [Hyperplane.CreateFromNormal(normalSelf, offsetSelf), Hyperplane.CreateFromNormal(normalOther, offsetOther)]
             intersections.append(intersection)
             intersectionsFlipped.append([intersection[1], intersection[0]])
+        elif np.abs(np.dot(self.normal, other.point - self.point)) < Manifold.minSeparation:
+            # These two hyperplanes are coincident.
+            coincident = True
+
+        # Manifolds with multiple intersections ignore coincident spots. 
+        if len(intersections) == 0 and coincident:
+            intersections.append(alignment)
+            intersectionsFlipped.append(alignment)
 
         # Store intersections in cache
         if cache != None:

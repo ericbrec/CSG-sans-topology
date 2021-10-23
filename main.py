@@ -166,6 +166,7 @@ print(starA.WindingNumber(np.array([-1.,-1.])))
 starB = CreateStar(1.0, [2.0, 2.0], 90.0*6.28/360.0)
 print(starB.VolumeIntegral(lambda x: 1.0), starArea)
 print(starB.SurfaceIntegral(lambda x, n: n), starPerimeter)
+starB.Translate([-2.31895479, -2.69507693])
 
 #interactor = InteractiveCanvas(squareA, squareB)
 interactor = InteractiveCanvas(starA, starB)

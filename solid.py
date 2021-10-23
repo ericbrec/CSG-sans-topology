@@ -100,6 +100,7 @@ class Solid:
                         rightPoint = self.boundaries[rightB].manifold.Point(0.0)
                         if leftPoint - mf.Manifold.minSeparation < rightPoint and self.boundaries[rightB].manifold.Normal(0.0) > 0.0:
                             yield [leftPoint, rightPoint]
+                            leftB = rightB
                             rightB += 1
                             break
                         rightB += 1

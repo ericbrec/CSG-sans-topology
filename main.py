@@ -156,7 +156,7 @@ def CreateStar(radius, center, angle):
     vertices = []
     points = 5
     for i in range(points):
-        vertices.append([radius*np.cos(angle - ((2*i)%points)*6.28/points) + center[0], radius*np.sin(angle - ((2*i)%points)*6.28/points) + center[1]])
+        vertices.append([radius*np.cos(angle - ((2*i)%points)*6.2832/points) + center[0], radius*np.sin(angle - ((2*i)%points)*6.2832/points) + center[1]])
 
     nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
     u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt

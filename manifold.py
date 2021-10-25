@@ -178,7 +178,7 @@ class Hyperplane(Manifold):
             intersection = [Hyperplane.CreateFromNormal(normalSelf, offsetSelf), Hyperplane.CreateFromNormal(normalOther, offsetOther)]
             intersections.append(intersection)
             intersectionsFlipped.append([intersection[1], intersection[0]])
-        elif np.abs(np.dot(self.normal, other.point - self.point)) < Manifold.minSeparation:
+        elif -2.0 * Manifold.minSeparation < np.dot(self.normal, self.point - other.point) < Manifold.minSeparation:
             # These two hyperplanes are coincident.
             coincident = True
 

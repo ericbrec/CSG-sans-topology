@@ -177,12 +177,13 @@ class Solid:
 
         if self.dimension == 1:
             for boundary in self.boundaries:
-                separation = (boundary.manifold.Point(0.0) - point)[0]
-                if abs(separation) < mf.Manifold.minSeparation:
-                    onBoundaryNormal = boundary.manifold.Normal(0.0)
+                normal = boundary.manifold.Normal(0.0)
+                separation = np.dot(normal, boundary.manifold.Point(0.0) - point)
+                if -2.0 * mf.Manifold.minSeparation < separation < mf.Manifold.minSeparation:
+                    onBoundaryNormal = normal
                     break
                 else:
-                    windingNumber += boundary.manifold.Normal(0.0)[0] * np.sign(separation) / 2.0
+                    windingNumber += np.sign(separation) / 2.0
         elif True:
             # Intersect a ray from point along the x-axis through self's boundaries.
             # All dot products with the ray are just the first component, since the ray is along the x-axis.
@@ -213,7 +214,7 @@ class Solid:
             def windingIntegrand(boundaryPoint, boundaryNormal, onBoundaryNormalList):
                 vector = boundaryPoint - point
                 vectorLength = np.linalg.norm(vector)
-                if np.abs(vectorLength) < mf.Manifold.minSeparation:
+                if vectorLength < mf.Manifold.minSeparation:
                     onBoundaryNormalList[0] = boundaryNormal
                     vectorLength = 1.0
                 return vector / (vectorLength**self.dimension)

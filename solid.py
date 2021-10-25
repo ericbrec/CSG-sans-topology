@@ -176,6 +176,7 @@ class Solid:
             windingNumber = 1.0
 
         if self.dimension == 1:
+            # Fast winding number calculation for a number line specialized to catch boundary edges.
             for boundary in self.boundaries:
                 normal = boundary.manifold.Normal(0.0)
                 separation = np.dot(normal, boundary.manifold.Point(0.0) - point)
@@ -275,7 +276,9 @@ class Solid:
                             if isinstance(intersectionSlice, Solid):
                                 manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionSlice))
                             elif np.isscalar(intersectionSlice) and intersectionSlice > 0.0:
-                                pass # Probably need to add boundary domain mapped from intersection[0] to intersection[1]
+                                # Either ignore or add boundary for intersection[1] whose domain is mapped from intersection[0] to intersection[1].
+                                # I'm choosing to ignore for now, because the domain Slice should have returned a solid unless intersection[0] just skims the domain.
+                                pass
                         else:
                             # This domain is dimension 1, a real number line.
                             # The intersection is a boundary point on that line (a point and normal).

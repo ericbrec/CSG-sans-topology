@@ -22,36 +22,6 @@ class Boundary:
 
 class Solid:
 
-    @staticmethod
-    def CreateSolidFromPoints(dimension, points, isVoid = False):
-        # CreateSolidFromPoints only works for dimension 2 so far.
-        assert dimension == 2
-        assert len(points) > 2
-        assert len(points[0]) == dimension
-
-        solid = Solid(dimension, isVoid)
-
-        previousPoint = np.array(points[len(points)-1])
-        for point in points:
-            point = np.array(point)
-            vector = point - previousPoint
-            normal = np.array([-vector[1], vector[0]])
-            normal = normal / np.linalg.norm(normal)
-            hyperplane = mf.Hyperplane.CreateFromNormal(normal,np.dot(normal,point))
-            domain = Solid(dimension-1)
-            previousPointDomain = hyperplane.DomainFromPoint(previousPoint)
-            pointDomain = hyperplane.DomainFromPoint(point)
-            if previousPointDomain < pointDomain:
-                domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(-1.0, -previousPointDomain)))
-                domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(1.0, pointDomain)))
-            else:
-                domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(-1.0, -pointDomain)))
-                domain.boundaries.append(Boundary(mf.Hyperplane.CreateFromNormal(1.0, previousPointDomain)))
-            solid.boundaries.append(Boundary(hyperplane, domain))
-            previousPoint = point
-
-        return solid
-
     def __init__(self, dimension, isVoid = False):
         assert dimension > 0
         self.dimension = dimension

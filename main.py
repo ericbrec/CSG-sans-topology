@@ -123,6 +123,35 @@ class InteractiveCanvas:
         self.ax.draw_artist(self.patchC)
         self.canvas.blit(self.ax.bbox)
 
+def CreateSolidFromPoints(dimension, points, isVoid = False):
+    # CreateSolidFromPoints only works for dimension 2 so far.
+    assert dimension == 2
+    assert len(points) > 2
+    assert len(points[0]) == dimension
+
+    solid = sld.Solid(dimension, isVoid)
+
+    previousPoint = np.array(points[len(points)-1])
+    for point in points:
+        point = np.array(point)
+        vector = point - previousPoint
+        normal = np.array([-vector[1], vector[0]])
+        normal = normal / np.linalg.norm(normal)
+        hyperplane = mf.Hyperplane.CreateFromNormal(normal,np.dot(normal,point))
+        domain = sld.Solid(dimension-1)
+        previousPointDomain = hyperplane.DomainFromPoint(previousPoint)
+        pointDomain = hyperplane.DomainFromPoint(point)
+        if previousPointDomain < pointDomain:
+            domain.boundaries.append(sld.Boundary(mf.Hyperplane.CreateFromNormal(-1.0, -previousPointDomain)))
+            domain.boundaries.append(sld.Boundary(mf.Hyperplane.CreateFromNormal(1.0, pointDomain)))
+        else:
+            domain.boundaries.append(sld.Boundary(mf.Hyperplane.CreateFromNormal(-1.0, -pointDomain)))
+            domain.boundaries.append(sld.Boundary(mf.Hyperplane.CreateFromNormal(1.0, previousPointDomain)))
+        solid.boundaries.append(sld.Boundary(hyperplane, domain))
+        previousPoint = point
+
+    return solid
+
 def CreateStar(radius, center, angle):
     vertices = []
     points = 5
@@ -132,7 +161,7 @@ def CreateStar(radius, center, angle):
     nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
     u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt
 
-    star = sld.Solid.CreateSolidFromPoints(2, vertices)
+    star = CreateSolidFromPoints(2, vertices)
     for boundary in star.boundaries:
         u0 = boundary.domain.boundaries[0].manifold.point[0]
         u1 = boundary.domain.boundaries[1].manifold.point[0]
@@ -141,19 +170,19 @@ def CreateStar(radius, center, angle):
 
     return star
 
-triangleA = sld.Solid.CreateSolidFromPoints(2, [[1,0],[0,0],[0,1]])
+triangleA = CreateSolidFromPoints(2, [[1,0],[0,0],[0,1]])
 print(triangleA.VolumeIntegral(lambda x: 1.0), 0.5)
 print(triangleA.SurfaceIntegral(lambda x, n: n), 2 + np.sqrt(2.0))
 print(triangleA.WindingNumber(np.array([.75,.75])))
 print(triangleA.WindingNumber(np.array([.5,.5])))
 print(triangleA.WindingNumber(np.array([.25,.25])))
 
-squareA = sld.Solid.CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
+squareA = CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
 print(squareA.VolumeIntegral(lambda x: 1.0), 4.0*4.0)
 print(squareA.SurfaceIntegral(lambda x, n: n), 4.0*4.0)
 print(squareA.WindingNumber(np.array([0.,0.])))
 print(squareA.WindingNumber(np.array([-0.23870968,1.])))
-squareB = sld.Solid.CreateSolidFromPoints(2, [[1,1],[3,1],[3,-1],[1,-1]])
+squareB = CreateSolidFromPoints(2, [[1,1],[3,1],[3,-1],[1,-1]])
 print(squareB.VolumeIntegral(lambda x: 1.0), 2.0*2.0)
 print(squareB.SurfaceIntegral(lambda x, n: n), 2.0*4.0)
 

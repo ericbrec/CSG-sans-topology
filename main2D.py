@@ -152,6 +152,33 @@ def CreateSolidFromPoints(dimension, points, isVoid = False):
 
     return solid
 
+def CreateHypercube(size, position = None):
+    dimension = len(size)
+    solid = sld.Solid(dimension)
+    normal = [0.0]*dimension
+    if position is None:
+        position = [0.0]*dimension
+    else:
+        assert len(position) == dimension
+
+    for i in range(dimension):
+        domain = None
+        if dimension > 1:
+            domainSize = size.copy()
+            del domainSize[i]
+            domainPosition = position.copy()
+            del domainPosition[i]
+            domain = CreateHypercube(domainSize, domainPosition)
+        normal[i] = 1.0
+        hyperplane = mf.Hyperplane.CreateFromNormal(normal, size[i] + normal[i]*position[i])
+        solid.boundaries.append(sld.Boundary(hyperplane,domain))
+        normal[i] = -1.0
+        hyperplane = mf.Hyperplane.CreateFromNormal(normal, size[i] + normal[i]*position[i])
+        solid.boundaries.append(sld.Boundary(hyperplane,domain))
+        normal[i] = 0.0
+
+    return solid
+
 def CreateStar(radius, center, angle):
     vertices = []
     points = 5
@@ -177,12 +204,12 @@ print(triangleA.WindingNumber(np.array([.75,.75])))
 print(triangleA.WindingNumber(np.array([.5,.5])))
 print(triangleA.WindingNumber(np.array([.25,.25])))
 
-squareA = CreateSolidFromPoints(2, [[-3,-3],[-3,1],[1,1],[1,-3]])
+squareA = CreateHypercube([2,2], [-1,-1])
 print(squareA.VolumeIntegral(lambda x: 1.0), 4.0*4.0)
 print(squareA.SurfaceIntegral(lambda x, n: n), 4.0*4.0)
 print(squareA.WindingNumber(np.array([0.,0.])))
 print(squareA.WindingNumber(np.array([-0.23870968,1.])))
-squareB = CreateSolidFromPoints(2, [[1,1],[3,1],[3,-1],[1,-1]])
+squareB = CreateHypercube([1,1], [2,0])
 print(squareB.VolumeIntegral(lambda x: 1.0), 2.0*2.0)
 print(squareB.SurfaceIntegral(lambda x, n: n), 2.0*4.0)
 
@@ -197,7 +224,7 @@ print(starB.VolumeIntegral(lambda x: 1.0), starArea)
 print(starB.SurfaceIntegral(lambda x, n: n), starPerimeter)
 starB.Translate([-2.31895479, -2.69507693])
 
-#interactor = InteractiveCanvas(squareA, squareB)
-interactor = InteractiveCanvas(starA, starB)
+interactor = InteractiveCanvas(squareA, squareB)
+#interactor = InteractiveCanvas(starA, starB)
 #interactor = InteractiveCanvas(squareA, starB)
 plt.show()

@@ -5,10 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: main.py",
+            "name": "Python: main2D.py",
             "type": "python",
             "request": "launch",
-            "program": "main.py",
+            "program": "main2D.py",
+            "console": "integratedTerminal"
+        }
+        {
+            "name": "Python: main3D.py",
+            "type": "python",
+            "request": "launch",
+            "program": "main3D.py",
             "console": "integratedTerminal"
         }
     ]

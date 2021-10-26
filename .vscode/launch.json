@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "main2D.py",
             "console": "integratedTerminal"
-        }
+        },
         {
             "name": "Python: main3D.py",
             "type": "python",

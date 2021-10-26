@@ -15,7 +15,8 @@
         "xdata",
         "xlim",
         "ydata",
-        "ylim"
+        "ylim",
+        "zlim"
     ],
     "terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "Bypass"]
 }

@@ -7,6 +7,7 @@
         "epsabs",
         "epsrel",
         "isscalar",
+        "lims",
         "LINETO",
         "MOVETO",
         "mplot",
@@ -15,9 +16,12 @@
         "showverts",
         "tunit",
         "xdata",
+        "xlabel",
         "xlim",
         "ydata",
+        "ylabel",
         "ylim",
+        "zlabel",
         "zlim"
     ],
     "terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "Bypass"]

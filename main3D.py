@@ -35,21 +35,9 @@ class InteractiveCanvas:
         return solid
     
     def GetPointFromEvent(self, event):
-        # Code stolen from Axes3D format_point, which shows the point in the lower-right corner of the figure.
-        # nearest edge
-        p0, p1 = min(self.ax.tunit_edges(),
-                     key=lambda edge: proj3d._line2d_seg_dist(
-                         edge[0], edge[1], (event.xdata, event.ydata)))
-
-        # scale the z value to match
-        x0, y0, z0 = p0
-        x1, y1, z1 = p1
-        d0 = np.hypot(x0-event.xdata, y0-event.ydata)
-        d1 = np.hypot(x1-event.xdata, y1-event.ydata)
-        dt = d0+d1
-        z = d1/dt * z0 + d0/dt * z1
-
-        return np.array(proj3d.inv_transform(event.xdata, event.ydata, z, self.ax.M))
+        minX, maxX, minY, maxY, minZ, maxZ = self.ax.get_w_lims()
+        projCenter = proj3d.transform(0.5*(minX+maxX), 0.5*(minY+maxY), 0.5*(minZ+maxZ), self.ax.M)
+        return np.array(proj3d.inv_transform(event.xdata, event.ydata, projCenter[2], self.ax.M))
 
     def __init__(self, solidA, solidB):
         assert solidA.dimension == solidB.dimension
@@ -69,7 +57,8 @@ class InteractiveCanvas:
         self.linesB = art3d.Line3DCollection(self.CreateSegmentsFromSolid(self.solidB), linewidth=1, color="orange")
         self.linesC = art3d.Line3DCollection(self.CreateSegmentsFromSolid(self.solidC), linewidth=3, color="red")
         
-        self.ax.set(xlim = (-4, 4), ylim = (-4, 4), zlim = (-4, 4))
+        self.ax.set(xlabel="x", ylabel="y", zlabel="z")
+        self.ax.set(xlim3d = (-4, 4), ylim3d = (-4, 4), zlim3d = (-4, 4))
 
         self.ax.add_collection(self.linesA)
         self.ax.add_collection(self.linesB)
@@ -159,10 +148,10 @@ def CreateHypercube(size, position = None):
 
     return solid
 
-cubeA = CreateHypercube([2,2,2], [-1,-1,0])
+cubeA = CreateHypercube([2,2,2], [-1,1,0])
 print(cubeA.VolumeIntegral(lambda x: 1.0), 4.0*4.0*4.0)
 print(cubeA.SurfaceIntegral(lambda x, n: n), 4.0*4.0*6.0)
-cubeB = CreateHypercube([1,1,1], [3,3,0])
+cubeB = CreateHypercube([1,1,1], [1,-1,2])
 print(cubeB.VolumeIntegral(lambda x: 1.0), 2.0*2.0*2.0)
 print(cubeB.SurfaceIntegral(lambda x, n: n), 2.0*2.0*6.0)
 

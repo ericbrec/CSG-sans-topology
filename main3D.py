@@ -2,31 +2,22 @@ import numpy as np
 import manifold as mf
 import solid as sld
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from matplotlib.path import Path
+import mpl_toolkits.mplot3d.art3d as art3d
+import mpl_toolkits.mplot3d.proj3d as proj3d
 from matplotlib.backend_bases import MouseButton
 
 class InteractiveCanvas:
 
-    epsilon = 5  # max pixel distance to count as a vertex hit
-
-    def CreatePathFromSolid(self, solid):
-        vertices = [[0.0]*solid.dimension]
-        commands = [Path.MOVETO]
+    def CreateSegmentsFromSolid(self, solid):
+        segments = []
        
         for edge in solid.Edges():
             middle = 0.5 * (edge[0] + edge[1])
             normal = middle + 0.1 * edge[2]
-            vertices.append(edge[0])
-            commands.append(Path.MOVETO)
-            vertices.append(edge[1])
-            commands.append(Path.LINETO)
-            vertices.append(middle)
-            commands.append(Path.MOVETO)
-            vertices.append(normal)
-            commands.append(Path.LINETO)
+            segments.append((edge[0], edge[1]))
+            segments.append((middle, normal))
         
-        return Path(vertices, commands)
+        return segments
     
     def PerformBooleanOperation(self, key):
         if key == 'i':
@@ -42,6 +33,23 @@ class InteractiveCanvas:
             solid = self.solidC
 
         return solid
+    
+    def GetPointFromEvent(self, event):
+        # Code stolen from Axes3D format_point, which shows the point in the lower-right corner of the figure.
+        # nearest edge
+        p0, p1 = min(self.ax.tunit_edges(),
+                     key=lambda edge: proj3d._line2d_seg_dist(
+                         edge[0], edge[1], (event.xdata, event.ydata)))
+
+        # scale the z value to match
+        x0, y0, z0 = p0
+        x1, y1, z1 = p1
+        d0 = np.hypot(x0-event.xdata, y0-event.ydata)
+        d1 = np.hypot(x1-event.xdata, y1-event.ydata)
+        dt = d0+d1
+        z = d1/dt * z0 + d0/dt * z1
+
+        return np.array(proj3d.inv_transform(event.xdata, event.ydata, z, self.ax.M))
 
     def __init__(self, solidA, solidB):
         assert solidA.dimension == solidB.dimension
@@ -56,16 +64,16 @@ class InteractiveCanvas:
         self.solidA = solidA
         self.solidB = solidB
         self.solidC = self.PerformBooleanOperation('u')
-
-        self.patchA = patches.PathPatch3D(self.CreatePathFromSolid(self.solidA), linewidth=1, color="blue")
-        self.patchB = patches.PathPatch3D(self.CreatePathFromSolid(self.solidB), linewidth=1, color="orange")
-        self.patchC = patches.PathPatch3D(self.CreatePathFromSolid(self.solidC), linewidth=3, color="red")
+        
+        self.linesA = art3d.Line3DCollection(self.CreateSegmentsFromSolid(self.solidA), linewidth=1, color="blue")
+        self.linesB = art3d.Line3DCollection(self.CreateSegmentsFromSolid(self.solidB), linewidth=1, color="orange")
+        self.linesC = art3d.Line3DCollection(self.CreateSegmentsFromSolid(self.solidC), linewidth=3, color="red")
         
         self.ax.set(xlim = (-4, 4), ylim = (-4, 4), zlim = (-4, 4))
 
-        self.ax.add_patch(self.patchA)
-        self.ax.add_patch(self.patchB)
-        self.ax.add_patch(self.patchC)
+        self.ax.add_collection(self.linesA)
+        self.ax.add_collection(self.linesB)
+        self.ax.add_collection(self.linesC)
 
         self.canvas.mpl_connect('draw_event', self.on_draw)
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
@@ -76,32 +84,34 @@ class InteractiveCanvas:
     def on_draw(self, event):
         """Callback for draws."""
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.ax.draw_artist(self.patchA)
-        self.ax.draw_artist(self.patchB)
-        self.ax.draw_artist(self.patchC)
+        self.ax.draw_artist(self.linesA)
+        self.ax.draw_artist(self.linesB)
+        self.ax.draw_artist(self.linesC)
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
         if event.inaxes is None or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
-        self.origin[0] = event.xdata
-        self.origin[1] = event.ydata
+
+        self.ax.disable_mouse_rotation()
+        self.origin = self.GetPointFromEvent(event)
 
     def on_button_release(self, event):
         """Callback for mouse button releases."""
         if event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
+        self.ax.mouse_init()
         print(self.key)
         self.solidC = self.PerformBooleanOperation(self.key)
-        self.patchC.set_path(self.CreatePathFromSolid(self.solidC))
+        self.linesC.set_segments(self.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
     def on_key_press(self, event):
         """Callback for key presses."""
         self.key = event.key
         self.solidC = self.PerformBooleanOperation(self.key)
-        self.patchC.set_path(self.CreatePathFromSolid(self.solidC))
+        self.linesC.set_segments(self.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
     def on_mouse_move(self, event):
@@ -109,19 +119,17 @@ class InteractiveCanvas:
         if event.inaxes is None or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
         
-        delta = [0.0]*self.solidB.dimension
-        delta[0] = event.xdata - self.origin[0]
-        delta[1] = event.ydata - self.origin[1]
+        point = self.GetPointFromEvent(event)
+        delta = point - self.origin
         self.solidB.Translate(delta)
-        self.origin[0] = event.xdata
-        self.origin[1] = event.ydata
+        self.origin = point
 
-        self.patchB.set_path(self.CreatePathFromSolid(self.solidB))
+        self.linesB.set_segments(self.CreateSegmentsFromSolid(self.solidB))
         
         self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.patchA)
-        self.ax.draw_artist(self.patchB)
-        self.ax.draw_artist(self.patchC)
+        self.ax.draw_artist(self.linesA)
+        self.ax.draw_artist(self.linesB)
+        self.ax.draw_artist(self.linesC)
         self.canvas.blit(self.ax.bbox)
 
 def CreateHypercube(size, position = None):
@@ -151,12 +159,12 @@ def CreateHypercube(size, position = None):
 
     return solid
 
-squareA = CreateHypercube([2,2,2], [-1,-1,0])
-print(squareA.VolumeIntegral(lambda x: 1.0), 4.0*4.0*4.0)
-print(squareA.SurfaceIntegral(lambda x, n: n), 4.0*4.0*6.0)
-squareB = CreateHypercube([1,1,1], [2,0,0])
-print(squareB.VolumeIntegral(lambda x: 1.0), 2.0*2.0*2.0)
-print(squareB.SurfaceIntegral(lambda x, n: n), 2.0*2.0*6.0)
+cubeA = CreateHypercube([2,2,2], [-1,-1,0])
+print(cubeA.VolumeIntegral(lambda x: 1.0), 4.0*4.0*4.0)
+print(cubeA.SurfaceIntegral(lambda x, n: n), 4.0*4.0*6.0)
+cubeB = CreateHypercube([1,1,1], [3,3,0])
+print(cubeB.VolumeIntegral(lambda x: 1.0), 2.0*2.0*2.0)
+print(cubeB.SurfaceIntegral(lambda x, n: n), 2.0*2.0*6.0)
 
-interactor = InteractiveCanvas(squareA, squareB)
+interactor = InteractiveCanvas(cubeA, cubeB)
 plt.show()

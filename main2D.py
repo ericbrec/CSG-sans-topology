@@ -2,31 +2,21 @@ import numpy as np
 import manifold as mf
 import solid as sld
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from matplotlib.path import Path
+from matplotlib.collections import LineCollection
 from matplotlib.backend_bases import MouseButton
 
 class InteractiveCanvas:
 
-    epsilon = 5  # max pixel distance to count as a vertex hit
-
-    def CreatePathFromSolid(self, solid):
-        vertices = [[0.0,0.0]]
-        commands = [Path.MOVETO]
+    def CreateSegmentsFromSolid(self, solid):
+        segments = []
        
         for edge in solid.Edges():
             middle = 0.5 * (edge[0] + edge[1])
             normal = middle + 0.1 * edge[2]
-            vertices.append(edge[0])
-            commands.append(Path.MOVETO)
-            vertices.append(edge[1])
-            commands.append(Path.LINETO)
-            vertices.append(middle)
-            commands.append(Path.MOVETO)
-            vertices.append(normal)
-            commands.append(Path.LINETO)
+            segments.append((edge[0], edge[1]))
+            segments.append((middle, normal))
         
-        return Path(vertices, commands)
+        return segments
     
     def PerformBooleanOperation(self, key):
         if key == 'i':
@@ -47,7 +37,7 @@ class InteractiveCanvas:
         assert solidA.dimension == solidB.dimension
 
         fig, self.ax = plt.subplots(figsize=(6, 6))
-        self.ax.set_title('Drag shape to update path')
+        self.ax.set_title('Drag shape to update solid')
         self.canvas = self.ax.figure.canvas
 
         self.origin = [0.0]*solidB.dimension 
@@ -56,15 +46,15 @@ class InteractiveCanvas:
         self.solidB = solidB
         self.solidC = self.PerformBooleanOperation('u')
 
-        self.patchA = patches.PathPatch(self.CreatePathFromSolid(self.solidA), linewidth=1, color="blue")
-        self.patchB = patches.PathPatch(self.CreatePathFromSolid(self.solidB), linewidth=1, color="orange")
-        self.patchC = patches.PathPatch(self.CreatePathFromSolid(self.solidC), linewidth=3, color="red")
+        self.linesA = LineCollection(self.CreateSegmentsFromSolid(self.solidA), linewidth=1, color="blue")
+        self.linesB = LineCollection(self.CreateSegmentsFromSolid(self.solidB), linewidth=1, color="orange")
+        self.linesC = LineCollection(self.CreateSegmentsFromSolid(self.solidC), linewidth=3, color="red")
         
         self.ax.set(xlim = (-4, 4), ylim = (-4, 4))
 
-        self.ax.add_patch(self.patchA)
-        self.ax.add_patch(self.patchB)
-        self.ax.add_patch(self.patchC)
+        self.ax.add_collection(self.linesA)
+        self.ax.add_collection(self.linesB)
+        self.ax.add_collection(self.linesC)
 
         self.canvas.mpl_connect('draw_event', self.on_draw)
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
@@ -75,9 +65,9 @@ class InteractiveCanvas:
     def on_draw(self, event):
         """Callback for draws."""
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.ax.draw_artist(self.patchA)
-        self.ax.draw_artist(self.patchB)
-        self.ax.draw_artist(self.patchC)
+        self.ax.draw_artist(self.linesA)
+        self.ax.draw_artist(self.linesB)
+        self.ax.draw_artist(self.linesC)
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
@@ -93,14 +83,14 @@ class InteractiveCanvas:
 
         print(self.key)
         self.solidC = self.PerformBooleanOperation(self.key)
-        self.patchC.set_path(self.CreatePathFromSolid(self.solidC))
+        self.linesC.set_segments(self.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
     def on_key_press(self, event):
         """Callback for key presses."""
         self.key = event.key
         self.solidC = self.PerformBooleanOperation(self.key)
-        self.patchC.set_path(self.CreatePathFromSolid(self.solidC))
+        self.linesC.set_segments(self.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
     def on_mouse_move(self, event):
@@ -115,12 +105,12 @@ class InteractiveCanvas:
         self.origin[0] = event.xdata
         self.origin[1] = event.ydata
 
-        self.patchB.set_path(self.CreatePathFromSolid(self.solidB))
+        self.linesB.set_segments(self.CreateSegmentsFromSolid(self.solidB))
         
         self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.patchA)
-        self.ax.draw_artist(self.patchB)
-        self.ax.draw_artist(self.patchC)
+        self.ax.draw_artist(self.linesA)
+        self.ax.draw_artist(self.linesB)
+        self.ax.draw_artist(self.linesC)
         self.canvas.blit(self.ax.bbox)
 
 def CreateSolidFromPoints(dimension, points, isVoid = False):

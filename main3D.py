@@ -20,6 +20,7 @@ class InteractiveCanvas:
         return segments
     
     def PerformBooleanOperation(self, key):
+        print(key)
         if key == 'i':
             solid = self.solidA.Intersection(self.solidB)
             self.key = key
@@ -73,9 +74,9 @@ class InteractiveCanvas:
     def on_draw(self, event):
         """Callback for draws."""
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.ax.draw_artist(self.linesA)
-        self.ax.draw_artist(self.linesB)
         self.ax.draw_artist(self.linesC)
+        self.ax.draw_artist(self.linesB)
+        self.ax.draw_artist(self.linesA)
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
@@ -91,15 +92,13 @@ class InteractiveCanvas:
             return
 
         self.ax.mouse_init()
-        print(self.key)
         self.solidC = self.PerformBooleanOperation(self.key)
         self.linesC.set_segments(self.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
     def on_key_press(self, event):
         """Callback for key presses."""
-        self.key = event.key
-        self.solidC = self.PerformBooleanOperation(self.key)
+        self.solidC = self.PerformBooleanOperation(event.key)
         self.linesC.set_segments(self.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
@@ -116,9 +115,9 @@ class InteractiveCanvas:
         self.linesB.set_segments(self.CreateSegmentsFromSolid(self.solidB))
         
         self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.linesA)
-        self.ax.draw_artist(self.linesB)
         self.ax.draw_artist(self.linesC)
+        self.ax.draw_artist(self.linesB)
+        self.ax.draw_artist(self.linesA)
         self.canvas.blit(self.ax.bbox)
 
 def TangentSpaceFromNormal(normal):
@@ -177,7 +176,7 @@ print(cubeA.VolumeIntegral(lambda x: 1.0), 4.0*4.0*4.0)
 print(cubeA.SurfaceIntegral(lambda x, n: n), 4.0*4.0*6.0)
 print(cubeA.WindingNumber([1,1,0]))
 print(cubeA.WindingNumber([4,1,0]))
-cubeB = CreateHypercube([1,1,1], [1,1,2])
+cubeB = CreateHypercube([1,1,1], [1,1,4])
 print(cubeB.VolumeIntegral(lambda x: 1.0), 2.0*2.0*2.0)
 print(cubeB.SurfaceIntegral(lambda x, n: n), 2.0*2.0*6.0)
 

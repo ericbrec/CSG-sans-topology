@@ -19,6 +19,7 @@ class InteractiveCanvas:
         return segments
     
     def PerformBooleanOperation(self, key):
+        print(key)
         if key == 'i':
             solid = self.solidA.Intersection(self.solidB)
             self.key = key
@@ -65,9 +66,9 @@ class InteractiveCanvas:
     def on_draw(self, event):
         """Callback for draws."""
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.ax.draw_artist(self.linesA)
-        self.ax.draw_artist(self.linesB)
         self.ax.draw_artist(self.linesC)
+        self.ax.draw_artist(self.linesB)
+        self.ax.draw_artist(self.linesA)
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
@@ -81,15 +82,13 @@ class InteractiveCanvas:
         if event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
-        print(self.key)
         self.solidC = self.PerformBooleanOperation(self.key)
         self.linesC.set_segments(self.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
     def on_key_press(self, event):
         """Callback for key presses."""
-        self.key = event.key
-        self.solidC = self.PerformBooleanOperation(self.key)
+        self.solidC = self.PerformBooleanOperation(event.key)
         self.linesC.set_segments(self.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
@@ -108,9 +107,9 @@ class InteractiveCanvas:
         self.linesB.set_segments(self.CreateSegmentsFromSolid(self.solidB))
         
         self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.linesA)
-        self.ax.draw_artist(self.linesB)
         self.ax.draw_artist(self.linesC)
+        self.ax.draw_artist(self.linesB)
+        self.ax.draw_artist(self.linesA)
         self.canvas.blit(self.ax.bbox)
 
 def TangentSpaceFromNormal(normal):

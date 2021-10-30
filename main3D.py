@@ -149,6 +149,7 @@ def CreateHypercube(size, position = None):
     return solid
 
 cubeA = CreateHypercube([2,2,2], [1,1,0])
+intersections = cubeA.boundaries[0].manifold.IntersectManifold(cubeA.boundaries[3].manifold)
 print(cubeA.VolumeIntegral(lambda x: 1.0), 4.0*4.0*4.0)
 print(cubeA.SurfaceIntegral(lambda x, n: n), 4.0*4.0*6.0)
 print(cubeA.WindingNumber([1,1,0]))

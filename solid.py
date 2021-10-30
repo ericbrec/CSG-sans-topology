@@ -103,10 +103,8 @@ class Solid:
                 # The first coordinate of the cross product of the boundary manifold's tangent space is the first cofactor of the tangent space.
                 # And so, SurfaceIntegral(dot(F, n)) = VolumeIntegral(Integral(f) * first cofactor) over the boundary manifold's domain.
                 def domainF(domainPoint):
-                    if np.isscalar(domainPoint):
-                        point = boundary.manifold.Point(np.array([domainPoint]))
-                    else:
-                        point = boundary.manifold.Point(domainPoint)
+                    evalPoint = np.atleast_1d(domainPoint)
+                    point = boundary.manifold.Point(evalPoint)
 
                     # fHat passes the scalar given by integrate.quad into the first coordinate of the vector for f. 
                     def fHat(x):
@@ -116,7 +114,7 @@ class Solid:
 
                     # Calculate Integral(f) * first cofactor. Note that quad returns a tuple: (integral, error bound).
                     returnValue = 0.0
-                    firstCofactor = boundary.manifold.FirstCofactor(domainPoint)
+                    firstCofactor = boundary.manifold.FirstCofactor(evalPoint)
                     if abs(x0 - point[0]) > epsabs and abs(firstCofactor) > epsabs:
                         returnValue = integrate.quad(fHat, x0, point[0], epsabs=epsabs, epsrel=epsrel, *quadArgs)[0] * firstCofactor
                     return returnValue
@@ -143,10 +141,7 @@ class Solid:
 
         for boundary in self.boundaries:
             def integrand(domainPoint):
-                if np.isscalar(domainPoint):
-                    evalPoint = np.array([domainPoint])
-                else:
-                    evalPoint = domainPoint
+                evalPoint = np.atleast_1d(domainPoint)
                 point = boundary.manifold.Point(evalPoint)
                 normal = boundary.manifold.Normal(evalPoint)
                 fValue = f(point, normal, *args)

@@ -74,10 +74,7 @@ class Hyperplane(Manifold):
         hyperplane = Hyperplane()
 
         # Ensure the normal is always an array
-        if np.isscalar(normal):
-            hyperplane.normal = np.array([normal])
-        else:
-            hyperplane.normal = np.array(normal)
+        hyperplane.normal = np.atleast_1d(normal)
         hyperplane.normal = hyperplane.normal / np.linalg.norm(hyperplane.normal)
         hyperplane.point = offset * hyperplane.normal
         if hyperplane.GetRangeDimension() > 1:

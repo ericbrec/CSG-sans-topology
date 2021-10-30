@@ -148,10 +148,12 @@ def CreateHypercube(size, position = None):
 
     return solid
 
-cubeA = CreateHypercube([2,2,2], [-1,1,0])
+cubeA = CreateHypercube([2,2,2], [1,1,0])
 print(cubeA.VolumeIntegral(lambda x: 1.0), 4.0*4.0*4.0)
 print(cubeA.SurfaceIntegral(lambda x, n: n), 4.0*4.0*6.0)
-cubeB = CreateHypercube([1,1,1], [1,-1,2])
+print(cubeA.WindingNumber([1,1,0]))
+print(cubeA.WindingNumber([4,1,0]))
+cubeB = CreateHypercube([1,1,1], [1,1,2])
 print(cubeB.VolumeIntegral(lambda x: 1.0), 2.0*2.0*2.0)
 print(cubeB.SurfaceIntegral(lambda x, n: n), 2.0*2.0*6.0)
 

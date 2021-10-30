@@ -121,6 +121,29 @@ class InteractiveCanvas:
         self.ax.draw_artist(self.linesC)
         self.canvas.blit(self.ax.bbox)
 
+def TangentSpaceFromNormal(normal):
+    # Construct the Householder reflection transform using the normal
+    reflector = np.add(np.identity(len(normal)), np.outer(-2*normal, normal))
+    # Compute the eigenvalues and eigenvectors for the symmetric transform (eigenvalues returned in ascending order).
+    eigen = np.linalg.eigh(reflector)
+    # Assert the first eigenvalue is negative (the reflection whose eigenvector is the normal)
+    assert(eigen[0][0] < 0.0)
+    # Return the tangent space by removing the first eigenvector column (the negated normal)
+    return np.delete(eigen[1], 0, 1)
+
+def HyperplaneFromNormal(normal, offset):
+    hyperplane = mf.Hyperplane()
+
+    # Ensure the normal is always an array
+    hyperplane.normal = np.atleast_1d(normal)
+    hyperplane.normal = hyperplane.normal / np.linalg.norm(hyperplane.normal)
+    hyperplane.point = offset * hyperplane.normal
+    if hyperplane.GetRangeDimension() > 1:
+        hyperplane.tangentSpace = TangentSpaceFromNormal(hyperplane.normal)
+    else:
+        hyperplane.tangentSpace = np.array([0.0])
+    return hyperplane
+
 def CreateHypercube(size, position = None):
     dimension = len(size)
     solid = sld.Solid(dimension)
@@ -139,10 +162,10 @@ def CreateHypercube(size, position = None):
             del domainPosition[i]
             domain = CreateHypercube(domainSize, domainPosition)
         normal[i] = 1.0
-        hyperplane = mf.Hyperplane.CreateFromNormal(normal, size[i] + normal[i]*position[i])
+        hyperplane = HyperplaneFromNormal(normal, size[i] + normal[i]*position[i])
         solid.boundaries.append(sld.Boundary(hyperplane,domain))
         normal[i] = -1.0
-        hyperplane = mf.Hyperplane.CreateFromNormal(normal, size[i] + normal[i]*position[i])
+        hyperplane = HyperplaneFromNormal(normal, size[i] + normal[i]*position[i])
         solid.boundaries.append(sld.Boundary(hyperplane,domain))
         normal[i] = 0.0
 

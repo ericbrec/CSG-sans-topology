@@ -58,31 +58,6 @@ class Manifold:
 
 class Hyperplane(Manifold):
 
-    @staticmethod
-    def TangentSpaceFromNormal(normal):
-        # Construct the Householder reflection transform using the normal
-        reflector = np.add(np.identity(len(normal)), np.outer(-2*normal, normal))
-        # Compute the eigenvalues and eigenvectors for the symmetric transform (eigenvalues returned in ascending order).
-        eigen = np.linalg.eigh(reflector)
-        # Assert the first eigenvalue is negative (the reflection whose eigenvector is the normal)
-        assert(eigen[0][0] < 0.0)
-        # Return the tangent space by removing the first eigenvector column (the negated normal)
-        return np.delete(eigen[1], 0, 1)
-    
-    @staticmethod
-    def CreateFromNormal(normal, offset):
-        hyperplane = Hyperplane()
-
-        # Ensure the normal is always an array
-        hyperplane.normal = np.atleast_1d(normal)
-        hyperplane.normal = hyperplane.normal / np.linalg.norm(hyperplane.normal)
-        hyperplane.point = offset * hyperplane.normal
-        if hyperplane.GetRangeDimension() > 1:
-            hyperplane.tangentSpace = Hyperplane.TangentSpaceFromNormal(hyperplane.normal)
-        else:
-            hyperplane.tangentSpace = np.array([0.0])
-        return hyperplane
-
     def __init__(self):
         self.normal = None
         self.point = None
@@ -160,20 +135,20 @@ class Hyperplane(Manifold):
         # Ensure manifolds are not parallel
         alignment = np.dot(self.normal, other.normal)
         if alignment * alignment < Manifold.maxAlignment:
-            dimension = len(self.normal)
+            dimension = self.GetRangeDimension()
 
             # We're finding the intersection by solving the underdetermined system of equations formed by assigning points in self to points in other.
             # That is: self.tangentSpace * selfDomainPoint + self.point = other.tangentSpace * otherDomainPoint + other.point
             # This system is dimension equations with 2*(dimension-1) unknowns (the two domain points).
-            # There are more unknowns than equations, so it's underdetermined. The number of free variables is 2*(dimension-1) - dimension = dimension-1.
+            # There are more unknowns than equations, so it's underdetermined. The number of free variables is 2*(dimension-1) - dimension = dimension-2.
             # To solve the system, we rephrase it as Ax = b,
             #   where A = (self.tangentSpace -other.tangentSpace), x = (selfDomainPoint otherDomainPoint), and b = other.point - self.point.
             # Then we take the singular value decomposition of A = U * Sigma * VTranspose.
             # The particular solution for x is given by x = V * SigmaInverse * UTranspose * b,
             #   where we only consider the first dimension number of vectors in V (the rest are zeroed out, i.e. the null space of A).
-            # The null space of A (the last dimension-1 vectors in V) spans the free variable values, so those vectors form the tangent space of the intersection.
-            # Remember, we're solving for x = (selfDomainPoint otherDomainPoint). So, the selfIntersection.point is the first dimension-1 values of x,
-            #   and the otherIntersection.point is the last dimension-1 values of x. Likewise for the two tangent spaces.
+            # The null space of A (the last dimension-2 vectors in V) spans the free variable space, so those vectors form the tangent space of the intersection.
+            # Remember, we're solving for x = (selfDomainPoint otherDomainPoint). So, the selfIntersection.point is the first dimension-1 coordinates of x,
+            #   and the otherIntersection.point is the last dimension-1 coordinates of x. Likewise for the two tangent spaces.
 
             # Okay, first construct A.
             A = np.concatenate((self.tangentSpace, -other.tangentSpace),axis=1)
@@ -186,22 +161,26 @@ class Hyperplane(Manifold):
             x = V[:, 0:dimension] @ SigmaInverse @ np.transpose(U) @ (other.point - self.point)
             
             selfIntersection = Hyperplane()
+            otherIntersection = Hyperplane()
             # The selfIntersection normal is just the dot product of other normal with the self tangent space.
             selfIntersection.normal = np.dot(other.normal, self.tangentSpace)
             selfIntersection.normal = selfIntersection.normal / np.linalg.norm(selfIntersection.normal)
-            # The selfIntersection point is the first dimension-1 values of b.
-            selfIntersection.point = x[0:dimension-1]
-            # The selfIntersection tangent space is the first dimension-1 values of the null space (the last dimension-1 vectors in V).
-            selfIntersection.tangentSpace = V[0:dimension-1, dimension:]
-
-            otherIntersection = Hyperplane()
             # The otherIntersection normal is just the dot product of self normal with the other tangent space.
             otherIntersection.normal = np.dot(self.normal, other.tangentSpace)
             otherIntersection.normal = otherIntersection.normal / np.linalg.norm(otherIntersection.normal)
-            # The otherIntersection point is the last dimension-1 values of b.
+            # The selfIntersection point is the first dimension-1 coordinates of x.
+            selfIntersection.point = x[0:dimension-1]
+            # The otherIntersection point is the last dimension-1 coordinates of x.
             otherIntersection.point = x[dimension-1:]
-            # The otherIntersection tangent space is the last dimension-1 values of the null space (the last dimension-1 vectors in V).
-            otherIntersection.tangentSpace = V[dimension-1:, dimension:]
+            if dimension > 2:
+                # The selfIntersection tangent space is the first dimension-1 coordinates of the null space (the last dimension-2 vectors in V).
+                selfIntersection.tangentSpace = V[0:dimension-1, dimension:]
+                # The otherIntersection tangent space is the last dimension-1 coordinates of the null space (the last dimension-2 vectors in V).
+                otherIntersection.tangentSpace = V[dimension-1:, dimension:]
+            else:
+                # There is no null space (dimension-2 <= 0)
+                selfIntersection.tangentSpace = np.array([0.0])
+                otherIntersection.tangentSpace = np.array([0.0])
 
             intersections.append([selfIntersection, otherIntersection])
             intersectionsFlipped.append([otherIntersection, selfIntersection])

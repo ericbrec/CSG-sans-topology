@@ -13,13 +13,14 @@ def CreateSegmentsFromSolid(solid):
     
     return segments
 
-def HyperplaneAxisAligned(dimension, axis, offset):
+def HyperplaneAxisAligned(dimension, axis, offset, flipNormal=False):
+    assert dimension > 0
     hyperplane = mf.Hyperplane()
-    diagonal = np.identity(abs(dimension))
-    sign = np.sign(dimension)
+    diagonal = np.identity(dimension)
+    sign = -1.0 if flipNormal else 1.0
     hyperplane.normal = sign * diagonal[:,axis]
     hyperplane.point = offset * hyperplane.normal
-    if abs(dimension) > 1:
+    if dimension > 1:
         hyperplane.tangentSpace = np.delete(diagonal, axis, axis=1)
     else:
         hyperplane.tangentSpace = np.array([0.0])
@@ -42,9 +43,9 @@ def CreateHypercube(size, position = None):
             domainPosition = position.copy()
             del domainPosition[i]
             domain = CreateHypercube(domainSize, domainPosition)
-        hyperplane = HyperplaneAxisAligned(dimension, i, size[i] + position[i])
+        hyperplane = HyperplaneAxisAligned(dimension, i, size[i] + position[i], False)
         solid.boundaries.append(sld.Boundary(hyperplane,domain))
-        hyperplane = HyperplaneAxisAligned(-dimension, i, size[i] - position[i])
+        hyperplane = HyperplaneAxisAligned(dimension, i, size[i] - position[i], True)
         solid.boundaries.append(sld.Boundary(hyperplane,domain))
 
     return solid
@@ -53,6 +54,7 @@ def Hyperplane1D(normal, offset):
     assert np.isscalar(normal) or len(normal) == 1
     hyperplane = mf.Hyperplane()
     hyperplane.normal = np.atleast_1d(normal)
+    hyperplane.normal = hyperplane.normal / np.linalg.norm(hyperplane.normal)
     hyperplane.point = offset * hyperplane.normal
     hyperplane.tangentSpace = np.atleast_1d(0.0)
     return hyperplane
@@ -61,9 +63,14 @@ def Hyperplane2D(normal, offset):
     assert len(normal) == 2
     hyperplane = mf.Hyperplane()
     hyperplane.normal = np.atleast_1d(normal)
+    hyperplane.normal = hyperplane.normal / np.linalg.norm(hyperplane.normal)
     hyperplane.point = offset * hyperplane.normal
     hyperplane.tangentSpace = np.transpose(np.array([[normal[1], -normal[0]]]))
     return hyperplane
+
+def HyperplaneDomainFromPoint(hyperplane, point):
+    tangentSpaceTranspose = np.transpose(hyperplane.tangentSpace)
+    return np.linalg.inv(tangentSpaceTranspose @ hyperplane.tangentSpace) @ tangentSpaceTranspose @ (point - hyperplane.point)
 
 def CreateSolidFromPoints(dimension, points, isVoid = False):
     # CreateSolidFromPoints only works for dimension 2 so far.
@@ -81,8 +88,8 @@ def CreateSolidFromPoints(dimension, points, isVoid = False):
         normal = normal / np.linalg.norm(normal)
         hyperplane = Hyperplane2D(normal,np.dot(normal,point))
         domain = sld.Solid(dimension-1)
-        previousPointDomain = hyperplane.DomainFromPoint(previousPoint)
-        pointDomain = hyperplane.DomainFromPoint(point)
+        previousPointDomain = HyperplaneDomainFromPoint(hyperplane, previousPoint)
+        pointDomain = HyperplaneDomainFromPoint(hyperplane, point)
         if previousPointDomain < pointDomain:
             domain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, -previousPointDomain)))
             domain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, pointDomain)))

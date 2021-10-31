@@ -11,7 +11,7 @@ class Manifold:
     def __init__(self):
         pass
 
-    def Flip(self):
+    def FlipNormal(self):
         return self
 
     def GetDomainDimension(self):
@@ -63,7 +63,7 @@ class Hyperplane(Manifold):
         self.point = None
         self.tangentSpace = None
 
-    def Flip(self):
+    def FlipNormal(self):
         hyperplane = Hyperplane()
         hyperplane.normal = -self.normal
         hyperplane.point = self.point
@@ -90,10 +90,6 @@ class Hyperplane(Manifold):
     def Point(self, domainPoint):
         return np.dot(self.tangentSpace, domainPoint) + self.point
 
-    def DomainFromPoint(self, point):
-        tangentSpaceTranspose = np.transpose(self.tangentSpace)
-        return np.linalg.inv(tangentSpaceTranspose @ self.tangentSpace) @ tangentSpaceTranspose @ (point - self.point)
-
     def Translate(self, delta):
         assert len(delta) == self.GetRangeDimension()
 
@@ -107,12 +103,13 @@ class Hyperplane(Manifold):
 
         # Ensure hyperplane intersects x-axis
         if self.normal[0]*self.normal[0] > 1.0 - Manifold.maxAlignment:
-            vectorToManifold = self.point - point
-            xDistanceToManifold = np.dot(self.normal, vectorToManifold) / self.normal[0]
-            intersectionPoint = np.array(point)
-            intersectionPoint[0] += xDistanceToManifold
+            # Getting the xDistance to the manifold is simple geometry.
+            vectorFromManifold = point - self.point
+            xDistanceToManifold = -np.dot(self.normal, vectorFromManifold) / self.normal[0]
+            # Getting the domain point is a bit trickier. Turns out you throw out the x-components and invert the tangent space.
+            domainPoint = np.linalg.inv(self.tangentSpace[1:,:]) @ vectorFromManifold[1:]
             # Each intersection is of the form [distance to intersection, domain point of intersection].
-            intersections.append([xDistanceToManifold, self.DomainFromPoint(intersectionPoint)])
+            intersections.append([xDistanceToManifold, domainPoint])
         
         return intersections
 

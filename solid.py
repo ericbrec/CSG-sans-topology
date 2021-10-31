@@ -31,7 +31,7 @@ class Solid:
     def Not(self):
         solid = Solid(self.dimension, not self.isVoid)
         for boundary in self.boundaries:
-            solid.boundaries.append(Boundary(boundary.manifold.Flip(),boundary.domain))
+            solid.boundaries.append(Boundary(boundary.manifold.FlipNormal(),boundary.domain))
         return solid
     
     def Translate(self, delta):

@@ -10,20 +10,18 @@ from matplotlib.collections import LineCollection
 from matplotlib.backend_bases import MouseButton
 
 class Player(FuncAnimation):
-    def __init__(self, fig, func, min = 0.0, max = 100.0, step = 1.0, init_func=None, fargs=None,
-                 save_count=None, mini=0, maxi=100, pos=(0.125, 0.92), **kwargs):
-        self.value = min
+    def __init__(self, fig, func, min = 0.0, max = 100.0, step = 1.0, initial=None, init_func=None, fargs=None,
+                 save_count=None, pos=(0.17, 0.94), **kwargs):
         self.min = min
         self.max = max
         self.step = step
+        self.value = min if initial is None else initial
         self.runs = True
         self.forwards = True
         self.fig = fig
         self.func = func
         self.setup(pos)
-        FuncAnimation.__init__(self,self.fig, self.update, frames=self.play(), 
-                                           init_func=init_func, fargs=fargs,
-                                           save_count=save_count, **kwargs )    
+        FuncAnimation.__init__(self,self.fig, self.update, frames=self.play(), init_func=init_func, fargs=fargs, save_count=save_count, **kwargs)
 
     def play(self):
         while self.runs:
@@ -62,7 +60,7 @@ class Player(FuncAnimation):
     def onestep(self):
         self.value += self.step if self.forwards else -self.step
         self.value = min(max(self.value, self.min), self.max)
-        self.func(self.value)
+        self.artists = self.func(self.value)
         self.slider.set_val(self.value)
         self.fig.canvas.draw_idle()
 
@@ -84,20 +82,20 @@ class Player(FuncAnimation):
         self.button_stop.on_clicked(self.stop)
         self.button_forward.on_clicked(self.forward)
         self.button_oneforward.on_clicked(self.oneforward)
-        self.slider = matplotlib.widgets.Slider(axSlider, '', 
-                                                self.min, self.max, valinit=self.value)
+        self.slider = matplotlib.widgets.Slider(axSlider, '', self.min, self.max, valinit=self.value)
         self.slider.on_changed(self.set_pos)
 
     def set_pos(self, value):
         self.value = self.slider.val
-        self.func(self.value)
+        self.artists = self.func(self.value)
 
     def update(self, value):
         self.slider.set_val(value)
+        return self.artists
 
 class InteractiveCanvas:
     
-    def PerformSlice(self, key):
+    def ConstructHyperplane(self, key):
         print(key)
         axis = -1
         if key == 'x':
@@ -109,22 +107,19 @@ class InteractiveCanvas:
 
         if axis >= 0:
             self.key = key
-            self.hyperplane = utils.HyperplaneAxisAligned(self.solid.dimension, axis, 0.0)
-            slice = self.solid.Slice(self.hyperplane)
-            if not isinstance(slice, sld.Solid):
-                slice = sld.Solid(self.solid.dimension)
+            self.ax.set_title("Slice solid by {axis}-axis".format(axis=key))
+            hyperplane = utils.HyperplaneAxisAligned(self.solid.dimension, axis, self.offset)
         else:
-            slice = self.slice
+            hyperplane = self.hyperplane
 
-        return slice
+        return hyperplane
     
     def initializeCanvas(self):
         self.ax.set(xlim = (-4, 4), ylim = (-4, 4))
-        # TODO: Initialize hyperplace based on self.key
-        self.hyperplane = utils.HyperplaneAxisAligned(self.solid.dimension, 0, 0.0)
-    
+
     def animateSlice(self, offset):
-        self.hyperplane.point = offset * self.hyperplane.normal
+        self.offset = offset
+        self.hyperplane.point = self.offset * self.hyperplane.normal
         self.slice = self.solid.Slice(self.hyperplane)
         if not isinstance(self.slice, sld.Solid):
             self.slice = sld.Solid(self.solid.dimension)
@@ -132,26 +127,29 @@ class InteractiveCanvas:
 
     def on_key_press(self, event):
         """Callback for key presses."""
-        self.slice = self.PerformSlice(event.key)
+        self.hyperplane = self.ConstructHyperplane(event.key)
+        self.slice = self.solid.Slice(self.hyperplane)
+        if not isinstance(self.slice, sld.Solid):
+            self.slice = sld.Solid(self.solid.dimension)
         self.lines.set_segments(utils.CreateSegmentsFromSolid(self.slice))
         self.canvas.draw()
 
     def __init__(self, solid, axis):
 
         fig, self.ax = plt.subplots(figsize=(6, 6))
-        self.ax.set_title('Slice solid')
+        self.ax.set_title("Slice solid by {axis}-axis".format(axis=axis))
         self.canvas = self.ax.figure.canvas
 
         self.solid = solid
-        self.key = axis
-        self.slice = sld.Solid(self.solid.dimension)
+        self.offset = 0.0
+        self.hyperplane = self.ConstructHyperplane(axis)
 
-        self.lines = LineCollection(utils.CreateSegmentsFromSolid(self.slice), linewidth=1, color="blue")
+        self.lines = LineCollection([], linewidth=1, color="blue")
         self.ax.add_collection(self.lines)
 
         self.canvas.mpl_connect('key_press_event', self.on_key_press)
 
-        self.player = Player(fig, self.animateSlice, -4.0, 4.0, 0.25, init_func=self.initializeCanvas)
+        self.player = Player(fig, self.animateSlice, -4.0, 4.0, 0.25, 0.0, init_func=self.initializeCanvas)
 
 cubeA = utils.CreateHypercube([2,2,2], [0,0,0])
 print(cubeA.VolumeIntegral(lambda x: 1.0), 4.0*4.0*4.0)

@@ -92,7 +92,7 @@ print(cube.SurfaceIntegral(lambda x, n: n), 4.0*4.0*6.0)
 print(cube.WindingNumber([0,0,0]))
 print(cube.WindingNumber([4,1,0]))
 
-manifold = utils.HyperplaneFromNormal([1,0,0], 0.0)
+manifold = utils.HyperplaneAxisAligned(3, 0, 0.0)
 
 interactor = InteractiveCanvas(cube, manifold)
 plt.show()

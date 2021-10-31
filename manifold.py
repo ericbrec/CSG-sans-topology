@@ -91,7 +91,8 @@ class Hyperplane(Manifold):
         return np.dot(self.tangentSpace, domainPoint) + self.point
 
     def DomainFromPoint(self, point):
-        return np.dot(point - self.point, self.tangentSpace)
+        tangentSpaceTranspose = np.transpose(self.tangentSpace)
+        return np.linalg.inv(tangentSpaceTranspose @ self.tangentSpace) @ tangentSpaceTranspose @ (point - self.point)
 
     def Translate(self, delta):
         assert len(delta) == self.GetRangeDimension()

@@ -142,6 +142,7 @@ def ExtrudeSolid(solid, path):
             extrudedHyperplane.normal = np.full((extrusion.dimension), 0.0)
             extrudedHyperplane.normal[0:solid.dimension] = boundary.manifold.normal[:]
             extrudedHyperplane.normal[solid.dimension] = -np.dot(boundary.manifold.normal, tangent[0:solid.dimension])
+            extrudedHyperplane.normal = extrudedHyperplane.normal / np.linalg.norm(extrudedHyperplane.normal)
             # Construct a point that adds the boundary point to the path point
             extrudedHyperplane.point = np.full((extrusion.dimension), 0.0)
             extrudedHyperplane.point[0:solid.dimension] = boundary.manifold.point[:]

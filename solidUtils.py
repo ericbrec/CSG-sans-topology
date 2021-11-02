@@ -118,3 +118,65 @@ def CreateStar(radius, center, angle):
         boundary.domain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, -(u0 + u*(u1 - u0)))))
 
     return star
+
+def ExtrudeSolid(solid, path):
+    assert len(path) > 1
+    assert solid.dimension+1 == len(path[0])
+    
+    extrusion = sld.Solid(solid.dimension+1)
+
+    # Extrude boundaries along the path
+    point = None
+    for nextPoint in path:
+        nextPoint = np.atleast_1d(nextPoint)
+        if point is None:
+            point = nextPoint
+            continue
+        tangent = nextPoint - point
+        extent = tangent[solid.dimension]
+        tangent = tangent / extent
+        # Extrude each boundary
+        for boundary in solid.boundaries:
+            extrudedHyperplane = mf.Hyperplane()
+            # Construct a normal orthoganal to both the boundary tangent space and the path tangent
+            extrudedHyperplane.normal = np.full((extrusion.dimension), 0.0)
+            extrudedHyperplane.normal[0:solid.dimension] = boundary.manifold.normal[:]
+            extrudedHyperplane.normal[solid.dimension] = -np.dot(boundary.manifold.normal, tangent[0:solid.dimension])
+            # Construct a point that adds the boundary point to the path point
+            extrudedHyperplane.point = np.full((extrusion.dimension), 0.0)
+            extrudedHyperplane.point[0:solid.dimension] = boundary.manifold.point[:]
+            extrudedHyperplane.point += point
+            # Combine the boundary tangent space and the path tangent
+            extrudedHyperplane.tangentSpace = np.full((extrusion.dimension, solid.dimension), 0.0)
+            if solid.dimension > 1:
+                extrudedHyperplane.tangentSpace[0:solid.dimension, 0:solid.dimension-1] = boundary.manifold.tangentSpace[:,:]
+            extrudedHyperplane.tangentSpace[:, solid.dimension-1] = tangent[:]
+            # Construct a domain for the extruded boundary
+            if boundary.domain:
+                # Extrude the boundary's domain to include path domain
+                domainPath = []
+                domainPoint = np.full((solid.dimension), 0.0)
+                domainPath.append(domainPoint)
+                domainPoint = np.full((solid.dimension), 0.0)
+                domainPoint[solid.dimension-1] = extent
+                domainPath.append(domainPoint)
+                extrudedDomain = ExtrudeSolid(boundary.domain, domainPath)
+            else:
+                extrudedDomain = sld.Solid(solid.dimension)
+                extrudedDomain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, 0.0)))
+                extrudedDomain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, extent)))
+            # Add extruded boundary
+            extrusion.boundaries.append(sld.Boundary(extrudedHyperplane, extrudedDomain))
+        
+        # Move onto the next point
+        point = nextPoint
+
+    # Add end cap boundaries
+    extrudedHyperplane = HyperplaneAxisAligned(extrusion.dimension, solid.dimension, 0.0, True)
+    extrudedHyperplane.Translate(path[0])
+    extrusion.boundaries.append(sld.Boundary(extrudedHyperplane, solid))
+    extrudedHyperplane = HyperplaneAxisAligned(extrusion.dimension, solid.dimension, 0.0, False)
+    extrudedHyperplane.Translate(path[-1])
+    extrusion.boundaries.append(sld.Boundary(extrudedHyperplane, solid))
+
+    return extrusion

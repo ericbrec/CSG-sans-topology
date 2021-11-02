@@ -64,8 +64,9 @@ class InteractiveCanvas:
 
         self.player = player.Player(fig, self.animateSlice, -4.0, 4.0, 0.25, 0.0, init_func=self.initializeCanvas)
 
+square = utils.CreateHypercube([2,2], [-1,-1])
 star = utils.CreateStar(2.0, [-1.0, -1.0], 90.0*6.28/360.0)
-cube = utils.ExtrudeSolid(star,[[0,0,0],[2,2,2],[1,1,3]])
+cube = utils.ExtrudeSolid(square,[[0,0,0],[2,2,2],[1,1,3]])
 # print(cubeA.VolumeIntegral(lambda x: 1.0), 4.0*4.0*4.0)
 # print(cubeA.SurfaceIntegral(lambda x, n: n), 4.0*4.0*6.0)
 # print(cubeA.WindingNumber([1,1,0]))

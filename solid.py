@@ -250,6 +250,7 @@ class Solid:
 
         # Only manifolds of dimension > 1 have a domain.
         if self.dimension > 1:
+            # Start with empty slice
             manifoldDomain = Solid(self.dimension-1, self.isVoid)
             intersectionAlignment = None
 
@@ -259,7 +260,7 @@ class Solid:
                 # IntersectManifold returns a collection of manifold pairs (or an alignment value if coincident):
                 #   * intersection[0] is in the boundary's domain;
                 #   * intersection[1] is in the given manifold's domain.
-                # Both intersections correspond to the same range (the intersection between the manifolds).
+                #   * Both intersections correspond to the same range (the intersection between the manifolds).
                 intersections = boundary.manifold.IntersectManifold(manifold, cache)
 
                 # For each intersection, slice the boundary domain with the intersection manifold.
@@ -297,6 +298,7 @@ class Solid:
         if cache == None:
             cache = {}
 
+        # Start with empty solid.
         combinedSolid = Solid(self.dimension, self.isVoid and solid.isVoid)
 
         for boundary in self.boundaries:

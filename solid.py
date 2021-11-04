@@ -40,19 +40,19 @@ class Solid:
         for boundary in self.boundaries:
             boundary.manifold.Translate(delta)
     
-    def AnyPointAndNormal(self):
+    def AnyPoint(self):
         point = None
-        normal = None
         if len(self.boundaries) > 0:
             boundary = self.boundaries[0]
             if boundary.domain:
-                domainPoint, domainNormal = boundary.domain.AnyPointAndNormal()
+                domainPoint = boundary.domain.AnyPoint()
             else:
                 domainPoint = 0.0
             point = boundary.manifold.Point(domainPoint)
-            normal = boundary.manifold.Normal(domainPoint)
+        elif self.containsInfinity:
+            point = np.full((self.dimension), 0.0)
 
-        return point, normal
+        return point
 
     def Edges(self):
         if self.dimension > 1:
@@ -89,7 +89,7 @@ class Solid:
 
         if len(self.boundaries) > 0:
             # Select the first coordinate of an arbitrary point within the volume boundary (the domain of f)
-            x0 = (self.AnyPointAndNormal())[0][0]
+            x0 = self.AnyPoint()[0]
 
             for boundary in self.boundaries:
                 # domainF is the integrand you get by applying the divergence theorem: VolumeIntegral(divergence(F)) = SurfaceIntegral(dot(F, n)).
@@ -167,7 +167,7 @@ class Solid:
         windingNumber = 0.0
         onBoundaryNormal = None
         if self.containsInfinity:
-            # If the solid is a void, then the winding number starts as 1 to account for the boundary at infinity.
+            # If the solid contains infinity, then the winding number starts as 1 to account for the boundary at infinity.
             windingNumber = 1.0
 
         if self.dimension == 1:
@@ -232,7 +232,7 @@ class Solid:
     def ContainsBoundary(self, boundary):
         containment = False
         if boundary.domain:
-            domainPoint, domainNormal = boundary.domain.AnyPointAndNormal()
+            domainPoint = boundary.domain.AnyPoint()
         else:
             domainPoint = 0.0
         windingNumber, onBoundaryNormal = self.WindingNumber(boundary.manifold.Point(domainPoint))

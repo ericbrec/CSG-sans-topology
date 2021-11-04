@@ -22,14 +22,14 @@ class Boundary:
 
 class Solid:
 
-    def __init__(self, dimension, isVoid = False):
+    def __init__(self, dimension, containsInfinity = False):
         assert dimension > 0
         self.dimension = dimension
-        self.isVoid = isVoid
+        self.containsInfinity = containsInfinity
         self.boundaries = []
 
     def Not(self):
-        solid = Solid(self.dimension, not self.isVoid)
+        solid = Solid(self.dimension, not self.containsInfinity)
         for boundary in self.boundaries:
             solid.boundaries.append(Boundary(boundary.manifold.FlipNormal(),boundary.domain))
         return solid
@@ -166,7 +166,7 @@ class Solid:
         # OnBoundaryNormal is None or the boundary normal if the point lies on a boundary. 
         windingNumber = 0.0
         onBoundaryNormal = None
-        if self.isVoid:
+        if self.containsInfinity:
             # If the solid is a void, then the winding number starts as 1 to account for the boundary at infinity.
             windingNumber = 1.0
 
@@ -251,7 +251,7 @@ class Solid:
         # Only manifolds of dimension > 1 have a domain.
         if self.dimension > 1:
             # Start with empty slice
-            manifoldDomain = Solid(self.dimension-1, self.isVoid)
+            manifoldDomain = Solid(self.dimension-1, self.containsInfinity)
             intersectionAlignment = None
 
             # Intersect each of this solid's boundaries with the manifold.
@@ -299,7 +299,7 @@ class Solid:
             cache = {}
 
         # Start with empty solid.
-        combinedSolid = Solid(self.dimension, self.isVoid and solid.isVoid)
+        combinedSolid = Solid(self.dimension, self.containsInfinity and solid.containsInfinity)
 
         for boundary in self.boundaries:
             # Slice self boundary manifold by solid. If it intersects, intersect the domains.

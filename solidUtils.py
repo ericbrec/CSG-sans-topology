@@ -72,13 +72,13 @@ def HyperplaneDomainFromPoint(hyperplane, point):
     tangentSpaceTranspose = np.transpose(hyperplane.tangentSpace)
     return np.linalg.inv(tangentSpaceTranspose @ hyperplane.tangentSpace) @ tangentSpaceTranspose @ (point - hyperplane.point)
 
-def CreateSolidFromPoints(dimension, points, isVoid = False):
+def CreateSolidFromPoints(dimension, points, containsInfinity = False):
     # CreateSolidFromPoints only works for dimension 2 so far.
     assert dimension == 2
     assert len(points) > 2
     assert len(points[0]) == dimension
 
-    solid = sld.Solid(dimension, isVoid)
+    solid = sld.Solid(dimension, containsInfinity)
 
     previousPoint = np.array(points[len(points)-1])
     for point in points:

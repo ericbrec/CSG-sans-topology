@@ -1,4 +1,5 @@
 import numpy as np
+import solid as sld
 
 class Manifold:
 
@@ -11,8 +12,8 @@ class Manifold:
     def __init__(self):
         pass
 
-    def FlipNormal(self):
-        return self
+    def copy(self):
+        return None
 
     def GetDomainDimension(self):
         return self.GetRangeDimension() - 1
@@ -21,6 +22,9 @@ class Manifold:
         return 0
 
     def Normal(self, domainPoint):
+        return None
+
+    def Point(self, domainPoint):
         return None
     
     def TangentSpace(self, domainPoint):
@@ -37,11 +41,14 @@ class Manifold:
         # The determinant is the length of the cofactor normal, which corresponds to the normal dotted with the cofactor normal.
         return np.dot(self.Normal(domainPoint), self.CofactorNormal(domainPoint))
 
-    def Point(self, domainPoint):
-        return None
+    def Transform(self, transform):
+        assert np.shape(transform) == (self.GetDomainDimension(), self.GetDomainDimension())
 
     def Translate(self, delta):
         assert len(delta) == self.GetRangeDimension()
+
+    def FlipNormal(self):
+        pass
 
     def IntersectXRay(self, point):
         assert len(point) == self.GetRangeDimension()
@@ -63,9 +70,9 @@ class Hyperplane(Manifold):
         self.point = None
         self.tangentSpace = None
 
-    def FlipNormal(self):
+    def copy(self):
         hyperplane = Hyperplane()
-        hyperplane.normal = -self.normal
+        hyperplane.normal = self.normal
         hyperplane.point = self.point
         hyperplane.tangentSpace = self.tangentSpace
         return hyperplane
@@ -75,6 +82,9 @@ class Hyperplane(Manifold):
 
     def Normal(self, domainPoint):
         return self.normal
+
+    def Point(self, domainPoint):
+        return np.dot(self.tangentSpace, domainPoint) + self.point
     
     def TangentSpace(self, domainPoint):
         return self.tangentSpace
@@ -87,13 +97,19 @@ class Hyperplane(Manifold):
     def FirstCofactor(self, domainPoint):
         return self.normal[0]
 
-    def Point(self, domainPoint):
-        return np.dot(self.tangentSpace, domainPoint) + self.point
+    def Transform(self, transform):
+        assert np.shape(transform) == (self.GetRangeDimension(), self.GetRangeDimension())
+
+        self.tangentSpace = transform @ self.tangentSpace
+        self.point = transform @ self.point
 
     def Translate(self, delta):
         assert len(delta) == self.GetRangeDimension()
 
         self.point += delta 
+
+    def FlipNormal(self):
+        self.normal = -self.normal
 
     def IntersectXRay(self, point):
         assert len(point) == self.GetRangeDimension()
@@ -115,6 +131,7 @@ class Hyperplane(Manifold):
 
     def IntersectManifold(self, other, cache = None):
         assert isinstance(other, Hyperplane)
+        assert self.GetRangeDimension() == other.GetRangeDimension()
 
         # Check manifold intersections cache for previously computed intersections.
         if cache != None:
@@ -127,10 +144,7 @@ class Hyperplane(Manifold):
         intersections = []
         intersectionsFlipped = []
 
-        # Initialize coincident marker
-        coincident = False
-
-        # Ensure manifolds are not parallel
+        # Check if manifolds intersect (are not parallel)
         alignment = np.dot(self.normal, other.normal)
         if alignment * alignment < Manifold.maxAlignment:
             dimension = self.GetRangeDimension()
@@ -182,14 +196,24 @@ class Hyperplane(Manifold):
 
             intersections.append([selfIntersection, otherIntersection])
             intersectionsFlipped.append([otherIntersection, selfIntersection])
-        elif -2.0 * Manifold.minSeparation < np.dot(self.normal, self.point - other.point) < Manifold.minSeparation:
-            # These two hyperplanes are coincident.
-            coincident = True
 
-        # Manifolds without intersections need to report coincidence. 
-        if len(intersections) == 0 and coincident:
-            intersections.append(alignment)
-            intersectionsFlipped.append(alignment)
+        # Otherwise, manifolds are parallel. Now, check if they are coincident.
+        elif -2.0 * Manifold.minSeparation < np.dot(self.normal, self.point - other.point) < Manifold.minSeparation:
+            # These hyperplanes are coincident.
+            # Return the domain in which they coincide (the entire domain) and the mapping from the other domain to the self domain.
+            domainCoincidence = sld.Solid(self.GetDomainDimension(), True)
+            tangentSpaceTranspose = np.transpose(self.tangentSpace)
+            inverseMap = np.linalg.inv(tangentSpaceTranspose, self.tangentSpace) @ tangentSpaceTranspose
+            transform =  inverseMap @ other.tangentSpace
+            translation = inverseMap @ (other.point - self.point)
+            intersections.append([domainCoincidence, transform, translation])
+
+            # Do the same for the mapping from the self domain to the other domain.
+            tangentSpaceTranspose = np.transpose(other.tangentSpace)
+            inverseMap = np.linalg.inv(tangentSpaceTranspose, other.tangentSpace) @ tangentSpaceTranspose
+            transform =  inverseMap @ self.tangentSpace
+            translation = inverseMap @ (self.point - other.point)
+            intersectionsFlipped.append([domainCoincidence, transform, translation])
 
         # Store intersections in cache
         if cache != None:

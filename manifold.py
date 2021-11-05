@@ -203,14 +203,14 @@ class Hyperplane(Manifold):
             # Return the domain in which they coincide (the entire domain) and the mapping from the other domain to the self domain.
             domainCoincidence = sld.Solid(self.GetDomainDimension(), True)
             tangentSpaceTranspose = np.transpose(self.tangentSpace)
-            inverseMap = np.linalg.inv(tangentSpaceTranspose, self.tangentSpace) @ tangentSpaceTranspose
+            inverseMap = np.linalg.inv(tangentSpaceTranspose @ self.tangentSpace) @ tangentSpaceTranspose
             transform =  inverseMap @ other.tangentSpace
             translation = inverseMap @ (other.point - self.point)
             intersections.append([domainCoincidence, transform, translation])
 
             # Do the same for the mapping from the self domain to the other domain.
             tangentSpaceTranspose = np.transpose(other.tangentSpace)
-            inverseMap = np.linalg.inv(tangentSpaceTranspose, other.tangentSpace) @ tangentSpaceTranspose
+            inverseMap = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
             transform =  inverseMap @ self.tangentSpace
             translation = inverseMap @ (self.point - other.point)
             intersectionsFlipped.append([domainCoincidence, transform, translation])

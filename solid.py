@@ -298,7 +298,7 @@ class Solid:
                         domainCoincidence = intersection[0].Intersection(boundary.domain)
                         domainCoincidence.Transform(intersection[1])
                         domainCoincidence.Translate(intersection[2])
-                        for domainBoundary in domainCoincidence:
+                        for domainBoundary in domainCoincidence.boundaries:
                             manifoldDomain.boundaries.append(domainBoundary)
             
             # Toss out a slice without any intersections.

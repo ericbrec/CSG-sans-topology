@@ -298,14 +298,17 @@ class Solid:
                         #   * Together intersection[2] and intersection[3] form the mapping from the boundary's domain to the given manifold's domain.
                         # First, intersect domain coincidence with the domain boundary.
                         domainCoincidence = intersection[0].Intersection(boundary.domain)
-                        # Next, invert the domain if the normals point in opposite directions (flip containsInfinity and later the normals).
-                        if intersection[1] < 0.0:
+                        # Next, invert the domain (flip containsInfinity and later the normals) under two conditions:
+                        #   * The normals point in the same direction and self contains infinity (the domain is a void in the boundary).
+                        #   * The normals point in opposite directions and self doesn't contain infinity (the domain should be removed from the boundary).
+                        invertDomain = (intersection[1] > 0.0 and self.containsInfinity) or (intersection[1] < 0.0 and not self.containsInfinity)
+                        if invertDomain:
                             domainCoincidence.containsInfinity = not domainCoincidence.containsInfinity
                         # Next, transform the domain coincidence from the boundary to the given manifold.
                         # Create copies of the manifolds and boundaries, since we are changing them.
                         for i in range(len(domainCoincidence.boundaries)):
                             domainManifold = domainCoincidence.boundaries[i].manifold.copy()
-                            if intersection[1] < 0.0:
+                            if invertDomain:
                                 domainManifold.FlipNormal()
                             domainManifold.Transform(intersection[2])
                             domainManifold.Translate(intersection[3])

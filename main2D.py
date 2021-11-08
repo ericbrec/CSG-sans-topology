@@ -114,7 +114,7 @@ print(squareA.VolumeIntegral(lambda x: 1.0), 4.0*4.0)
 print(squareA.SurfaceIntegral(lambda x, n: n), 4.0*4.0)
 print(squareA.WindingNumber(np.array([0.,0.])))
 print(squareA.WindingNumber(np.array([-0.23870968,1.])))
-squareB = utils.CreateHypercube([1,1], [2,0])
+squareB = utils.CreateHypercube([1,1], [1.2,-0.005])
 print(squareB.VolumeIntegral(lambda x: 1.0), 2.0*2.0)
 print(squareB.SurfaceIntegral(lambda x, n: n), 2.0*4.0)
 

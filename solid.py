@@ -258,12 +258,12 @@ class Solid:
         assert manifold.GetRangeDimension() == self.dimension
 
         manifoldDomain = None
+        coincidences = []
 
         # Only manifolds of dimension > 1 have a domain.
         if self.dimension > 1:
-            # Start with empty slice and no coincidences.
+            # Start with empty slice.
             manifoldDomain = Solid(self.dimension-1, self.containsInfinity)
-            coincidences = []
 
             # Intersect each of this solid's boundaries with the manifold.
             for boundary in self.boundaries:
@@ -292,42 +292,26 @@ class Solid:
                     elif isinstance(intersection[0], Solid):
                         # IntersectManifold found a coincident area, returned as:
                         #   * intersection[0] is solid within the boundary's domain inside of which the boundary and given manifold are coincident.
-                        #   * intersection[1] is the normal alignment between the boundary and given manifold (same or opposite directions).
-                        #   * intersection[2] is transform from the boundary's domain to the given manifold's domain.
-                        #   * intersection[3] is the translation from the boundary's domain to the given manifold's domain.
-                        #   * Together intersection[2] and intersection[3] form the mapping from the boundary's domain to the given manifold's domain.
+                        #   * intersection[1] is transform from the boundary's domain to the given manifold's domain.
+                        #   * intersection[2] is the translation from the boundary's domain to the given manifold's domain.
+                        #   * Together intersection[1] and intersection[2] form the mapping from the boundary's domain to the given manifold's domain.
                         # First, intersect domain coincidence with the domain boundary.
                         domainCoincidence = intersection[0].Intersection(boundary.domain)
-                        # Next, invert the domain (flip containsInfinity and later the normals) under two conditions:
-                        #   * The normals point in the same direction and self contains infinity (the domain is a void in the boundary).
-                        #   * The normals point in opposite directions and self doesn't contain infinity (the domain should be removed from the boundary).
-                        invertDomain = (intersection[1] > 0.0 and self.containsInfinity) or (intersection[1] < 0.0 and not self.containsInfinity)
-                        if invertDomain:
-                            domainCoincidence.containsInfinity = not domainCoincidence.containsInfinity
                         # Next, transform the domain coincidence from the boundary to the given manifold.
                         # Create copies of the manifolds and boundaries, since we are changing them.
                         for i in range(len(domainCoincidence.boundaries)):
                             domainManifold = domainCoincidence.boundaries[i].manifold.copy()
-                            if invertDomain:
-                                domainManifold.FlipNormal()
-                            domainManifold.Transform(intersection[2])
-                            domainManifold.Translate(intersection[3])
+                            domainManifold.Transform(intersection[1])
+                            domainManifold.Translate(intersection[2])
                             domainCoincidence.boundaries[i] = Boundary(domainManifold, domainCoincidence.boundaries[i].domain)
-                        # Finally, add the domain coincidence to the list of coincidences to union later.
+                        # Finally, add the domain coincidence to the list of coincidences.
                         coincidences.append(domainCoincidence)
             
-            # Now that we have a complete manifold domain, union it with the domain coincidences.
-            for domainCoincidence in coincidences:
-                if domainCoincidence.containsInfinity:
-                    manifoldDomain = manifoldDomain.Intersection(domainCoincidence)
-                else:
-                    manifoldDomain = manifoldDomain.Union(domainCoincidence)
-
             # Toss out a slice without any intersections.
             if manifoldDomain.IsEmpty():
                 manifoldDomain = None
         
-        return manifoldDomain
+        return manifoldDomain, coincidences
 
     def Intersection(self, solid, cache = None):
         assert self.dimension == solid.dimension
@@ -343,9 +327,15 @@ class Solid:
         for boundary in self.boundaries:
             newDomain = None
             # Slice self boundary manifold by solid. If it intersects, intersect the domains.
-            slice = solid.Slice(boundary.manifold, cache)
+            slice, coincidences = solid.Slice(boundary.manifold, cache)
             if slice:
                 newDomain = boundary.domain.Intersection(slice, cache)
+            elif coincidences:
+                newDomain = boundary.domain
+            # Subtract domain coincidences from the newDomain so they only appear once. Below we will intersect them.
+            if newDomain and not newDomain.IsEmpty():
+                for domainCoincidence in coincidences:
+                    newDomain = newDomain.Difference(domainCoincidence)
             if newDomain and not newDomain.IsEmpty():
                 # Self boundary intersects solid, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
@@ -356,9 +346,15 @@ class Solid:
         for boundary in solid.boundaries:
             newDomain = None
             # Slice solid boundary manifold by self. If it intersects, intersect the domains.
-            slice = self.Slice(boundary.manifold, cache)
+            slice, coincidences = self.Slice(boundary.manifold, cache)
             if slice:
                 newDomain = boundary.domain.Intersection(slice, cache)
+            elif coincidences:
+                newDomain = boundary.domain
+            # Intersect domain coincidences with the newDomain. Above, we subtracted them so they only appear once.
+            if newDomain and not newDomain.IsEmpty():
+                for domainCoincidence in coincidences:
+                    newDomain = newDomain.Intersection(domainCoincidence)
             if newDomain and not newDomain.IsEmpty():
                 # Solid boundary intersects self, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))

@@ -125,7 +125,7 @@ class Hyperplane(Manifold):
             # Getting the domain point is a bit trickier. Turns out you throw out the x-components and invert the tangent space.
             domainPoint = np.linalg.inv(self.tangentSpace[1:,:]) @ vectorFromManifold[1:]
             # Each intersection is of the form [distance to intersection, domain point of intersection].
-            intersections.append([xDistanceToManifold, domainPoint])
+            intersections.append((xDistanceToManifold, domainPoint))
         
         return intersections
 
@@ -194,28 +194,29 @@ class Hyperplane(Manifold):
                 selfIntersection.tangentSpace = np.array([0.0])
                 otherIntersection.tangentSpace = np.array([0.0])
 
-            intersections.append([selfIntersection, otherIntersection])
+            intersections.append((selfIntersection, otherIntersection))
             if cache != None:
-                intersectionsFlipped.append([otherIntersection, selfIntersection])
+                intersectionsFlipped.append((otherIntersection, selfIntersection))
 
         # Otherwise, manifolds are parallel. Now, check if they are coincident.
         elif -2.0 * Manifold.minSeparation < np.dot(self.normal, self.point - other.point) < Manifold.minSeparation:
             # These hyperplanes are coincident.
-            # Return the domain in which they coincide (entire domain for hyperplanes), normal alignment, and the mapping from the self domain to the other domain.
+            # Return the domain in which they coincide (entire domain for hyperplanes) and the mapping from the self domain to the other domain.
             domainCoincidence = sld.Solid(self.GetDomainDimension(), True)
             tangentSpaceTranspose = np.transpose(other.tangentSpace)
             inverseMap = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
             transform =  inverseMap @ self.tangentSpace
             translation = inverseMap @ (self.point - other.point)
-            intersections.append([domainCoincidence, alignment, transform, translation])
+            intersections.append((domainCoincidence, transform, translation))
 
-            if cache != None:
+            # Ignore the (other, self) coincidence if the manifolds are oriented in opposite directions.
+            if cache != None and alignment > 0.0:
                 # Do the same for the mapping from the other domain to the self domain.
                 tangentSpaceTranspose = np.transpose(self.tangentSpace)
                 inverseMap = np.linalg.inv(tangentSpaceTranspose @ self.tangentSpace) @ tangentSpaceTranspose
                 transform =  inverseMap @ other.tangentSpace
                 translation = inverseMap @ (other.point - self.point)
-                intersectionsFlipped.append([domainCoincidence, alignment, transform, translation])
+                intersectionsFlipped.append((domainCoincidence, transform, translation))
 
         # Store intersections in cache
         if cache != None:

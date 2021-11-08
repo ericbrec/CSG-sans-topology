@@ -27,9 +27,12 @@ class Solid:
         self.dimension = dimension
         self.containsInfinity = containsInfinity
         self.boundaries = []
+    
+    def __bool__(self):
+        return self.containsInfinity or len(self.boundaries) > 0
 
     def IsEmpty(self):
-        return not self.containsInfinity and len(self.boundaries) == 0
+        return not self
 
     def Not(self):
         solid = Solid(self.dimension, not self.containsInfinity)
@@ -38,7 +41,10 @@ class Solid:
             manifold.FlipNormal()
             solid.boundaries.append(Boundary(manifold,boundary.domain))
         return solid
-    
+
+    def __neg__(self):
+        return self.Not()
+
     def Transform(self, transform):
         assert np.shape(transform) == (self.dimension, self.dimension)
 
@@ -289,12 +295,14 @@ class Solid:
                             # If the boundary point is within the domain, add its twin to the manifoldDomain.
                             if boundary.domain.ContainsBoundary(Boundary(intersection[0])):
                                 manifoldDomain.boundaries.append(Boundary(intersection[1]))
+                    
                     elif isinstance(intersection[0], Solid):
                         # IntersectManifold found a coincident area, returned as:
                         #   * intersection[0] is solid within the boundary's domain inside of which the boundary and given manifold are coincident.
                         #   * intersection[1] is transform from the boundary's domain to the given manifold's domain.
                         #   * intersection[2] is the translation from the boundary's domain to the given manifold's domain.
                         #   * Together intersection[1] and intersection[2] form the mapping from the boundary's domain to the given manifold's domain.
+
                         # First, intersect domain coincidence with the domain boundary.
                         domainCoincidence = intersection[0].Intersection(boundary.domain)
                         # Next, transform the domain coincidence from the boundary to the given manifold.
@@ -325,6 +333,7 @@ class Solid:
         combinedSolid = Solid(self.dimension, self.containsInfinity and solid.containsInfinity)
 
         for boundary in self.boundaries:
+            # TODO: Track intersections.
             newDomain = None
             # Slice self boundary manifold by solid. If it intersects, intersect the domains.
             slice, coincidences = solid.Slice(boundary.manifold, cache)
@@ -333,10 +342,12 @@ class Solid:
             elif coincidences:
                 newDomain = boundary.domain
             # Subtract domain coincidences from the newDomain so they only appear once. Below we will intersect them.
-            if newDomain and not newDomain.IsEmpty():
+            if newDomain:
                 for domainCoincidence in coincidences:
+                    # TODO: Test for intersection. If you get one, then do the difference. 
                     newDomain = newDomain.Difference(domainCoincidence)
-            if newDomain and not newDomain.IsEmpty():
+            # TODO: Should add test for intersection.
+            if newDomain:
                 # Self boundary intersects solid, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif solid.ContainsBoundary(boundary):
@@ -352,10 +363,10 @@ class Solid:
             elif coincidences:
                 newDomain = boundary.domain
             # Intersect domain coincidences with the newDomain. Above, we subtracted them so they only appear once.
-            if newDomain and not newDomain.IsEmpty():
+            if newDomain:
                 for domainCoincidence in coincidences:
                     newDomain = newDomain.Intersection(domainCoincidence)
-            if newDomain and not newDomain.IsEmpty():
+            if newDomain:
                 # Solid boundary intersects self, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif self.ContainsBoundary(boundary):
@@ -364,8 +375,17 @@ class Solid:
 
         return combinedSolid
 
+    def __mul__(self, other):
+        return self.Intersection(other)
+
     def Union(self, solid):
         return self.Not().Intersection(solid.Not()).Not()
+    
+    def __add__(self, other):
+        return self.Union(other)
 
     def Difference(self, solid):
         return self.Intersection(solid.Not())
+
+    def __sub__(self, other):
+        return self.Difference(other)

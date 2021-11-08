@@ -209,8 +209,7 @@ class Hyperplane(Manifold):
             translation = inverseMap @ (self.point - other.point)
             intersections.append((domainCoincidence, transform, translation))
 
-            # Ignore the (other, self) coincidence if the manifolds are oriented in opposite directions.
-            if cache != None and alignment > 0.0:
+            if cache != None:
                 # Do the same for the mapping from the other domain to the self domain.
                 tangentSpaceTranspose = np.transpose(self.tangentSpace)
                 inverseMap = np.linalg.inv(tangentSpaceTranspose @ self.tangentSpace) @ tangentSpaceTranspose

@@ -6,16 +6,16 @@ class Boundary:
     
     @staticmethod
     def SortKey(boundary):
-        if boundary.domain:
-            return 0.0
-        else:
+        if boundary.domain is None:
             return (boundary.manifold.Point(0.0), -boundary.manifold.Normal(0.0))
+        else:
+            return 0.0
 
     def __init__(self, manifold, domain = None):
-        if domain:
-            assert manifold.GetDomainDimension() == domain.dimension
-        else:
+        if domain is None:
             assert manifold.GetDomainDimension() == 0
+        else:
+            assert manifold.GetDomainDimension() == domain.dimension
 
         self.manifold = manifold
         self.domain = domain
@@ -61,10 +61,10 @@ class Solid:
         point = None
         if len(self.boundaries) > 0:
             boundary = self.boundaries[0]
-            if boundary.domain:
-                domainPoint = boundary.domain.AnyPoint()
-            else:
+            if boundary.domain is None:
                 domainPoint = 0.0
+            else:
+                domainPoint = boundary.domain.AnyPoint()
             point = boundary.manifold.Point(domainPoint)
         elif self.containsInfinity:
             point = np.full((self.dimension), 0.0)
@@ -136,12 +136,12 @@ class Solid:
                         returnValue = integrate.quad(fHat, x0, point[0], epsabs=epsabs, epsrel=epsrel, *quadArgs)[0] * firstCofactor
                     return returnValue
 
-                if boundary.domain:
-                    # Add the contribution to the Volume integral from this boundary.
-                    sum += boundary.domain.VolumeIntegral(domainF)
-                else:
+                if boundary.domain is None:
                     # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
                     sum += domainF(0.0)
+                else:
+                    # Add the contribution to the Volume integral from this boundary.
+                    sum += boundary.domain.VolumeIntegral(domainF)
 
         return sum
 
@@ -164,12 +164,12 @@ class Solid:
                 fValue = f(point, normal, *args)
                 return np.dot(fValue, boundary.manifold.CofactorNormal(domainPoint))
 
-            if boundary.domain:
-                # Add the contribution to the Volume integral from this boundary.
-                sum += boundary.domain.VolumeIntegral(integrand)
-            else:
+            if boundary.domain is None:
                 # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
                 sum += integrand(0.0)
+            else:
+                # Add the contribution to the Volume integral from this boundary.
+                sum += boundary.domain.VolumeIntegral(integrand)
 
         return sum
 
@@ -207,7 +207,7 @@ class Solid:
                     # First, check the distance is positive.
                     if intersection[0] > -mf.Manifold.minSeparation:
                         considerBoundary = True
-                        if boundary.domain:
+                        if boundary.domain is not None:
                             # Only include the boundary if the ray intersection is inside its domain.
                             considerBoundary = boundary.domain.ContainsPoint(intersection[1])
                         # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
@@ -248,10 +248,10 @@ class Solid:
 
     def ContainsBoundary(self, boundary):
         containment = False
-        if boundary.domain:
-            domainPoint = boundary.domain.AnyPoint()
-        else:
+        if boundary.domain is None:
             domainPoint = 0.0
+        else:
+            domainPoint = boundary.domain.AnyPoint()
         windingNumber, onBoundaryNormal = self.WindingNumber(boundary.manifold.Point(domainPoint))
         if onBoundaryNormal is None:
             containment = windingNumber > 0.5
@@ -299,9 +299,10 @@ class Solid:
                     elif isinstance(intersection[0], Solid):
                         # IntersectManifold found a coincident area, returned as:
                         #   * intersection[0] is solid within the boundary's domain inside of which the boundary and given manifold are coincident.
-                        #   * intersection[1] is transform from the boundary's domain to the given manifold's domain.
-                        #   * intersection[2] is the translation from the boundary's domain to the given manifold's domain.
-                        #   * Together intersection[1] and intersection[2] form the mapping from the boundary's domain to the given manifold's domain.
+                        #   * intersection[1] is the normal alignment between the boundary and given manifold (same or opposite directions).
+                        #   * intersection[2] is transform from the boundary's domain to the given manifold's domain.
+                        #   * intersection[3] is the translation from the boundary's domain to the given manifold's domain.
+                        #   * Together intersection[2] and intersection[3] form the mapping from the boundary's domain to the given manifold's domain.
 
                         # First, intersect domain coincidence with the domain boundary.
                         domainCoincidence = intersection[0].Intersection(boundary.domain)
@@ -309,8 +310,8 @@ class Solid:
                         # Create copies of the manifolds and boundaries, since we are changing them.
                         for i in range(len(domainCoincidence.boundaries)):
                             domainManifold = domainCoincidence.boundaries[i].manifold.copy()
-                            domainManifold.Transform(intersection[1])
-                            domainManifold.Translate(intersection[2])
+                            domainManifold.Transform(intersection[2])
+                            domainManifold.Translate(intersection[3])
                             domainCoincidence.boundaries[i] = Boundary(domainManifold, domainCoincidence.boundaries[i].domain)
                         # Finally, add the domain coincidence to the list of coincidences.
                         coincidences.append(domainCoincidence)

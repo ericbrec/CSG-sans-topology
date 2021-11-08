@@ -201,13 +201,13 @@ class Hyperplane(Manifold):
         # Otherwise, manifolds are parallel. Now, check if they are coincident.
         elif -2.0 * Manifold.minSeparation < np.dot(self.normal, self.point - other.point) < Manifold.minSeparation:
             # These hyperplanes are coincident.
-            # Return the domain in which they coincide (entire domain for hyperplanes) and the mapping from the self domain to the other domain.
+            # Return the domain in which they coincide (entire domain for hyperplanes), normal alignment, and the mapping from the self domain to the other domain.
             domainCoincidence = sld.Solid(self.GetDomainDimension(), True)
             tangentSpaceTranspose = np.transpose(other.tangentSpace)
             inverseMap = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
             transform =  inverseMap @ self.tangentSpace
             translation = inverseMap @ (self.point - other.point)
-            intersections.append((domainCoincidence, transform, translation))
+            intersections.append((domainCoincidence, alignment, transform, translation))
 
             if cache != None:
                 # Do the same for the mapping from the other domain to the self domain.
@@ -215,7 +215,7 @@ class Hyperplane(Manifold):
                 inverseMap = np.linalg.inv(tangentSpaceTranspose @ self.tangentSpace) @ tangentSpaceTranspose
                 transform =  inverseMap @ other.tangentSpace
                 translation = inverseMap @ (other.point - self.point)
-                intersectionsFlipped.append((domainCoincidence, transform, translation))
+                intersectionsFlipped.append((domainCoincidence, alignment, transform, translation))
 
         # Store intersections in cache
         if cache != None:

@@ -273,45 +273,62 @@ class Solid:
 
             # Intersect each of this solid's boundaries with the manifold.
             for boundary in self.boundaries:
-                # Start by intersecting the boundary's manifold with the given manifold.
-                intersections = boundary.manifold.IntersectManifold(manifold, cache)
+                
+                # Check manifold intersections cache for twin.
+                intersections = None
+                twin = False
+                if cache != None:
+                    intersections = cache.get((boundary.manifold, manifold))
+                if intersections is None:
+                    # Start by intersecting the boundary's manifold with the given manifold.
+                    intersections = boundary.manifold.IntersectManifold(manifold)
+                    # Store intersections in cache
+                    if cache != None:
+                        cache[(manifold,boundary.manifold)] = intersections
+                    b = 0 # Index of intersection in the boundary's domain
+                    m = 1 # Index of intersection in the manifold's domain   
+                else:
+                    twin = True
+                    b = 1 # Index of intersection in the boundary's domain
+                    m = 0 # Index of intersection in the manifold's domain   
 
                 # Each intersection is either a crossing (a domain manifold) or a coincident area (a solid with the domain).
                 for intersection in intersections:
-                    if isinstance(intersection[0], mf.Manifold):
+                    if isinstance(intersection[b], mf.Manifold):
                         # IntersectManifold found a crossing, returned as a manifold pair:
-                        #   * intersection[0] is the intersection manifold in the boundary's domain;
-                        #   * intersection[1] is the intersection manifold in the given manifold's domain.
+                        #   * intersection[b] is the intersection manifold in the boundary's domain;
+                        #   * intersection[m] is the intersection manifold in the given manifold's domain.
                         #   * Both intersection manifolds have the same range (the crossing between the boundary and the given manifold).
                         if boundary.domain.dimension > 1:
-                            # We slice the boundary domain using intersection[0], but we add intersection[1] to the manifold domain.
+                            # We slice the boundary domain using intersection[b], but we add intersection[m] to the manifold domain.
                             # Both intersection manifolds have the same domain by construction in IntersectManifold.
-                            intersectionSlice = boundary.domain.Slice(intersection[0], cache)
+                            intersectionSlice = boundary.domain.Slice(intersection[b], cache)
                             if intersectionSlice:
-                                manifoldDomain.boundaries.append(Boundary(intersection[1],intersectionSlice))
+                                manifoldDomain.boundaries.append(Boundary(intersection[m],intersectionSlice))
                         else:
                             # This domain is dimension 1, a real number line.
                             # The intersection is a boundary point on that line (a point and normal).
                             # If the boundary point is within the domain, add its twin to the manifoldDomain.
-                            if boundary.domain.ContainsBoundary(Boundary(intersection[0])):
-                                manifoldDomain.boundaries.append(Boundary(intersection[1]))
+                            if boundary.domain.ContainsBoundary(Boundary(intersection[b])):
+                                manifoldDomain.boundaries.append(Boundary(intersection[m]))
                     
-                    elif isinstance(intersection[0], Solid):
+                    elif isinstance(intersection[b], Solid):
                         # IntersectManifold found a coincident area, returned as:
-                        #   * intersection[0] is solid within the boundary's domain inside of which the boundary and given manifold are coincident.
-                        #   * intersection[1] is the normal alignment between the boundary and given manifold (same or opposite directions).
-                        #   * intersection[2] is transform from the boundary's domain to the given manifold's domain.
-                        #   * intersection[3] is the translation from the boundary's domain to the given manifold's domain.
-                        #   * Together intersection[2] and intersection[3] form the mapping from the boundary's domain to the given manifold's domain.
+                        #   * intersection[b] is solid within the boundary's domain inside of which the boundary and given manifold are coincident.
+                        #   * intersection[m] is solid within the manifold's domain inside of which the boundary and given manifold are coincident.
+                        #   * intersection[2] is the normal alignment between the boundary and given manifold (same or opposite directions).
+                        #   * intersection[3] is transform from the boundary's domain to the given manifold's domain.
+                        #   * intersection[4] is the translation from the boundary's domain to the given manifold's domain.
+                        #   * Together intersection[3] and intersection[4] form the mapping from the boundary's domain to the given manifold's domain.
 
                         # First, intersect domain coincidence with the domain boundary.
-                        domainCoincidence = intersection[0].Intersection(boundary.domain)
+                        domainCoincidence = intersection[b].Intersection(boundary.domain)
                         # Next, transform the domain coincidence from the boundary to the given manifold.
                         # Create copies of the manifolds and boundaries, since we are changing them.
                         for i in range(len(domainCoincidence.boundaries)):
                             domainManifold = domainCoincidence.boundaries[i].manifold.copy()
-                            domainManifold.Transform(intersection[2])
-                            domainManifold.Translate(intersection[3])
+                            domainManifold.Transform(intersection[3])
+                            domainManifold.Translate(intersection[4])
                             domainCoincidence.boundaries[i] = Boundary(domainManifold, domainCoincidence.boundaries[i].domain)
                         # Finally, add the domain coincidence to the list of coincidences.
                         coincidences.append(domainCoincidence)

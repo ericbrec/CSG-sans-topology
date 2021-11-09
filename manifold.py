@@ -57,7 +57,7 @@ class Manifold:
         intersections = []
         return intersections
 
-    def IntersectManifold(self, other, cache = None):
+    def IntersectManifold(self, other):
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
         intersections = []
@@ -129,17 +129,9 @@ class Hyperplane(Manifold):
         
         return intersections
 
-    def IntersectManifold(self, other, cache = None):
+    def IntersectManifold(self, other):
         assert isinstance(other, Hyperplane)
         assert self.GetRangeDimension() == other.GetRangeDimension()
-
-        # Check manifold intersections cache for previously computed intersections.
-        if cache != None:
-            if (self, other) in cache:
-                return cache[(self, other)]
-            else:
-                # Prepare to cache results for IntersectManifold(other, self).
-                intersectionsFlipped = []
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
         intersections = []
@@ -193,32 +185,17 @@ class Hyperplane(Manifold):
                 # There is no null space (dimension-2 <= 0)
                 selfIntersection.tangentSpace = np.array([0.0])
                 otherIntersection.tangentSpace = np.array([0.0])
-
             intersections.append((selfIntersection, otherIntersection))
-            if cache != None:
-                intersectionsFlipped.append((otherIntersection, selfIntersection))
 
         # Otherwise, manifolds are parallel. Now, check if they are coincident.
         elif -2.0 * Manifold.minSeparation < np.dot(self.normal, self.point - other.point) < Manifold.minSeparation:
             # These hyperplanes are coincident.
-            # Return the domain in which they coincide (entire domain for hyperplanes), normal alignment, and the mapping from the self domain to the other domain.
+            # Return the domains in which they coincide (entire domain for hyperplanes), normal alignment, and the mapping from the self domain to the other domain.
             domainCoincidence = sld.Solid(self.GetDomainDimension(), True)
             tangentSpaceTranspose = np.transpose(other.tangentSpace)
             inverseMap = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
             transform =  inverseMap @ self.tangentSpace
             translation = inverseMap @ (self.point - other.point)
-            intersections.append((domainCoincidence, alignment, transform, translation))
-
-            if cache != None:
-                # Do the same for the mapping from the other domain to the self domain.
-                tangentSpaceTranspose = np.transpose(self.tangentSpace)
-                inverseMap = np.linalg.inv(tangentSpaceTranspose @ self.tangentSpace) @ tangentSpaceTranspose
-                transform =  inverseMap @ other.tangentSpace
-                translation = inverseMap @ (other.point - self.point)
-                intersectionsFlipped.append((domainCoincidence, alignment, transform, translation))
-
-        # Store intersections in cache
-        if cache != None:
-            cache[(other,self)] = intersectionsFlipped
+            intersections.append((domainCoincidence, domainCoincidence, alignment, transform, translation))
 
         return intersections

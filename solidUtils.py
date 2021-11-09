@@ -15,17 +15,16 @@ def CreateSegmentsFromSolid(solid):
 
 def HyperplaneAxisAligned(dimension, axis, offset, flipNormal=False):
     assert dimension > 0
-    hyperplane = mf.Hyperplane()
     diagonal = np.identity(dimension)
     sign = -1.0 if flipNormal else 1.0
-    hyperplane.normal = sign * diagonal[:,axis]
-    hyperplane.point = offset * hyperplane.normal
+    normal = sign * diagonal[:,axis]
+    point = offset * normal
     if dimension > 1:
-        hyperplane.tangentSpace = np.delete(diagonal, axis, axis=1)
+        tangentSpace = np.delete(diagonal, axis, axis=1)
     else:
-        hyperplane.tangentSpace = np.array([0.0])
+        tangentSpace = np.array([0.0])
     
-    return hyperplane
+    return mf.Hyperplane(normal, point, tangentSpace)
 
 def CreateHypercube(size, position = None):
     dimension = len(size)
@@ -52,21 +51,15 @@ def CreateHypercube(size, position = None):
 
 def Hyperplane1D(normal, offset):
     assert np.isscalar(normal) or len(normal) == 1
-    hyperplane = mf.Hyperplane()
-    hyperplane.normal = np.atleast_1d(normal)
-    hyperplane.normal = hyperplane.normal / np.linalg.norm(hyperplane.normal)
-    hyperplane.point = offset * hyperplane.normal
-    hyperplane.tangentSpace = np.atleast_1d(0.0)
-    return hyperplane
+    normalizedNormal = np.atleast_1d(normal)
+    normalizedNormal = normalizedNormal / np.linalg.norm(normalizedNormal)
+    return mf.Hyperplane(normalizedNormal, offset * normalizedNormal, 0.0)
 
 def Hyperplane2D(normal, offset):
     assert len(normal) == 2
-    hyperplane = mf.Hyperplane()
-    hyperplane.normal = np.atleast_1d(normal)
-    hyperplane.normal = hyperplane.normal / np.linalg.norm(hyperplane.normal)
-    hyperplane.point = offset * hyperplane.normal
-    hyperplane.tangentSpace = np.transpose(np.array([[normal[1], -normal[0]]]))
-    return hyperplane
+    normalizedNormal = np.atleast_1d(normal)
+    normalizedNormal = normalizedNormal / np.linalg.norm(normalizedNormal)
+    return mf.Hyperplane(normalizedNormal, offset * normalizedNormal, np.transpose(np.array([[normal[1], -normal[0]]])))
 
 def HyperplaneDomainFromPoint(hyperplane, point):
     tangentSpaceTranspose = np.transpose(hyperplane.tangentSpace)
@@ -137,21 +130,21 @@ def ExtrudeSolid(solid, path):
         tangent = tangent / extent
         # Extrude each boundary
         for boundary in solid.boundaries:
-            extrudedHyperplane = mf.Hyperplane()
             # Construct a normal orthoganal to both the boundary tangent space and the path tangent
-            extrudedHyperplane.normal = np.full((extrusion.dimension), 0.0)
-            extrudedHyperplane.normal[0:solid.dimension] = boundary.manifold.normal[:]
-            extrudedHyperplane.normal[solid.dimension] = -np.dot(boundary.manifold.normal, tangent[0:solid.dimension])
-            extrudedHyperplane.normal = extrudedHyperplane.normal / np.linalg.norm(extrudedHyperplane.normal)
+            extruded_normal = np.full((extrusion.dimension), 0.0)
+            extruded_normal[0:solid.dimension] = boundary.manifold.normal[:]
+            extruded_normal[solid.dimension] = -np.dot(boundary.manifold.normal, tangent[0:solid.dimension])
+            extruded_normal = extruded_normal / np.linalg.norm(extruded_normal)
             # Construct a point that adds the boundary point to the path point
-            extrudedHyperplane.point = np.full((extrusion.dimension), 0.0)
-            extrudedHyperplane.point[0:solid.dimension] = boundary.manifold.point[:]
-            extrudedHyperplane.point += point
+            extruded_point = np.full((extrusion.dimension), 0.0)
+            extruded_point[0:solid.dimension] = boundary.manifold.point[:]
+            extruded_point += point
             # Combine the boundary tangent space and the path tangent
-            extrudedHyperplane.tangentSpace = np.full((extrusion.dimension, solid.dimension), 0.0)
+            extruded_tangentSpace = np.full((extrusion.dimension, solid.dimension), 0.0)
             if solid.dimension > 1:
-                extrudedHyperplane.tangentSpace[0:solid.dimension, 0:solid.dimension-1] = boundary.manifold.tangentSpace[:,:]
-            extrudedHyperplane.tangentSpace[:, solid.dimension-1] = tangent[:]
+                extruded_tangentSpace[0:solid.dimension, 0:solid.dimension-1] = boundary.manifold.tangentSpace[:,:]
+            extruded_tangentSpace[:, solid.dimension-1] = tangent[:]
+            extrudedHyperplane = mf.Hyperplane(extruded_normal, extruded_point, extruded_tangentSpace)
             # Construct a domain for the extruded boundary
             if boundary.domain:
                 # Extrude the boundary's domain to include path domain

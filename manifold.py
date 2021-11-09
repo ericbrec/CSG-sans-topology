@@ -65,20 +65,19 @@ class Manifold:
 
 class Hyperplane(Manifold):
 
-    def __init__(self):
-        self.normal = None
-        self.point = None
-        self.tangentSpace = None
+    def __init__(self, normal, point, tangentSpace):
+        self.normal = np.atleast_1d(normal)
+        self.point = np.atleast_1d(point)
+        self.tangentSpace = np.atleast_1d(tangentSpace)
     
     def __str__(self):
-        return str(self.normal) + str(self.point)
+        return "Normal: {0}, Point: {1}, TangentSpace: {2}".format(str(self.normal), str(self.point), str(self.tangentSpace))
+    
+    def __repr__(self):
+        return "Hyperplane({0}, {1}, {2})".format(str(self.normal), str(self.point), str(self.tangentSpace))
 
     def copy(self):
-        hyperplane = Hyperplane()
-        hyperplane.normal = self.normal
-        hyperplane.point = self.point
-        hyperplane.tangentSpace = self.tangentSpace
-        return hyperplane
+        return Hyperplane(self.normal, self.point, self.tangentSpace)
 
     def GetRangeDimension(self):
         return len(self.normal)
@@ -154,8 +153,8 @@ class Hyperplane(Manifold):
             # The particular solution for x is given by x = V * SigmaInverse * UTranspose * b,
             #   where we only consider the first dimension number of vectors in V (the rest are zeroed out, i.e. the null space of A).
             # The null space of A (the last dimension-2 vectors in V) spans the free variable space, so those vectors form the tangent space of the intersection.
-            # Remember, we're solving for x = (selfDomainPoint otherDomainPoint). So, the selfIntersection.point is the first dimension-1 coordinates of x,
-            #   and the otherIntersection.point is the last dimension-1 coordinates of x. Likewise for the two tangent spaces.
+            # Remember, we're solving for x = (selfDomainPoint otherDomainPoint). So, the self_point is the first dimension-1 coordinates of x,
+            #   and the other_point is the last dimension-1 coordinates of x. Likewise for the two tangent spaces.
 
             # Okay, first construct A.
             A = np.concatenate((self.tangentSpace, -other.tangentSpace),axis=1)
@@ -167,28 +166,26 @@ class Hyperplane(Manifold):
             # Compute x = V * SigmaInverse * UTranspose * (other.point - self.point)
             x = V[:, 0:dimension] @ SigmaInverse @ np.transpose(U) @ (other.point - self.point)
             
-            selfIntersection = Hyperplane()
-            otherIntersection = Hyperplane()
-            # The selfIntersection normal is just the dot product of other normal with the self tangent space.
-            selfIntersection.normal = np.dot(other.normal, self.tangentSpace)
-            selfIntersection.normal = selfIntersection.normal / np.linalg.norm(selfIntersection.normal)
-            # The otherIntersection normal is just the dot product of self normal with the other tangent space.
-            otherIntersection.normal = np.dot(self.normal, other.tangentSpace)
-            otherIntersection.normal = otherIntersection.normal / np.linalg.norm(otherIntersection.normal)
-            # The selfIntersection point is the first dimension-1 coordinates of x.
-            selfIntersection.point = x[0:dimension-1]
-            # The otherIntersection point is the last dimension-1 coordinates of x.
-            otherIntersection.point = x[dimension-1:]
+            # The self intersection normal is just the dot product of other normal with the self tangent space.
+            self_normal = np.dot(other.normal, self.tangentSpace)
+            self_normal = self_normal / np.linalg.norm(self_normal)
+            # The other intersection normal is just the dot product of self normal with the other tangent space.
+            other_normal = np.dot(self.normal, other.tangentSpace)
+            other_normal = other_normal / np.linalg.norm(other_normal)
+            # The self intersection point is the first dimension-1 coordinates of x.
+            self_point = x[0:dimension-1]
+            # The other intersection point is the last dimension-1 coordinates of x.
+            other_point = x[dimension-1:]
             if dimension > 2:
-                # The selfIntersection tangent space is the first dimension-1 coordinates of the null space (the last dimension-2 vectors in V).
-                selfIntersection.tangentSpace = V[0:dimension-1, dimension:]
-                # The otherIntersection tangent space is the last dimension-1 coordinates of the null space (the last dimension-2 vectors in V).
-                otherIntersection.tangentSpace = V[dimension-1:, dimension:]
+                # The self intersection tangent space is the first dimension-1 coordinates of the null space (the last dimension-2 vectors in V).
+                self_tangentSpace = V[0:dimension-1, dimension:]
+                # The other intersection tangent space is the last dimension-1 coordinates of the null space (the last dimension-2 vectors in V).
+                other_tangentSpace = V[dimension-1:, dimension:]
             else:
                 # There is no null space (dimension-2 <= 0)
-                selfIntersection.tangentSpace = np.array([0.0])
-                otherIntersection.tangentSpace = np.array([0.0])
-            intersections.append((selfIntersection, otherIntersection))
+                self_tangentSpace = np.array([0.0])
+                other_tangentSpace = np.array([0.0])
+            intersections.append((Hyperplane(self_normal, self_point, self_tangentSpace), Hyperplane(other_normal, other_point, other_tangentSpace)))
 
         # Otherwise, manifolds are parallel. Now, check if they are coincident.
         elif -2.0 * Manifold.minSeparation < np.dot(self.normal, self.point - other.point) < Manifold.minSeparation:

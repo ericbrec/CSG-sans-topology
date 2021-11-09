@@ -69,6 +69,9 @@ class Hyperplane(Manifold):
         self.normal = None
         self.point = None
         self.tangentSpace = None
+    
+    def __str__(self):
+        return str(self.normal) + str(self.point)
 
     def copy(self):
         hyperplane = Hyperplane()

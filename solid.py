@@ -325,10 +325,7 @@ class Solid:
                         domainCoincidence = intersection[b].Intersection(boundary.domain)
                         # Next, invert the domain coincidence if the manifold domain contains infinity (flip containsInfinity and later the normals).
                         # But do the reverse (which removes the domain coincidence), if this is the twin or if the normals point in opposite directions.
-                        if twin or intersection[2] < 0.0:
-                            invertDomainCoincidence = not manifoldDomain.containsInfinity
-                        else:
-                            invertDomainCoincidence = manifoldDomain.containsInfinity
+                        invertDomainCoincidence = twin or intersection[2] < 0.0
                         if invertDomainCoincidence:
                             domainCoincidence.containsInfinity = not domainCoincidence.containsInfinity
                         # Next, transform the domain coincidence from the boundary to the given manifold.
@@ -347,12 +344,15 @@ class Solid:
                         # Finally, add the domain coincidence to the list of coincidences.
                         coincidences.append(domainCoincidence)
             
-            # Now that we have a complete manifold domain, intersect it with the domain coincidences.
+            # Now that we have a complete manifold domain, join it with the domain coincidences.
             for domainCoincidence in coincidences:
-                manifoldDomain = manifoldDomain.Intersection(domainCoincidence)
+                if domainCoincidence.containsInfinity:
+                    manifoldDomain = manifoldDomain.Intersection(domainCoincidence)
+                else:
+                    manifoldDomain = manifoldDomain.Union(domainCoincidence)
             
             # Toss out a slice without any intersections.
-            if manifoldDomain.IsEmpty():
+            if len(coincidences) == 0 and manifoldDomain.IsEmpty():
                 manifoldDomain = None
         
         return manifoldDomain
@@ -369,27 +369,25 @@ class Solid:
         combinedSolid = Solid(self.dimension, self.containsInfinity and solid.containsInfinity)
 
         for boundary in self.boundaries:
-            newDomain = None
             # Slice self boundary manifold by solid. If it intersects, intersect the domain.
             slice = solid.Slice(boundary.manifold, cache)
-            if slice:
+            if slice is not None:
                 newDomain = boundary.domain.Intersection(slice, cache)
-            if newDomain:
-                # Self boundary intersects solid, so create a new boundary with the intersected domain.
-                combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
+                if newDomain:
+                    # Self boundary intersects solid, so create a new boundary with the intersected domain.
+                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif solid.ContainsBoundary(boundary):
                 # Self boundary is separate from solid, so its containment is based on being wholly contained within solid. 
                 combinedSolid.boundaries.append(boundary)
 
         for boundary in solid.boundaries:
-            newDomain = None
             # Slice solid boundary manifold by self. If it intersects, intersect the domain.
             slice = self.Slice(boundary.manifold, cache)
-            if slice:
+            if slice is not None:
                 newDomain = boundary.domain.Intersection(slice, cache)
-            if newDomain:
-                # Solid boundary intersects self, so create a new boundary with the intersected domain.
-                combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
+                if newDomain:
+                    # Solid boundary intersects self, so create a new boundary with the intersected domain.
+                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif self.ContainsBoundary(boundary):
                 # Solid boundary is separate from self, so its containment is based on being wholly contained within self. 
                 combinedSolid.boundaries.append(boundary)

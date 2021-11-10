@@ -66,12 +66,12 @@ class Manifold:
 class Hyperplane(Manifold):
 
     def __init__(self, normal, point, tangentSpace):
-        self.normal = np.atleast_1d(normal)
-        self.point = np.atleast_1d(point)
-        self.tangentSpace = np.atleast_1d(tangentSpace)
+        self.normal = np.atleast_1d(np.array(normal))
+        self.point = np.atleast_1d(np.array(point))
+        self.tangentSpace = np.atleast_1d(np.array(tangentSpace))
     
     def __str__(self):
-        return "Normal: {0}, Point: {1}, TangentSpace: {2}".format(str(self.normal), str(self.point), str(self.tangentSpace))
+        return "Normal: {0}, Point: {1}".format(str(self.normal), str(self.point))
     
     def __repr__(self):
         return "Hyperplane({0}, {1}, {2})".format(str(self.normal), str(self.point), str(self.tangentSpace))

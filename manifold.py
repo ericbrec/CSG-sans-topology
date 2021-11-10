@@ -71,10 +71,10 @@ class Hyperplane(Manifold):
         self.tangentSpace = np.atleast_1d(np.array(tangentSpace))
     
     def __str__(self):
-        return "Normal: {0}, Point: {1}".format(str(self.normal), str(self.point))
+        return "Normal: {0}, Point: {1}".format(self.normal, self.point)
     
     def __repr__(self):
-        return "Hyperplane({0}, {1}, {2})".format(str(self.normal), str(self.point), str(self.tangentSpace))
+        return "Hyperplane({0}, {1}, {2})".format(self.normal, self.point, self.tangentSpace)
 
     def copy(self):
         return Hyperplane(self.normal, self.point, self.tangentSpace)

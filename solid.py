@@ -19,6 +19,12 @@ class Boundary:
 
         self.manifold = manifold
         self.domain = domain
+    
+    def __str__(self):
+        return "{0}, {1}".format(self.manifold, "None" if self.domain is None else "Unbounded" if self.domain.containsInfinity else "Bounded")
+    
+    def __repr__(self):
+        return "Boundary({0}, {1})".format(self.manifold.__repr__(), "None" if self.domain is None else "Solid({0}, {1})".format(self.domain.dimension, self.domain.containsInfinity))
 
 class Solid:
 
@@ -27,6 +33,9 @@ class Solid:
         self.dimension = dimension
         self.containsInfinity = containsInfinity
         self.boundaries = []
+    
+    def __repr__(self):
+        return "Solid({0}, {1})".format(self.dimension, self.containsInfinity)
     
     def __bool__(self):
         return self.containsInfinity or len(self.boundaries) > 0
@@ -351,7 +360,7 @@ class Solid:
                 else:
                     manifoldDomain = manifoldDomain.Union(domainCoincidence)
             
-            # Toss out a slice without any intersections.
+            # Toss out a slice without coincidences or intersections (keep slices that are empty due to coincidence).
             if len(coincidences) == 0 and manifoldDomain.IsEmpty():
                 manifoldDomain = None
         

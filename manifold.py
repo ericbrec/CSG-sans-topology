@@ -137,12 +137,11 @@ class Hyperplane(Manifold):
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
         intersections = []
+        dimension = self.GetRangeDimension()
 
         # Check if manifolds intersect (are not parallel)
         alignment = np.dot(self.normal, other.normal)
         if alignment * alignment < Manifold.maxAlignment:
-            dimension = self.GetRangeDimension()
-
             # We're finding the intersection by solving the underdetermined system of equations formed by assigning points in self to points in other.
             # That is: self.tangentSpace * selfDomainPoint + self.point = other.tangentSpace * otherDomainPoint + other.point
             # This system is dimension equations with 2*(dimension-1) unknowns (the two domain points).
@@ -188,14 +187,23 @@ class Hyperplane(Manifold):
             intersections.append((Hyperplane(self_normal, self_point, self_tangentSpace), Hyperplane(other_normal, other_point, other_tangentSpace)))
 
         # Otherwise, manifolds are parallel. Now, check if they are coincident.
-        elif -2.0 * Manifold.minSeparation < np.dot(self.normal, self.point - other.point) < Manifold.minSeparation:
-            # These hyperplanes are coincident.
-            # Return the domains in which they coincide (entire domain for hyperplanes), normal alignment, and the mapping from the self domain to the other domain.
-            domainCoincidence = sld.Solid(self.GetDomainDimension(), True)
-            tangentSpaceTranspose = np.transpose(other.tangentSpace)
-            inverseMap = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
-            transform =  inverseMap @ self.tangentSpace
-            translation = inverseMap @ (self.point - other.point)
-            intersections.append((domainCoincidence, domainCoincidence, alignment, transform, translation))
+        else:
+            separation = np.dot(self.normal, self.point - other.point)
+            if -2.0 * Manifold.minSeparation < separation < Manifold.minSeparation:
+                # These hyperplanes are coincident.
+                if dimension > 1:
+                    # Return the domains in which they coincide (entire domain for hyperplanes), normal alignment, and the mapping from the self domain to the other domain.
+                    domainCoincidence = sld.Solid(self.GetDomainDimension(), True)
+                    tangentSpaceTranspose = np.transpose(other.tangentSpace)
+                    inverseMap = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
+                    transform =  inverseMap @ self.tangentSpace
+                    translation = inverseMap @ (self.point - other.point)
+                    intersections.append((domainCoincidence, domainCoincidence, alignment, transform, translation))
+                else:
+                    # Return a zero separation and the normal alignment.
+                    intersections.append((0.0, alignment))
+            elif dimension <= 1:
+                # Return the separation and the normal alignment.
+                intersections.append((separation, alignment))
 
         return intersections

@@ -25,6 +25,14 @@ class Boundary:
     
     def __repr__(self):
         return "Boundary({0}, {1})".format(self.manifold.__repr__(), "None" if self.domain is None else "Solid({0}, {1})".format(self.domain.dimension, self.domain.containsInfinity))
+    
+    def AnyPoint(self):
+        if self.domain is None:
+            domainPoint = 0.0
+        else:
+            domainPoint = self.domain.AnyPoint()
+
+        return self.manifold.Point(domainPoint)
 
 class Solid:
 
@@ -69,12 +77,7 @@ class Solid:
     def AnyPoint(self):
         point = None
         if len(self.boundaries) > 0:
-            boundary = self.boundaries[0]
-            if boundary.domain is None:
-                domainPoint = 0.0
-            else:
-                domainPoint = boundary.domain.AnyPoint()
-            point = boundary.manifold.Point(domainPoint)
+            point = self.boundaries[0].AnyPoint()
         elif self.containsInfinity:
             point = np.full((self.dimension), 0.0)
 
@@ -272,97 +275,119 @@ class Solid:
     def Slice(self, manifold, cache = None):
         assert manifold.GetRangeDimension() == self.dimension
 
-        manifoldDomain = None
-        coincidences = []
-
-        # Only manifolds of dimension > 1 have a domain.
         if self.dimension > 1:
-            # Start with empty slice.
+            # Start with empty slice and no domain coincidences for a 2D+ slice.
             manifoldDomain = Solid(self.dimension-1, self.containsInfinity)
+            coincidences = []
+        else:
+            # Start with an initial windingNumber for a 1D slice.
+            windingNumber = 1.0 if self.containsInfinity else 0.0
 
-            # Intersect each of this solid's boundaries with the manifold.
-            for boundary in self.boundaries:
-                
-                # Check manifold intersections cache for twin.
-                intersections = None
-                twin = False
-                if cache != None:
-                    intersections = cache.get((boundary.manifold, manifold))
-                if intersections is None:
-                    # Start by intersecting the boundary's manifold with the given manifold.
-                    intersections = boundary.manifold.IntersectManifold(manifold)
-                    # Store intersections in cache
-                    if cache != None:
-                        cache[(manifold,boundary.manifold)] = intersections
-                    b = 0 # Index of intersection in the boundary's domain
-                    m = 1 # Index of intersection in the manifold's domain   
-                else:
-                    twin = True
+        # Intersect each of this solid's boundaries with the manifold.
+        for boundary in self.boundaries:
+            intersections = None
+            isTwin = False
+            b = 0 # Index of intersection in the boundary's domain
+            m = 1 # Index of intersection in the manifold's domain   
+
+            # Check for previously computed manifold intersections stored in cache.
+            if cache != None:
+                # First, check for the twin (opposite order of arguments).
+                intersections = cache.get((manifold, boundary.manifold))
+                if intersections != None:
+                    isTwin = True
                     b = 1 # Index of intersection in the boundary's domain
                     m = 0 # Index of intersection in the manifold's domain   
+                else:
+                    # Next, check for the original order (not twin).
+                    intersections = cache.get((boundary.manifold, manifold))
 
-                # Each intersection is either a crossing (a domain manifold) or a coincident area (a solid with the domain).
-                for intersection in intersections:
-                    if isinstance(intersection[b], mf.Manifold):
-                        # IntersectManifold found a crossing, returned as a manifold pair:
-                        #   * intersection[b] is the intersection manifold in the boundary's domain;
-                        #   * intersection[m] is the intersection manifold in the given manifold's domain.
-                        #   * Both intersection manifolds have the same range (the crossing between the boundary and the given manifold).
-                        if boundary.domain.dimension > 1:
-                            # We slice the boundary domain using intersection[b], but we add intersection[m] to the manifold domain.
-                            # Both intersection manifolds have the same domain by construction in IntersectManifold.
-                            intersectionSlice = boundary.domain.Slice(intersection[b], cache)
-                            if intersectionSlice:
-                                manifoldDomain.boundaries.append(Boundary(intersection[m],intersectionSlice))
-                        else:
-                            # This domain is dimension 1, a real number line.
-                            # The intersection is a boundary point on that line (a point and normal).
-                            # If the boundary point is within the domain, add its twin to the manifoldDomain.
-                            if boundary.domain.ContainsBoundary(Boundary(intersection[b])):
-                                manifoldDomain.boundaries.append(Boundary(intersection[m]))
-                    
-                    elif isinstance(intersection[b], Solid):
-                        # IntersectManifold found a coincident area, returned as:
-                        #   * intersection[b] is solid within the boundary's domain inside of which the boundary and given manifold are coincident.
-                        #   * intersection[m] is solid within the manifold's domain inside of which the boundary and given manifold are coincident.
-                        #   * intersection[2] is the normal alignment between the boundary and given manifold (same or opposite directions).
-                        #   * intersection[3] is transform from the boundary's domain to the given manifold's domain.
-                        #   * intersection[4] is the translation from the boundary's domain to the given manifold's domain.
-                        #   * Together intersection[3] and intersection[4] form the mapping from the boundary's domain to the given manifold's domain.
+            # If intersections not previously computed, compute them now.
+            if intersections is None:
+                intersections = boundary.manifold.IntersectManifold(manifold)
+                # Store intersections in cache.
+                if cache != None:
+                    cache[(boundary.manifold, manifold)] = intersections
 
-                        # First, intersect domain coincidence with the domain boundary.
-                        domainCoincidence = intersection[b].Intersection(boundary.domain)
-                        # Next, invert the domain coincidence if the manifold domain contains infinity (flip containsInfinity and later the normals).
-                        # But do the reverse (which removes the domain coincidence), if this is the twin or if the normals point in opposite directions.
-                        invertDomainCoincidence = twin or intersection[2] < 0.0
+            # Each intersection is either a separation (1D scalar), a crossing (domain manifold), or a domain coincidence (solid within the domain).
+            for intersection in intersections:
+                if np.isscalar(intersection[0]):
+                    # IntersectManifold found a separation, returned as two scalars:
+                    #   * intersection[0] is the separation between 1D points (zero for coincident points).
+                    #   * intersection[1] is the normal alignment between the boundary and given manifold (same or opposite directions).
+
+                    # Check separation between 1D points.
+                    if intersection[0] == 0.0:
+                        # Found a coincident point.
+                        # Add it immediately if it's not a twin and the normals align, otherwise reject it immediately.
+                        return not isTwin and intersection[1] > 0.0
+                    elif isTwin:
+                        windingNumber += np.sign(-intersection[0]*intersection[1]) / 2.0
+                    else:
+                        windingNumber += np.sign(intersection[0]) / 2.0
+
+                elif isinstance(intersection[b], mf.Manifold):
+                    # IntersectManifold found a crossing, returned as a manifold pair:
+                    #   * intersection[b] is the intersection manifold in the boundary's domain;
+                    #   * intersection[m] is the intersection manifold in the given manifold's domain.
+                    #   * Both intersection manifolds have the same range (the crossing between the boundary and the given manifold).
+
+                    # We slice the boundary domain using intersection[b], but we add intersection[m] to the manifold domain.
+                    # Both intersection manifolds have the same domain by construction in IntersectManifold.
+                    intersectionSlice = boundary.domain.Slice(intersection[b], cache)
+                    if intersectionSlice:
+                        # If boundary domain is 1D, intersection slice is just a boolean indicating containment.
+                        if not isinstance(intersectionSlice, Solid):
+                            intersectionSlice = None
+                        manifoldDomain.boundaries.append(Boundary(intersection[m],intersectionSlice))
+                
+                elif isinstance(intersection[b], Solid):
+                    # IntersectManifold found a coincident area, returned as:
+                    #   * intersection[b] is solid within the boundary's domain inside of which the boundary and given manifold are coincident.
+                    #   * intersection[m] is solid within the manifold's domain inside of which the boundary and given manifold are coincident.
+                    #   * intersection[2] is the normal alignment between the boundary and given manifold (same or opposite directions).
+                    #   * intersection[3] is transform from the boundary's domain to the given manifold's domain.
+                    #   * intersection[4] is the translation from the boundary's domain to the given manifold's domain.
+                    #   * Together intersection[3] and intersection[4] form the mapping from the boundary's domain to the given manifold's domain.
+
+                    # First, intersect domain coincidence with the domain boundary.
+                    domainCoincidence = intersection[b].Intersection(boundary.domain)
+                    # Next, invert the domain coincidence if the manifold domain contains infinity (flip containsInfinity and later the normals).
+                    # But do the reverse (which removes the domain coincidence), if this is the twin or if the normals point in opposite directions.
+                    invertDomainCoincidence = isTwin or intersection[2] < 0.0
+                    if invertDomainCoincidence:
+                        domainCoincidence.containsInfinity = not domainCoincidence.containsInfinity
+                    # Next, transform the domain coincidence from the boundary to the given manifold.
+                    # Create copies of the manifolds and boundaries, since we are changing them.
+                    for i in range(len(domainCoincidence.boundaries)):
+                        domainManifold = domainCoincidence.boundaries[i].manifold.copy()
                         if invertDomainCoincidence:
-                            domainCoincidence.containsInfinity = not domainCoincidence.containsInfinity
-                        # Next, transform the domain coincidence from the boundary to the given manifold.
-                        # Create copies of the manifolds and boundaries, since we are changing them.
-                        for i in range(len(domainCoincidence.boundaries)):
-                            domainManifold = domainCoincidence.boundaries[i].manifold.copy()
-                            if invertDomainCoincidence:
-                                domainManifold.FlipNormal()
-                            if twin:
-                                domainManifold.Translate(-intersection[4])
-                                domainManifold.Transform(np.linalg.inv(intersection[3]))
-                            else:
-                                domainManifold.Transform(intersection[3])
-                                domainManifold.Translate(intersection[4])
-                            domainCoincidence.boundaries[i] = Boundary(domainManifold, domainCoincidence.boundaries[i].domain)
-                        # Finally, add the domain coincidence to the list of coincidences.
-                        coincidences.append(domainCoincidence)
-            
+                            domainManifold.FlipNormal()
+                        if isTwin:
+                            domainManifold.Translate(-intersection[4])
+                            domainManifold.Transform(np.linalg.inv(intersection[3]))
+                        else:
+                            domainManifold.Transform(intersection[3])
+                            domainManifold.Translate(intersection[4])
+                        domainCoincidence.boundaries[i] = Boundary(domainManifold, domainCoincidence.boundaries[i].domain)
+                    # Finally, add the domain coincidence to the list of coincidences.
+                    coincidences.append((invertDomainCoincidence, domainCoincidence))
+        
+        # We've gone through all boundaries. Finalize the manifold domain (2D+) or containment value (1D) for the slice.
+        if self.dimension > 1:
             # Now that we have a complete manifold domain, join it with the domain coincidences.
             for domainCoincidence in coincidences:
-                if domainCoincidence.containsInfinity:
-                    manifoldDomain = manifoldDomain.Intersection(domainCoincidence)
+                if domainCoincidence[0]:
+                    manifoldDomain = manifoldDomain.Intersection(domainCoincidence[1], cache)
                 else:
-                    manifoldDomain = manifoldDomain.Union(domainCoincidence)
+                    manifoldDomain = manifoldDomain.Union(domainCoincidence[1])
             
             # Toss out a slice without coincidences or intersections (keep slices that are empty due to coincidence).
             if len(coincidences) == 0 and manifoldDomain.IsEmpty():
                 manifoldDomain = None
+        else:
+            # For 1D slice, just return containment (winding number over 0.5).
+            manifoldDomain = windingNumber > 0.5
         
         return manifoldDomain
 
@@ -371,21 +396,29 @@ class Solid:
 
         # Manifold intersections are expensive and come in symmetric pairs (m1 intersect m2, m2 intersect m1).
         # So, we create a manifold intersections cache (dictionary) to store and reuse intersection pairs.
-        if cache == None:
+        # The cache is also used to avoid overlapping coincident domains.
+        if cache is None:
             cache = {}
 
         # Start with empty solid.
         combinedSolid = Solid(self.dimension, self.containsInfinity and solid.containsInfinity)
 
         for boundary in self.boundaries:
-            # Slice self boundary manifold by solid. If it intersects, intersect the domain.
+            # Slice self boundary manifold by solid.
             slice = solid.Slice(boundary.manifold, cache)
             if slice is not None:
-                newDomain = boundary.domain.Intersection(slice, cache)
-                if newDomain:
-                    # Self boundary intersects solid, so create a new boundary with the intersected domain.
-                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
-            elif solid.ContainsBoundary(boundary):
+                if boundary.domain is None:
+                    # Boundary is just a point, so check if the slice contains it.
+                    if slice:
+                        # Self boundary intersects solid, so add it.
+                        combinedSolid.boundaries.append(boundary)
+                else:
+                    # Intersect slice with the boundary's domain.
+                    newDomain = boundary.domain.Intersection(slice, cache)
+                    if newDomain:
+                        # Self boundary intersects solid, so create a new boundary with the intersected domain.
+                        combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
+            elif solid.ContainsPoint(boundary.AnyPoint()):
                 # Self boundary is separate from solid, so its containment is based on being wholly contained within solid. 
                 combinedSolid.boundaries.append(boundary)
 
@@ -393,11 +426,18 @@ class Solid:
             # Slice solid boundary manifold by self. If it intersects, intersect the domain.
             slice = self.Slice(boundary.manifold, cache)
             if slice is not None:
-                newDomain = boundary.domain.Intersection(slice, cache)
-                if newDomain:
-                    # Solid boundary intersects self, so create a new boundary with the intersected domain.
-                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
-            elif self.ContainsBoundary(boundary):
+                if boundary.domain is None:
+                    # Boundary is just a point, so check if the slice contains it.
+                    if slice:
+                        # Solid boundary intersects self, so add it.
+                        combinedSolid.boundaries.append(boundary)
+                else:
+                    # Intersect slice with the boundary's domain.
+                    newDomain = boundary.domain.Intersection(slice, cache)
+                    if newDomain:
+                        # Solid boundary intersects self, so create a new boundary with the intersected domain.
+                        combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
+            elif self.ContainsPoint(boundary.AnyPoint()):
                 # Solid boundary is separate from self, so its containment is based on being wholly contained within self. 
                 combinedSolid.boundaries.append(boundary)
 

@@ -188,8 +188,9 @@ class Hyperplane(Manifold):
 
         # Otherwise, manifolds are parallel. Now, check if they are coincident.
         else:
-            separation = np.dot(self.normal, self.point - other.point)
-            if -2.0 * Manifold.minSeparation < separation < Manifold.minSeparation:
+            insideSeparation = np.dot(self.normal, self.point - other.point)
+            # Allow for extra outside separation to avoid issues with minute gaps.
+            if -2.0 * Manifold.minSeparation < insideSeparation < Manifold.minSeparation:
                 # These hyperplanes are coincident.
                 if dimension > 1:
                     # Return the domains in which they coincide (entire domain for hyperplanes), normal alignment, and the mapping from the self domain to the other domain.
@@ -203,7 +204,8 @@ class Hyperplane(Manifold):
                     # Return a zero separation and the normal alignment.
                     intersections.append((0.0, alignment))
             elif dimension <= 1:
-                # Return the separation and the normal alignment.
-                intersections.append((separation, alignment))
+                # Special case for points (otherwise return no intersections).
+                # Return the inside separation and the normal alignment (used for winding number calculation).
+                intersections.append((insideSeparation, alignment))
 
         return intersections

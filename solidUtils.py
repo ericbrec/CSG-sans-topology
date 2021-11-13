@@ -28,20 +28,21 @@ def HyperplaneAxisAligned(dimension, axis, offset, flipNormal=False):
 
 def CreateHypercube(size, position = None):
     dimension = len(size)
-    solid = sld.Solid(dimension)
+    solid = sld.Solid(dimension, False)
     if position is None:
         position = [0.0]*dimension
     else:
         assert len(position) == dimension
 
     for i in range(dimension):
-        domain = None
         if dimension > 1:
             domainSize = size.copy()
             del domainSize[i]
             domainPosition = position.copy()
             del domainPosition[i]
             domain = CreateHypercube(domainSize, domainPosition)
+        else:
+            domain = sld.Solid(0, True)
         hyperplane = HyperplaneAxisAligned(dimension, i, size[i] + position[i], False)
         solid.boundaries.append(sld.Boundary(hyperplane,domain))
         hyperplane = HyperplaneAxisAligned(dimension, i, size[i] - position[i], True)
@@ -80,15 +81,16 @@ def CreateSolidFromPoints(dimension, points, containsInfinity = False):
         normal = np.array([-vector[1], vector[0]])
         normal = normal / np.linalg.norm(normal)
         hyperplane = Hyperplane2D(normal,np.dot(normal,point))
-        domain = sld.Solid(dimension-1)
+        domain = sld.Solid(dimension-1, False)
+        domainDomain = sld.Solid(dimension-2, True) # Domain for 1D points.
         previousPointDomain = HyperplaneDomainFromPoint(hyperplane, previousPoint)
         pointDomain = HyperplaneDomainFromPoint(hyperplane, point)
         if previousPointDomain < pointDomain:
-            domain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, -previousPointDomain)))
-            domain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, pointDomain)))
+            domain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, -previousPointDomain), domainDomain))
+            domain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, pointDomain), domainDomain))
         else:
-            domain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, -pointDomain)))
-            domain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, previousPointDomain)))
+            domain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, -pointDomain), domainDomain))
+            domain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, previousPointDomain), domainDomain))
         solid.boundaries.append(sld.Boundary(hyperplane, domain))
         previousPoint = point
 
@@ -107,8 +109,8 @@ def CreateStar(radius, center, angle):
     for boundary in star.boundaries:
         u0 = boundary.domain.boundaries[0].manifold.point[0]
         u1 = boundary.domain.boundaries[1].manifold.point[0]
-        boundary.domain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, u0 + (1.0 - u)*(u1 - u0))))
-        boundary.domain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, -(u0 + u*(u1 - u0)))))
+        boundary.domain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, u0 + (1.0 - u)*(u1 - u0)), sld.Solid(0, True)))
+        boundary.domain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, -(u0 + u*(u1 - u0))), sld.Solid(0, True)))
 
     return star
 
@@ -116,7 +118,7 @@ def ExtrudeSolid(solid, path):
     assert len(path) > 1
     assert solid.dimension+1 == len(path[0])
     
-    extrusion = sld.Solid(solid.dimension+1)
+    extrusion = sld.Solid(solid.dimension+1, False)
 
     # Extrude boundaries along the path
     point = None
@@ -146,7 +148,7 @@ def ExtrudeSolid(solid, path):
             extruded_tangentSpace[:, solid.dimension-1] = tangent[:]
             extrudedHyperplane = mf.Hyperplane(extruded_normal, extruded_point, extruded_tangentSpace)
             # Construct a domain for the extruded boundary
-            if boundary.domain:
+            if boundary.domain.dimension > 0:
                 # Extrude the boundary's domain to include path domain
                 domainPath = []
                 domainPoint = np.full((solid.dimension), 0.0)
@@ -156,9 +158,9 @@ def ExtrudeSolid(solid, path):
                 domainPath.append(domainPoint)
                 extrudedDomain = ExtrudeSolid(boundary.domain, domainPath)
             else:
-                extrudedDomain = sld.Solid(solid.dimension)
-                extrudedDomain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, 0.0)))
-                extrudedDomain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, extent)))
+                extrudedDomain = sld.Solid(solid.dimension, False)
+                extrudedDomain.boundaries.append(sld.Boundary(Hyperplane1D(-1.0, 0.0), sld.Solid(0, True)))
+                extrudedDomain.boundaries.append(sld.Boundary(Hyperplane1D(1.0, extent), sld.Solid(0, True)))
             # Add extruded boundary
             extrusion.boundaries.append(sld.Boundary(extrudedHyperplane, extrudedDomain))
         

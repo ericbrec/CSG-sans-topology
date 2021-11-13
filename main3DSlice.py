@@ -38,7 +38,7 @@ class InteractiveCanvas:
         self.hyperplane.point = self.offset * self.hyperplane.normal
         self.slice = self.solid.Slice(self.hyperplane)
         if not isinstance(self.slice, sld.Solid):
-            self.slice = sld.Solid(self.solid.dimension)
+            self.slice = sld.Solid(self.solid.dimension, False)
         self.lines.set_segments(utils.CreateSegmentsFromSolid(self.slice))
 
     def on_key_press(self, event):
@@ -46,7 +46,7 @@ class InteractiveCanvas:
         self.hyperplane = self.ConstructHyperplane(event.key)
         self.slice = self.solid.Slice(self.hyperplane)
         if not isinstance(self.slice, sld.Solid):
-            self.slice = sld.Solid(self.solid.dimension)
+            self.slice = sld.Solid(self.solid.dimension, False)
         self.lines.set_segments(utils.CreateSegmentsFromSolid(self.slice))
         self.canvas.draw()
 

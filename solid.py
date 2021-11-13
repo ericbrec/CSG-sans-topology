@@ -6,38 +6,30 @@ class Boundary:
     
     @staticmethod
     def SortKey(boundary):
-        if boundary.domain is None:
-            return (boundary.manifold.Point(0.0), -boundary.manifold.Normal(0.0))
-        else:
+        if boundary.domain.dimension > 0:
             return 0.0
-
-    def __init__(self, manifold, domain = None):
-        if domain is None:
-            assert manifold.GetDomainDimension() == 0
         else:
-            assert manifold.GetDomainDimension() == domain.dimension
+            return (boundary.manifold.Point(0.0), -boundary.manifold.Normal(0.0))
+
+    def __init__(self, manifold, domain):
+        assert manifold.GetDomainDimension() == domain.dimension
 
         self.manifold = manifold
         self.domain = domain
     
     def __str__(self):
-        return "{0}, {1}".format(self.manifold, "None" if self.domain is None else "Unbounded" if self.domain.containsInfinity else "Bounded")
+        return "{0}, {1}".format(self.manifold, "Contains infinity" if self.domain.containsInfinity else "Excludes infinity")
     
     def __repr__(self):
-        return "Boundary({0}, {1})".format(self.manifold.__repr__(), "None" if self.domain is None else "Solid({0}, {1})".format(self.domain.dimension, self.domain.containsInfinity))
+        return "Boundary({0}, {1})".format(self.manifold.__repr__(), self.domain.__repr__())
     
     def AnyPoint(self):
-        if self.domain is None:
-            domainPoint = 0.0
-        else:
-            domainPoint = self.domain.AnyPoint()
-
-        return self.manifold.Point(domainPoint)
+        return self.manifold.Point(self.domain.AnyPoint())
 
 class Solid:
 
-    def __init__(self, dimension, containsInfinity = False):
-        assert dimension > 0
+    def __init__(self, dimension, containsInfinity):
+        assert dimension >= 0
         self.dimension = dimension
         self.containsInfinity = containsInfinity
         self.boundaries = []
@@ -76,10 +68,13 @@ class Solid:
     
     def AnyPoint(self):
         point = None
-        if len(self.boundaries) > 0:
+        if self.boundaries:
             point = self.boundaries[0].AnyPoint()
         elif self.containsInfinity:
-            point = np.full((self.dimension), 0.0)
+            if self.dimension > 0:
+                point = np.full((self.dimension), 0.0)
+            else:
+                point = 0.0
 
         return point
 
@@ -116,44 +111,43 @@ class Solid:
         # Initialize the return value for the integral
         sum = 0.0
 
-        if len(self.boundaries) > 0:
-            # Select the first coordinate of an arbitrary point within the volume boundary (the domain of f)
-            x0 = self.AnyPoint()[0]
+        # Select the first coordinate of an arbitrary point within the volume boundary (the domain of f)
+        x0 = self.AnyPoint()[0]
 
-            for boundary in self.boundaries:
-                # domainF is the integrand you get by applying the divergence theorem: VolumeIntegral(divergence(F)) = SurfaceIntegral(dot(F, n)).
-                # Let F = [Integral(f) from x0 to x holding other coordinates fixed, 0...0]. divergence(F) = f by construction, and dot(F, n) = Integral(f) * n[0].
-                # Note that the choice of x0 is arbitrary as long as it's in the domain of f and doesn't change across all surface integral boundaries.
-                # Thus, we have VolumeIntegral(f) = SurfaceIntegral(Integral(f) * n[0]).
-                # The surface normal, n, is the cross product of the boundary manifold's tangent space divided by its length.
-                # The surface differential, dS, is the length of cross product of the boundary manifold's tangent space times the differentials of the manifold's domain variables.
-                # The length of the cross product appears in the numerator and denominator of the SurfaceIntegral and cancels.
-                # What's left multiplying Integral(f) is the first coordinate of the cross product plus the domain differentials (volume integral).
-                # The first coordinate of the cross product of the boundary manifold's tangent space is the first cofactor of the tangent space.
-                # And so, SurfaceIntegral(dot(F, n)) = VolumeIntegral(Integral(f) * first cofactor) over the boundary manifold's domain.
-                def domainF(domainPoint):
-                    evalPoint = np.atleast_1d(domainPoint)
-                    point = boundary.manifold.Point(evalPoint)
+        for boundary in self.boundaries:
+            # domainF is the integrand you get by applying the divergence theorem: VolumeIntegral(divergence(F)) = SurfaceIntegral(dot(F, n)).
+            # Let F = [Integral(f) from x0 to x holding other coordinates fixed, 0...0]. divergence(F) = f by construction, and dot(F, n) = Integral(f) * n[0].
+            # Note that the choice of x0 is arbitrary as long as it's in the domain of f and doesn't change across all surface integral boundaries.
+            # Thus, we have VolumeIntegral(f) = SurfaceIntegral(Integral(f) * n[0]).
+            # The surface normal, n, is the cross product of the boundary manifold's tangent space divided by its length.
+            # The surface differential, dS, is the length of cross product of the boundary manifold's tangent space times the differentials of the manifold's domain variables.
+            # The length of the cross product appears in the numerator and denominator of the SurfaceIntegral and cancels.
+            # What's left multiplying Integral(f) is the first coordinate of the cross product plus the domain differentials (volume integral).
+            # The first coordinate of the cross product of the boundary manifold's tangent space is the first cofactor of the tangent space.
+            # And so, SurfaceIntegral(dot(F, n)) = VolumeIntegral(Integral(f) * first cofactor) over the boundary manifold's domain.
+            def domainF(domainPoint):
+                evalPoint = np.atleast_1d(domainPoint)
+                point = boundary.manifold.Point(evalPoint)
 
-                    # fHat passes the scalar given by integrate.quad into the first coordinate of the vector for f. 
-                    def fHat(x):
-                        evalPoint = np.array(point)
-                        evalPoint[0] = x
-                        return f(evalPoint, *args)
+                # fHat passes the scalar given by integrate.quad into the first coordinate of the vector for f. 
+                def fHat(x):
+                    evalPoint = np.array(point)
+                    evalPoint[0] = x
+                    return f(evalPoint, *args)
 
-                    # Calculate Integral(f) * first cofactor. Note that quad returns a tuple: (integral, error bound).
-                    returnValue = 0.0
-                    firstCofactor = boundary.manifold.FirstCofactor(evalPoint)
-                    if abs(x0 - point[0]) > epsabs and abs(firstCofactor) > epsabs:
-                        returnValue = integrate.quad(fHat, x0, point[0], epsabs=epsabs, epsrel=epsrel, *quadArgs)[0] * firstCofactor
-                    return returnValue
+                # Calculate Integral(f) * first cofactor. Note that quad returns a tuple: (integral, error bound).
+                returnValue = 0.0
+                firstCofactor = boundary.manifold.FirstCofactor(evalPoint)
+                if abs(x0 - point[0]) > epsabs and abs(firstCofactor) > epsabs:
+                    returnValue = integrate.quad(fHat, x0, point[0], epsabs=epsabs, epsrel=epsrel, *quadArgs)[0] * firstCofactor
+                return returnValue
 
-                if boundary.domain is None:
-                    # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
-                    sum += domainF(0.0)
-                else:
-                    # Add the contribution to the Volume integral from this boundary.
-                    sum += boundary.domain.VolumeIntegral(domainF)
+            if boundary.domain.dimension > 0:
+                # Add the contribution to the Volume integral from this boundary.
+                sum += boundary.domain.VolumeIntegral(domainF)
+            else:
+                # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
+                sum += domainF(0.0)
 
         return sum
 
@@ -176,12 +170,12 @@ class Solid:
                 fValue = f(point, normal, *args)
                 return np.dot(fValue, boundary.manifold.CofactorNormal(domainPoint))
 
-            if boundary.domain is None:
-                # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
-                sum += integrand(0.0)
-            else:
+            if boundary.domain.dimension > 0:
                 # Add the contribution to the Volume integral from this boundary.
                 sum += boundary.domain.VolumeIntegral(integrand)
+            else:
+                # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
+                sum += integrand(0.0)
 
         return sum
 
@@ -218,14 +212,12 @@ class Solid:
                     # Each intersection is of the form [distance to intersection, domain point of intersection].
                     # First, check the distance is positive.
                     if intersection[0] > -mf.Manifold.minSeparation:
-                        considerBoundary = True
-                        if boundary.domain is not None:
-                            # Only include the boundary if the ray intersection is inside its domain.
-                            considerBoundary = boundary.domain.ContainsPoint(intersection[1])
-                        # If we've got a valid boundary intersection, accumulate winding number based on sign of dot(ray,normal) == normal[0].
-                        if considerBoundary:
+                        # Only include the boundary if the ray intersection is inside its domain.
+                        if boundary.domain.ContainsPoint(intersection[1]):
+                            # Check if intersection lies on the boundary.
                             if intersection[0] < mf.Manifold.minSeparation:
                                 onBoundaryNormal = boundary.manifold.Normal(intersection[1])
+                            # Accumulate winding number based on sign of dot(ray,normal) == normal[0].
                             windingNumber += np.sign(boundary.manifold.Normal(intersection[1])[0])
         else:
             nSphereArea = 2.0
@@ -272,16 +264,18 @@ class Solid:
             containment = np.dot(onBoundaryNormal, boundary.manifold.Normal(domainPoint)) > 0.0
         return containment
 
-    def Slice(self, manifold, cache = None, dropTwin = False):
+    def Slice(self, manifold, cache = None, trimTwin = False):
         assert manifold.GetRangeDimension() == self.dimension
 
+        # Start with an empty slice.
+        slice = Solid(self.dimension-1, self.containsInfinity)
+
         if self.dimension > 1:
-            # Start with empty slice and no domain coincidences for a 2D+ slice.
-            manifoldDomain = Solid(self.dimension-1, self.containsInfinity)
+            # Start with no domain coincidences for a 2D+ slice
             coincidences = []
         else:
             # Start with an initial windingNumber for a 1D slice.
-            windingNumber = 1.0 if self.containsInfinity else 0.0
+            windingNumber = 0.0
 
         # Intersect each of this solid's boundaries with the manifold.
         for boundary in self.boundaries:
@@ -318,10 +312,11 @@ class Solid:
 
                     # Check inside separation between points.
                     if intersection[0] == 0.0:
-                        # Found a coincident point. Return containment (keep value) immediately.
-                        # Drop point if it's a twin or if the normals point in opposite directions, otherwise keep it.
-                        drop = (dropTwin and isTwin) or intersection[1] < 0.0
-                        return not drop
+                        # Found a coincident point. Return immediately.
+                        # Trim point if it's a twin or if the normals point in opposite directions.
+                        if (trimTwin and isTwin) or intersection[1] < 0.0:
+                            slice.containsInfinity = not slice.containsInfinity
+                        return slice
                     elif isTwin:
                         # Flip the inside separation for twins base on normal alignment, and then accumulate the winding number.
                         windingNumber += np.sign(-intersection[0]*intersection[1]) / 2.0
@@ -339,10 +334,7 @@ class Solid:
                     # Both intersection manifolds have the same domain by construction in IntersectManifold.
                     intersectionSlice = boundary.domain.Slice(intersection[b], cache)
                     if intersectionSlice:
-                        # If boundary domain is 1D, intersection slice is just a boolean indicating containment.
-                        if not isinstance(intersectionSlice, Solid):
-                            intersectionSlice = None
-                        manifoldDomain.boundaries.append(Boundary(intersection[m],intersectionSlice))
+                        slice.boundaries.append(Boundary(intersection[m],intersectionSlice))
                 
                 elif isinstance(intersection[b], Solid):
                     # IntersectManifold found a coincident area, returned as:
@@ -357,7 +349,7 @@ class Solid:
                     domainCoincidence = intersection[b].Intersection(boundary.domain)
                     # Next, invert the domain coincidence if the manifold domain contains infinity (flip containsInfinity and later the normals).
                     # But do the reverse (which removes the domain coincidence), if this is the twin or if the normals point in opposite directions.
-                    invertDomainCoincidence = (dropTwin and isTwin) or intersection[2] < 0.0
+                    invertDomainCoincidence = (trimTwin and isTwin) or intersection[2] < 0.0
                     if invertDomainCoincidence:
                         domainCoincidence.containsInfinity = not domainCoincidence.containsInfinity
                     # Next, transform the domain coincidence from the boundary to the given manifold.
@@ -381,18 +373,19 @@ class Solid:
             # Now that we have a complete manifold domain, join it with each domain coincidence.
             for domainCoincidence in coincidences:
                 if domainCoincidence[0]:
-                    manifoldDomain = manifoldDomain.Intersection(domainCoincidence[1], cache)
+                    slice = slice.Intersection(domainCoincidence[1], cache)
                 else:
-                    manifoldDomain = manifoldDomain.Union(domainCoincidence[1])
+                    slice = slice.Union(domainCoincidence[1])
             
             # Toss out a slice without coincidences or intersections (keep slices that are empty due to coincidence).
-            if len(coincidences) == 0 and manifoldDomain.IsEmpty():
-                manifoldDomain = None
+            if len(coincidences) == 0 and slice.IsEmpty():
+                slice = None
         else:
-            # For 1D slice, just return containment (winding number over 0.5).
-            manifoldDomain = windingNumber > 0.5
+            # For 1D slice, determine containment from winding number (invert if over 0.5, thus inside).
+            if abs(windingNumber) > 0.5:
+                slice.containsInfinity = not slice.containsInfinity
         
-        return manifoldDomain
+        return slice
 
     def Intersection(self, solid, cache = None):
         assert self.dimension == solid.dimension
@@ -410,15 +403,11 @@ class Solid:
             # Slice self boundary manifold by solid. Trim away duplicate twin.
             slice = solid.Slice(boundary.manifold, cache, True)
             if slice is not None:
-                if boundary.domain is not None:
-                    # Intersect slice with the boundary's domain.
-                    newDomain = boundary.domain.Intersection(slice, cache)
-                    if newDomain:
-                        # Self boundary intersects solid, so create a new boundary with the intersected domain.
-                        combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
-                elif slice:
-                    # Boundary is just a point, so add if the slice contains it.
-                    combinedSolid.boundaries.append(boundary)
+                # Intersect slice with the boundary's domain.
+                newDomain = boundary.domain.Intersection(slice, cache)
+                if newDomain:
+                    # Self boundary intersects solid, so create a new boundary with the intersected domain.
+                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif solid.ContainsPoint(boundary.AnyPoint()):
                 # Self boundary is separate from solid, so its containment is based on being wholly contained within solid. 
                 combinedSolid.boundaries.append(boundary)
@@ -427,15 +416,11 @@ class Solid:
             # Slice solid boundary manifold by self.  Trim away duplicate twin.
             slice = self.Slice(boundary.manifold, cache, True)
             if slice is not None:
-                if boundary.domain is not None:
-                    # Intersect slice with the boundary's domain.
-                    newDomain = boundary.domain.Intersection(slice, cache)
-                    if newDomain:
-                        # Solid boundary intersects self, so create a new boundary with the intersected domain.
-                        combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
-                elif slice:
-                    # Boundary is just a point, so add if the slice contains it.
-                    combinedSolid.boundaries.append(boundary)
+                # Intersect slice with the boundary's domain.
+                newDomain = boundary.domain.Intersection(slice, cache)
+                if newDomain:
+                    # Solid boundary intersects self, so create a new boundary with the intersected domain.
+                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
             elif self.ContainsPoint(boundary.AnyPoint()):
                 # Solid boundary is separate from self, so its containment is based on being wholly contained within self. 
                 combinedSolid.boundaries.append(boundary)

@@ -272,7 +272,7 @@ class Solid:
             containment = np.dot(onBoundaryNormal, boundary.manifold.Normal(domainPoint)) > 0.0
         return containment
 
-    def Slice(self, manifold, cache = None):
+    def Slice(self, manifold, cache = None, dropTwin = False):
         assert manifold.GetRangeDimension() == self.dimension
 
         if self.dimension > 1:
@@ -318,9 +318,10 @@ class Solid:
 
                     # Check inside separation between points.
                     if intersection[0] == 0.0:
-                        # Found a coincident point.
-                        # Add it immediately if it's not a twin and the normals align, otherwise reject it immediately.
-                        return not isTwin and intersection[1] > 0.0
+                        # Found a coincident point. Return containment (keep value) immediately.
+                        # Drop point if it's a twin or if the normals point in opposite directions, otherwise keep it.
+                        drop = (dropTwin and isTwin) or intersection[1] < 0.0
+                        return not drop
                     elif isTwin:
                         # Flip the inside separation for twins base on normal alignment, and then accumulate the winding number.
                         windingNumber += np.sign(-intersection[0]*intersection[1]) / 2.0
@@ -356,7 +357,7 @@ class Solid:
                     domainCoincidence = intersection[b].Intersection(boundary.domain)
                     # Next, invert the domain coincidence if the manifold domain contains infinity (flip containsInfinity and later the normals).
                     # But do the reverse (which removes the domain coincidence), if this is the twin or if the normals point in opposite directions.
-                    invertDomainCoincidence = isTwin or intersection[2] < 0.0
+                    invertDomainCoincidence = (dropTwin and isTwin) or intersection[2] < 0.0
                     if invertDomainCoincidence:
                         domainCoincidence.containsInfinity = not domainCoincidence.containsInfinity
                     # Next, transform the domain coincidence from the boundary to the given manifold.
@@ -406,8 +407,8 @@ class Solid:
         combinedSolid = Solid(self.dimension, self.containsInfinity and solid.containsInfinity)
 
         for boundary in self.boundaries:
-            # Slice self boundary manifold by solid.
-            slice = solid.Slice(boundary.manifold, cache)
+            # Slice self boundary manifold by solid. Trim away duplicate twin.
+            slice = solid.Slice(boundary.manifold, cache, True)
             if slice is not None:
                 if boundary.domain is not None:
                     # Intersect slice with the boundary's domain.
@@ -423,8 +424,8 @@ class Solid:
                 combinedSolid.boundaries.append(boundary)
 
         for boundary in solid.boundaries:
-            # Slice solid boundary manifold by self. If it intersects, intersect the domain.
-            slice = self.Slice(boundary.manifold, cache)
+            # Slice solid boundary manifold by self.  Trim away duplicate twin.
+            slice = self.Slice(boundary.manifold, cache, True)
             if slice is not None:
                 if boundary.domain is not None:
                     # Intersect slice with the boundary's domain.

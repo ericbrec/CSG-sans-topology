@@ -247,22 +247,9 @@ class Solid:
         # The default is to include points on the boundary (onBoundaryNormal is not None).
         containment = True
         if onBoundaryNormal is None:
+            # windingNumber > 0.5 returns a np.bool_, not a bool, so we need to cast it.
             containment = bool(windingNumber > 0.5)
         return containment 
-
-    def ContainsBoundary(self, boundary):
-        containment = False
-        if boundary.domain is None:
-            domainPoint = 0.0
-        else:
-            domainPoint = boundary.domain.AnyPoint()
-        windingNumber, onBoundaryNormal = self.WindingNumber(boundary.manifold.Point(domainPoint))
-        if onBoundaryNormal is None:
-            containment = bool(windingNumber > 0.5)
-        else:
-            # Boundaries are coincident at the point, so containment is based on alignment of normals.
-            containment = bool(np.dot(onBoundaryNormal, boundary.manifold.Normal(domainPoint)) > 0.0)
-        return containment
 
     def Slice(self, manifold, cache = None, trimTwin = False):
         assert manifold.GetRangeDimension() == self.dimension
@@ -350,14 +337,9 @@ class Solid:
             else:
                 slice = slice.Union(domainCoincidence[1])
             
-        # Handle slices without coincidences or intersections (keep slices that are empty due to coincidence).
-        if len(coincidences) == 0 and slice.IsEmpty():
-            if slice.dimension > 0:
-                # Return None for dimensional manifolds that completely miss self.
-                slice = None
-            else:
-                # Return containment for point manifolds.
-                slice.containsInfinity = self.ContainsPoint(manifold.Point(0.0))
+        # For a point without coincidences, slice is based on point containment.
+        if slice.dimension < 1 and len(coincidences) == 0:
+            slice.containsInfinity =  self.ContainsPoint(manifold.Point(0.0))
         
         return slice
 
@@ -366,7 +348,7 @@ class Solid:
 
         # Manifold intersections are expensive and come in symmetric pairs (m1 intersect m2, m2 intersect m1).
         # So, we create a manifold intersections cache (dictionary) to store and reuse intersection pairs.
-        # The cache is also used to avoid overlapping coincident domains.
+        # The cache is also used to avoid overlapping coincident regions by identifying twins that could be trimmed.
         if cache is None:
             cache = {}
 
@@ -376,28 +358,20 @@ class Solid:
         for boundary in self.boundaries:
             # Slice self boundary manifold by solid. Trim away duplicate twin.
             slice = solid.Slice(boundary.manifold, cache, True)
-            if slice is not None:
-                # Intersect slice with the boundary's domain.
-                newDomain = boundary.domain.Intersection(slice, cache)
-                if newDomain:
-                    # Self boundary intersects solid, so create a new boundary with the intersected domain.
-                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
-            elif solid.ContainsPoint(boundary.AnyPoint()):
-                # Self boundary is separate from solid, so its containment is based on being wholly contained within solid. 
-                combinedSolid.boundaries.append(boundary)
+            # Intersect slice with the boundary's domain.
+            newDomain = boundary.domain.Intersection(slice, cache)
+            if newDomain:
+                # Self boundary intersects solid, so create a new boundary with the intersected domain.
+                combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
 
         for boundary in solid.boundaries:
             # Slice solid boundary manifold by self.  Trim away duplicate twin.
             slice = self.Slice(boundary.manifold, cache, True)
-            if slice is not None:
-                # Intersect slice with the boundary's domain.
-                newDomain = boundary.domain.Intersection(slice, cache)
-                if newDomain:
-                    # Solid boundary intersects self, so create a new boundary with the intersected domain.
-                    combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
-            elif self.ContainsPoint(boundary.AnyPoint()):
-                # Solid boundary is separate from self, so its containment is based on being wholly contained within self. 
-                combinedSolid.boundaries.append(boundary)
+            # Intersect slice with the boundary's domain.
+            newDomain = boundary.domain.Intersection(slice, cache)
+            if newDomain:
+                # Solid boundary intersects self, so create a new boundary with the intersected domain.
+                combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
 
         return combinedSolid
 

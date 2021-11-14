@@ -300,8 +300,8 @@ class Solid:
                 
                 elif isinstance(intersection[b], Solid):
                     # IntersectManifold found a coincident area, returned as:
-                    #   * intersection[b] is solid within the boundary's domain inside of which the boundary and given manifold are coincident.
-                    #   * intersection[m] is solid within the manifold's domain inside of which the boundary and given manifold are coincident.
+                    #   * intersection[b] is the solid within the boundary's domain inside of which the boundary and given manifold are coincident.
+                    #   * intersection[m] is the solid within the manifold's domain inside of which the boundary and given manifold are coincident.
                     #   * intersection[2] is the normal alignment between the boundary and given manifold (same or opposite directions).
                     #   * intersection[3] is transform from the boundary's domain to the given manifold's domain.
                     #   * intersection[4] is the translation from the boundary's domain to the given manifold's domain.
@@ -309,8 +309,7 @@ class Solid:
 
                     # First, intersect domain coincidence with the domain boundary.
                     domainCoincidence = intersection[b].Intersection(boundary.domain)
-                    # Next, invert the domain coincidence if the manifold domain contains infinity (flip containsInfinity and later the normals).
-                    # But do the reverse (which removes the domain coincidence), if this is the twin or if the normals point in opposite directions.
+                    # Next, invert the domain coincidence (which will remove it) if this is a twin or if the normals point in opposite directions.
                     invertDomainCoincidence = (trimTwin and isTwin) or intersection[2] < 0.0
                     if invertDomainCoincidence:
                         domainCoincidence.containsInfinity = not domainCoincidence.containsInfinity
@@ -333,8 +332,10 @@ class Solid:
         # We've gone through all boundaries. Now that we have a complete manifold domain, join it with each domain coincidence.
         for domainCoincidence in coincidences:
             if domainCoincidence[0]:
+                # If the domain coincidence is inverted (domainCoincidence[0]), intersect it with the slice, thus removing it.
                 slice = slice.Intersection(domainCoincidence[1], cache)
             else:
+                # Otherwise, union the domain coincidence with the slice, thus adding it.
                 slice = slice.Union(domainCoincidence[1])
             
         # For a point without coincidences, slice is based on point containment.

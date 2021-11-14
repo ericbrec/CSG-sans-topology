@@ -191,21 +191,16 @@ class Hyperplane(Manifold):
             insideSeparation = np.dot(self.normal, self.point - other.point)
             # Allow for extra outside separation to avoid issues with minute gaps.
             if -2.0 * Manifold.minSeparation < insideSeparation < Manifold.minSeparation:
-                # These hyperplanes are coincident.
+                # These hyperplanes are coincident. Return the domains in which they coincide (entire domain for hyperplanes) and the normal alignment.
+                domainCoincidence = sld.Solid(dimension-1, True)
                 if dimension > 1:
-                    # Return the domains in which they coincide (entire domain for hyperplanes), normal alignment, and the mapping from the self domain to the other domain.
-                    domainCoincidence = sld.Solid(self.GetDomainDimension(), True)
+                    # For higher dimensions, also return the mapping from the self domain to the other domain.
                     tangentSpaceTranspose = np.transpose(other.tangentSpace)
                     inverseMap = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
                     transform =  inverseMap @ self.tangentSpace
                     translation = inverseMap @ (self.point - other.point)
                     intersections.append((domainCoincidence, domainCoincidence, alignment, transform, translation))
                 else:
-                    # Return a zero separation and the normal alignment.
-                    intersections.append((0.0, alignment))
-            elif dimension <= 1:
-                # Special case for points (otherwise return no intersections).
-                # Return the inside separation and the normal alignment (used for winding number calculation).
-                intersections.append((insideSeparation, alignment))
+                    intersections.append((domainCoincidence, domainCoincidence, alignment))
 
         return intersections

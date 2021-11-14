@@ -247,7 +247,7 @@ class Solid:
         # The default is to include points on the boundary (onBoundaryNormal is not None).
         containment = True
         if onBoundaryNormal is None:
-            containment = windingNumber > 0.5
+            containment = bool(windingNumber > 0.5)
         return containment 
 
     def ContainsBoundary(self, boundary):
@@ -258,24 +258,18 @@ class Solid:
             domainPoint = boundary.domain.AnyPoint()
         windingNumber, onBoundaryNormal = self.WindingNumber(boundary.manifold.Point(domainPoint))
         if onBoundaryNormal is None:
-            containment = windingNumber > 0.5
+            containment = bool(windingNumber > 0.5)
         else:
             # Boundaries are coincident at the point, so containment is based on alignment of normals.
-            containment = np.dot(onBoundaryNormal, boundary.manifold.Normal(domainPoint)) > 0.0
+            containment = bool(np.dot(onBoundaryNormal, boundary.manifold.Normal(domainPoint)) > 0.0)
         return containment
 
     def Slice(self, manifold, cache = None, trimTwin = False):
         assert manifold.GetRangeDimension() == self.dimension
 
-        # Start with an empty slice.
+        # Start with an empty slice and no domain coincidences.
         slice = Solid(self.dimension-1, self.containsInfinity)
-
-        if self.dimension > 1:
-            # Start with no domain coincidences for a 2D+ slice
-            coincidences = []
-        else:
-            # Start with an initial windingNumber for a 1D slice.
-            windingNumber = 0.0
+        coincidences = []
 
         # Intersect each of this solid's boundaries with the manifold.
         for boundary in self.boundaries:
@@ -303,35 +297,16 @@ class Solid:
                 if cache != None:
                     cache[(boundary.manifold, manifold)] = intersections
 
-            # Each intersection is either a point separation (scalar), a crossing (domain manifold), or a domain coincidence (solid within the domain).
+            # Each intersection is either a crossing (domain manifold) or a coincidence (solid within the domain).
             for intersection in intersections:
-                if np.isscalar(intersection[0]):
-                    # IntersectManifold found a separation, returned as two scalars:
-                    #   * intersection[0] is the inside separation between directional points (zero for coincident points).
-                    #   * intersection[1] is the normal alignment between the boundary and given manifold (same or opposite directions).
-
-                    # Check inside separation between points.
-                    if intersection[0] == 0.0:
-                        # Found a coincident point. Return immediately.
-                        # Trim point if it's a twin or if the normals point in opposite directions.
-                        if (trimTwin and isTwin) or intersection[1] < 0.0:
-                            slice.containsInfinity = not slice.containsInfinity
-                        return slice
-                    elif isTwin:
-                        # Flip the inside separation for twins base on normal alignment, and then accumulate the winding number.
-                        windingNumber += np.sign(-intersection[0]*intersection[1]) / 2.0
-                    else:
-                        # Accumulate the winding number.
-                        windingNumber += np.sign(intersection[0]) / 2.0
-
-                elif isinstance(intersection[b], mf.Manifold):
+                if isinstance(intersection[b], mf.Manifold):
                     # IntersectManifold found a crossing, returned as a manifold pair:
                     #   * intersection[b] is the intersection manifold in the boundary's domain;
                     #   * intersection[m] is the intersection manifold in the given manifold's domain.
                     #   * Both intersection manifolds have the same range (the crossing between the boundary and the given manifold).
 
                     # We slice the boundary domain using intersection[b], but we add intersection[m] to the manifold domain.
-                    # Both intersection manifolds have the same domain by construction in IntersectManifold.
+                    # Both intersection manifolds share the same domain by construction in IntersectManifold.
                     intersectionSlice = boundary.domain.Slice(intersection[b], cache)
                     if intersectionSlice:
                         slice.boundaries.append(Boundary(intersection[m],intersectionSlice))
@@ -368,22 +343,21 @@ class Solid:
                     # Finally, add the domain coincidence to the list of coincidences.
                     coincidences.append((invertDomainCoincidence, domainCoincidence))
         
-        # We've gone through all boundaries. Finalize the manifold domain (2D+) or containment value (1D) for the slice.
-        if self.dimension > 1:
-            # Now that we have a complete manifold domain, join it with each domain coincidence.
-            for domainCoincidence in coincidences:
-                if domainCoincidence[0]:
-                    slice = slice.Intersection(domainCoincidence[1], cache)
-                else:
-                    slice = slice.Union(domainCoincidence[1])
+        # We've gone through all boundaries. Now that we have a complete manifold domain, join it with each domain coincidence.
+        for domainCoincidence in coincidences:
+            if domainCoincidence[0]:
+                slice = slice.Intersection(domainCoincidence[1], cache)
+            else:
+                slice = slice.Union(domainCoincidence[1])
             
-            # Toss out a slice without coincidences or intersections (keep slices that are empty due to coincidence).
-            if len(coincidences) == 0 and slice.IsEmpty():
+        # Handle slices without coincidences or intersections (keep slices that are empty due to coincidence).
+        if len(coincidences) == 0 and slice.IsEmpty():
+            if slice.dimension > 0:
+                # Return None for dimensional manifolds that completely miss self.
                 slice = None
-        else:
-            # For 1D slice, determine containment from winding number (invert if over 0.5, thus inside).
-            if abs(windingNumber) > 0.5:
-                slice.containsInfinity = not slice.containsInfinity
+            else:
+                # Return containment for point manifolds.
+                slice.containsInfinity = self.ContainsPoint(manifold.Point(0.0))
         
         return slice
 

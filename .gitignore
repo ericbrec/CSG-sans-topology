@@ -107,6 +107,9 @@ csx
 # Windows Store app package directory
 AppPackages/
 
+# VS Code Counter
+.VSCodeCounter/
+
 # Others
 sql/
 *.Cache

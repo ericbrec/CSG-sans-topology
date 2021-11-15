@@ -26,17 +26,17 @@ class Manifold:
 
     def Point(self, domainPoint):
         return None
-    
+
     def TangentSpace(self, domainPoint):
         return None
-    
+
     def CofactorNormal(self, domainPoint):
         # The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
         return None
-    
+
     def FirstCofactor(self, domainPoint):
         return 0.0
-    
+
     def Determinant(self, domainPoint):
         # The determinant is the length of the cofactor normal, which corresponds to the normal dotted with the cofactor normal.
         return np.dot(self.Normal(domainPoint), self.CofactorNormal(domainPoint))
@@ -69,10 +69,10 @@ class Hyperplane(Manifold):
         self.normal = np.atleast_1d(np.array(normal))
         self.point = np.atleast_1d(np.array(point))
         self.tangentSpace = np.atleast_1d(np.array(tangentSpace))
-    
+
     def __str__(self):
         return "Normal: {0}, Point: {1}".format(self.normal, self.point)
-    
+
     def __repr__(self):
         return "Hyperplane({0}, {1}, {2})".format(self.normal, self.point, self.tangentSpace)
 
@@ -87,15 +87,15 @@ class Hyperplane(Manifold):
 
     def Point(self, domainPoint):
         return np.dot(self.tangentSpace, domainPoint) + self.point
-    
+
     def TangentSpace(self, domainPoint):
         return self.tangentSpace
-    
+
     def CofactorNormal(self, domainPoint):
         # The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
         # The matrix constructed by TangentSpaceFromNormal is orthonormal, so the cofactor normal is simply the normal.
         return self.normal
-    
+
     def FirstCofactor(self, domainPoint):
         return self.normal[0]
 
@@ -108,7 +108,7 @@ class Hyperplane(Manifold):
     def Translate(self, delta):
         assert len(delta) == self.GetRangeDimension()
 
-        self.point += delta 
+        self.point += delta
 
     def FlipNormal(self):
         self.normal = -self.normal
@@ -128,7 +128,7 @@ class Hyperplane(Manifold):
             domainPoint = np.linalg.inv(self.tangentSpace[1:,:]) @ vectorFromManifold[1:]
             # Each intersection is of the form [distance to intersection, domain point of intersection].
             intersections.append((xDistanceToManifold, domainPoint))
-        
+
         return intersections
 
     def IntersectManifold(self, other):
@@ -164,7 +164,7 @@ class Hyperplane(Manifold):
             V = np.transpose(VTranspose)
             # Compute x = V * SigmaInverse * UTranspose * (other.point - self.point)
             x = V[:, 0:dimension] @ SigmaInverse @ np.transpose(U) @ (other.point - self.point)
-            
+
             # The self intersection normal is just the dot product of other normal with the self tangent space.
             self_normal = np.dot(other.normal, self.tangentSpace)
             self_normal = self_normal / np.linalg.norm(self_normal)

@@ -3,7 +3,7 @@ import scipy.integrate as integrate
 import manifold as mf
 
 class Boundary:
-    
+
     @staticmethod
     def SortKey(boundary):
         if boundary.domain.dimension > 0:
@@ -16,13 +16,13 @@ class Boundary:
 
         self.manifold = manifold
         self.domain = domain
-    
+
     def __str__(self):
         return "{0}, {1}".format(self.manifold, "Contains infinity" if self.domain.containsInfinity else "Excludes infinity")
-    
+
     def __repr__(self):
         return "Boundary({0}, {1})".format(self.manifold.__repr__(), self.domain.__repr__())
-    
+
     def AnyPoint(self):
         return self.manifold.Point(self.domain.AnyPoint())
 
@@ -33,10 +33,10 @@ class Solid:
         self.dimension = dimension
         self.containsInfinity = containsInfinity
         self.boundaries = []
-    
+
     def __repr__(self):
         return "Solid({0}, {1})".format(self.dimension, self.containsInfinity)
-    
+
     def __bool__(self):
         return self.containsInfinity or len(self.boundaries) > 0
 
@@ -59,13 +59,13 @@ class Solid:
 
         for boundary in self.boundaries:
             boundary.manifold.Transform(transform)
-    
+
     def Translate(self, delta):
         assert len(delta) == self.dimension
 
         for boundary in self.boundaries:
             boundary.manifold.Translate(delta)
-    
+
     def AnyPoint(self):
         point = None
         if self.boundaries:
@@ -99,7 +99,7 @@ class Solid:
                             break
                         rightB += 1
                 leftB += 1
- 
+
     def VolumeIntegral(self, f, args=(), epsabs=None, epsrel=None, *quadArgs):
         if not isinstance(args, tuple):
             args = (args,)
@@ -129,7 +129,7 @@ class Solid:
                 evalPoint = np.atleast_1d(domainPoint)
                 point = boundary.manifold.Point(evalPoint)
 
-                # fHat passes the scalar given by integrate.quad into the first coordinate of the vector for f. 
+                # fHat passes the scalar given by integrate.quad into the first coordinate of the vector for f.
                 def fHat(x):
                     evalPoint = np.array(point)
                     evalPoint[0] = x
@@ -146,7 +146,7 @@ class Solid:
                 # Add the contribution to the Volume integral from this boundary.
                 sum += boundary.domain.VolumeIntegral(domainF)
             else:
-                # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
+                # This is a 1-D boundary (line interval, no domain), so just add the integrand.
                 sum += domainF(0.0)
 
         return sum
@@ -174,7 +174,7 @@ class Solid:
                 # Add the contribution to the Volume integral from this boundary.
                 sum += boundary.domain.VolumeIntegral(integrand)
             else:
-                # This is a 1-D boundary (line interval, no domain), so just add the integrand. 
+                # This is a 1-D boundary (line interval, no domain), so just add the integrand.
                 sum += integrand(0.0)
 
         return sum
@@ -182,11 +182,11 @@ class Solid:
     def WindingNumber(self, point):
         # Return value is a tuple: winding number, onBoundaryNormal
         # The winding number is 0 if the point is outside the solid, 1 if it's inside.
-        #   Other values indicate issues: 
+        #   Other values indicate issues:
         #   * Incomplete boundaries lead to fractional values;
         #   * Interior-pointing normals lead to negative values;
         #   * Nested shells lead to absolute values of 2 or greater.
-        # OnBoundaryNormal is None or the boundary normal if the point lies on a boundary. 
+        # OnBoundaryNormal is None or the boundary normal if the point lies on a boundary.
         windingNumber = 0.0
         onBoundaryNormal = None
         if self.containsInfinity:
@@ -227,7 +227,7 @@ class Solid:
             while dimension > 2:
                 nSphereArea *= 2.0 * np.pi / (dimension - 2.0)
                 dimension -= 2
-                
+
             def windingIntegrand(boundaryPoint, boundaryNormal, onBoundaryNormalList):
                 vector = boundaryPoint - point
                 vectorLength = np.linalg.norm(vector)
@@ -240,7 +240,7 @@ class Solid:
             windingNumber += self.SurfaceIntegral(windingIntegrand, onBoundaryNormalList) / nSphereArea
             onBoundaryNormal = onBoundaryNormalList[0]
 
-        return windingNumber, onBoundaryNormal 
+        return windingNumber, onBoundaryNormal
 
     def ContainsPoint(self, point):
         windingNumber, onBoundaryNormal = self.WindingNumber(point)
@@ -249,7 +249,7 @@ class Solid:
         if onBoundaryNormal is None:
             # windingNumber > 0.5 returns a np.bool_, not a bool, so we need to cast it.
             containment = bool(windingNumber > 0.5)
-        return containment 
+        return containment
 
     def Slice(self, manifold, cache = None, trimTwin = False):
         assert manifold.GetRangeDimension() == self.dimension
@@ -263,7 +263,7 @@ class Solid:
             intersections = None
             isTwin = False
             b = 0 # Index of intersection in the boundary's domain
-            m = 1 # Index of intersection in the manifold's domain   
+            m = 1 # Index of intersection in the manifold's domain
 
             # Check for previously computed manifold intersections stored in cache.
             if cache != None:
@@ -272,7 +272,7 @@ class Solid:
                 if intersections != None:
                     isTwin = True
                     b = 1 # Index of intersection in the boundary's domain
-                    m = 0 # Index of intersection in the manifold's domain   
+                    m = 0 # Index of intersection in the manifold's domain
                 else:
                     # Next, check for the original order (not twin).
                     intersections = cache.get((boundary.manifold, manifold))
@@ -297,7 +297,7 @@ class Solid:
                     intersectionSlice = boundary.domain.Slice(intersection[b], cache)
                     if intersectionSlice:
                         slice.boundaries.append(Boundary(intersection[m],intersectionSlice))
-                
+
                 elif isinstance(intersection[b], Solid):
                     # IntersectManifold found a coincident area, returned as:
                     #   * intersection[b] is the solid within the boundary's domain inside of which the boundary and given manifold are coincident.
@@ -328,7 +328,7 @@ class Solid:
                         domainCoincidence.boundaries[i] = Boundary(domainManifold, domainCoincidence.boundaries[i].domain)
                     # Finally, add the domain coincidence to the list of coincidences.
                     coincidences.append((invertDomainCoincidence, domainCoincidence))
-        
+
         # We've gone through all boundaries. Now that we have a complete manifold domain, join it with each domain coincidence.
         for domainCoincidence in coincidences:
             if domainCoincidence[0]:
@@ -337,11 +337,11 @@ class Solid:
             else:
                 # Otherwise, union the domain coincidence with the slice, thus adding it.
                 slice = slice.Union(domainCoincidence[1])
-            
+
         # For a point without coincidences, slice is based on point containment.
         if slice.dimension < 1 and len(coincidences) == 0:
             slice.containsInfinity =  self.ContainsPoint(manifold.Point(0.0))
-        
+
         return slice
 
     def Intersection(self, solid, cache = None):
@@ -381,7 +381,7 @@ class Solid:
 
     def Union(self, solid):
         return self.Not().Intersection(solid.Not()).Not()
-    
+
     def __add__(self, other):
         return self.Union(other)
 

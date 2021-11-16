@@ -12,7 +12,7 @@ class Boundary:
             return (boundary.manifold.Point(0.0), -boundary.manifold.Normal(0.0))
 
     def __init__(self, manifold, domain):
-        assert manifold.GetDomainDimension() == domain.dimension
+        assert manifold.DomainDimension() == domain.dimension
 
         self.manifold = manifold
         self.domain = domain
@@ -369,6 +369,7 @@ class Solid:
         See Also
         --------
         `ContainsPoint` : Test if a point lies within the solid.
+        `manifold.Manifold.IntersectXRay` : Intersect a ray along the x-axis with the manifold.
 
         Notes
         -----
@@ -401,7 +402,7 @@ class Solid:
             for boundary in self.boundaries:
                 intersections = boundary.manifold.IntersectXRay(point)
                 for intersection in intersections:
-                    # Each intersection is of the form [distance to intersection, domain point of intersection].
+                    # Each intersection is of the form (distance to intersection, domain point of intersection).
                     # First, check the distance is positive.
                     if intersection[0] > -mf.Manifold.minSeparation:
                         # Only include the boundary if the ray intersection is inside its domain.
@@ -483,17 +484,18 @@ class Solid:
         Returns
         -------
         slice : `Solid`
-            A region in the domain of `manifold` that intersects with the solid.
+            A region in the domain of `manifold` that intersects with the solid. The region may contain infinity.
 
         See Also
         --------
         `Intersection` : Intersect two solids.
+        `manifold.Manifold.IntersectManifold` : Intersect two manifolds.
 
         Notes
         -----
         The dimension of the slice is always one less than the dimension of the solid.
         """
-        assert manifold.GetRangeDimension() == self.dimension
+        assert manifold.RangeDimension() == self.dimension
 
         # Start with an empty slice and no domain coincidences.
         slice = Solid(self.dimension-1, self.containsInfinity)

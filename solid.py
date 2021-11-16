@@ -3,7 +3,24 @@ import scipy.integrate as integrate
 import manifold as mf
 
 class Boundary:
+    """
+    A portion of the boundary of a solid.
 
+    Parameters
+    ----------
+    manifold : `manifold.Manifold`
+        The differentiable function whose range is one dimension higher than its domain that defines the range of the boundary.
+    
+    domain : `Solid`
+        The region of the domain of the manifold that's within the boundary.
+    
+    tangentSpace : array-like
+        A array of tangents that are linearly independent and orthoganal to the normal.
+    
+    See also
+    --------
+    `Solid` : A region that separates space into an inside and outside, defined by a collection of boundaries.
+    """
     @staticmethod
     def SortKey(boundary):
         if boundary.domain.dimension > 0:
@@ -43,7 +60,27 @@ class Boundary:
         return self.manifold.Point(self.domain.AnyPoint())
 
 class Solid:
+    """
+    A region that separates space into an inside and outside, defined by a collection of boundaries.
 
+    Parameters
+    ----------
+    dimension : `int`
+        The dimension of the solid (non-negative).
+    
+    containsInfinity : `bool`
+        Indicates whether or not the solid contains infinity.
+    
+    See also
+    --------
+    `Boundary` : A portion of the boundary of a solid.
+
+    Notes
+    -----
+    Solids also contain a `list` of `boundaries`. That list may be empty.
+
+    Solids can be of zero dimension, typically acting as the domain of boundary endpoints. Zero-dimension solids have no boundaries, they only contain infinity or not.
+    """
     def __init__(self, dimension, containsInfinity):
         assert dimension >= 0
         self.dimension = dimension
@@ -413,6 +450,7 @@ class Solid:
                             # Accumulate winding number based on sign of dot(ray,normal) == normal[0].
                             windingNumber += np.sign(boundary.manifold.Normal(intersection[1])[0])
         else:
+            # Compute the winding number via a surface integral, normalizing by the hypersphere surface area. 
             nSphereArea = 2.0
             if self.dimension % 2 == 0:
                 nSphereArea *= np.pi
@@ -608,7 +646,17 @@ class Solid:
         --------
         `Slice` : Slice a solid by a manifold.
         `Union` : Union two solids.
-        `Difference` : Subtract one solid from another. 
+        `Difference` : Subtract one solid from another.
+
+        Notes:
+        ------
+        To intersect two solids, we slice each solid with the boundaries of the other solid. The slices are the region
+        of the domain that intersect the solid. We then intersect the domain of each boundary with its slice of the other solid. Thus,
+        the intersection of two solids becomes a set of interections within the domains of their boundaries. This recursion continues
+        until we are intersecting points whose domains have no boundaries.
+
+        The only subtlety is when two boundaries are coincident. To avoid overlapping the coincident region, we keep that region
+        for one slice and trim it away for the other. We use a manifold intersection cache to keep track of these pairs, as well as reduce computation. 
         """
         assert self.dimension == solid.dimension
 
@@ -618,7 +666,7 @@ class Solid:
         if cache is None:
             cache = {}
 
-        # Start with empty solid.
+        # Start with a solid without boundaries.
         combinedSolid = Solid(self.dimension, self.containsInfinity and solid.containsInfinity)
 
         for boundary in self.boundaries:

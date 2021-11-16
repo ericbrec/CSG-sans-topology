@@ -3,8 +3,8 @@ import solid as sld
 
 class Manifold:
     """
-    A manifold is an abstract base class for differentiable functions that
-    have normals and tangent spaces. Their range is exactly one dimension higher than their domain.
+    A manifold is an abstract base class for differentiable functions with
+    normals and tangent spaces whose range is one dimension higher than their domain.
     """
 
     # If two points are within 0.01 of each eachother, they are coincident

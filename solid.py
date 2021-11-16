@@ -531,7 +531,21 @@ class Solid:
 
         Notes
         -----
-        The dimension of the slice is always one less than the dimension of the solid.
+        The dimension of the slice is always one less than the dimension of the solid, since the slice is a region in the domain of the manifold slicing the solid.
+
+        To compute the slice of a manifold intersecting the solid, we intersect the manifold with each boundary of the solid. First, we check our intersection cache
+        to see if we've intersected the manifold with that boundary's manifold before, otherwise we call `manifold.Manifold.IntersectManifold` and cache the result.
+        There may be multiple intersections between the manifold and the boundary. Each is either a crossing or a coincident region.
+
+        Crossings result in two intersection manifolds: one in the domain of the manifold and one in the domain of the boundary. By construction, both intersection manifolds have the
+        same domain and the same range of the manifold and boundary (the crossing itself). The intersection manifold in the domain of the manifold becomes a boundary of the slice,
+        but we must determine the intersection's domain. For that, we slice the intersection manifold in the domain of the boundary with the boundary's domain. This recursion continues 
+        until the slice is just a point with no domain.
+
+        Coincident regions appear in the domains of the manifold and the boundary. We intersect the boundary's coincident region with the domain of the boundary and then map
+        it to the domain of the manifold. If the coincident regions have normals in opposite directions, they cancel each other out, so we subtract them from the slice by
+        inverting the region and intersecting it with the slice. We use this same technique for removing overlapping coincident regions. If the coincident regions have normals
+        in the same direction, we union them with the slice.
         """
         assert manifold.RangeDimension() == self.dimension
 
@@ -656,7 +670,7 @@ class Solid:
         until we are intersecting points whose domains have no boundaries.
 
         The only subtlety is when two boundaries are coincident. To avoid overlapping the coincident region, we keep that region
-        for one slice and trim it away for the other. We use a manifold intersection cache to keep track of these pairs, as well as reduce computation. 
+        for one slice and trim it away for the other. We use a manifold intersection cache to keep track of these pairs, as well as to reduce computation. 
         """
         assert self.dimension == solid.dimension
 

@@ -258,7 +258,7 @@ class Manifold:
         -----
         To invert the mapping to go from the other's domain to the manifold's domain, you first subtract the translation and then multiply by the inverse of the transform.
         """
-        return []
+        return NotImplemented
 
 class Hyperplane(Manifold):
     """
@@ -371,23 +371,28 @@ class Hyperplane(Manifold):
         `solid.Solid.VolumeIntegral` : Compute the volume integral of a function within the solid.
         `solid.Solid.SurfaceIntegral` : Compute the surface integral of a vector field on the boundary of the solid.
         """
-        dimension = len(self.normal)
-        minor = np.zeros((dimension-1, dimension-1))
-        cofactorNormal = np.array(self.normal) # We change it, so make a copy.
-        sign = 1.0
-        for i in range(dimension):
-            if i > 0:
-                minor[0:i, :] = self.tangentSpace[0:i, :]
-            if i < dimension - 1:
-                minor[i:, :] = self.tangentSpace[i+1:, :]
-            cofactorNormal[i] = sign * np.linalg.det(minor)
-            sign *= -1.0
+        # Compute and cache cofactor normal on demand.
+        if not hasattr(self, 'cofactorNormal'):
+            dimension = self.RangeDimension()
+            if dimension > 1:
+                minor = np.zeros((dimension-1, dimension-1))
+                self.cofactorNormal = np.array(self.normal) # We change it, so make a copy.
+                sign = 1.0
+                for i in range(dimension):
+                    if i > 0:
+                        minor[0:i, :] = self.tangentSpace[0:i, :]
+                    if i < dimension - 1:
+                        minor[i:, :] = self.tangentSpace[i+1:, :]
+                    self.cofactorNormal[i] = sign * np.linalg.det(minor)
+                    sign *= -1.0
         
-        # Ensure cofactorNormal points in the same direction as normal.
-        if np.dot(cofactorNormal, self.normal) < 0.0:
-            cofactorNormal = -cofactorNormal
+                # Ensure cofactorNormal points in the same direction as normal.
+                if np.dot(self.cofactorNormal, self.normal) < 0.0:
+                    self.cofactorNormal = -self.cofactorNormal
+            else:
+                self.cofactorNormal = self.normal
         
-        return cofactorNormal
+        return self.cofactorNormal
 
     def FirstCofactor(self, domainPoint):
         """
@@ -411,14 +416,7 @@ class Hyperplane(Manifold):
         `solid.Solid.VolumeIntegral` : Compute the volume integral of a function within the solid.
         `solid.Solid.SurfaceIntegral` : Compute the surface integral of a vector field on the boundary of the solid.
         """
-        if self.RangeDimension() > 1:
-            firstCofactor = np.linalg.det(self.tangentSpace[1:,:])
-            # Ensure cofactorNormal points in the same direction as normal.
-            if firstCofactor * self.normal[0] < 0.0:
-                firstCofactor = -firstCofactor
-        else:
-            firstCofactor = self.normal[0]
-        return firstCofactor
+        return self.CofactorNormal(domainPoint)[0]
 
     def Transform(self, transform):
         """
@@ -476,6 +474,8 @@ class Hyperplane(Manifold):
         `solid.Solid.Not` : Return the compliment of the solid: whatever was inside is outside and vice-versa.
         """
         self.normal = -self.normal
+        if hasattr(self, 'cofactorNormal'):
+            self.cofactorNormal = -self.cofactorNormal
 
     def IntersectXRay(self, point):
         """

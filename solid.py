@@ -539,7 +539,7 @@ class Solid:
 
         Crossings result in two intersection manifolds: one in the domain of the manifold and one in the domain of the boundary. By construction, both intersection manifolds have the
         same domain and the same range of the manifold and boundary (the crossing itself). The intersection manifold in the domain of the manifold becomes a boundary of the slice,
-        but we must determine the intersection's domain. For that, we slice the intersection manifold in the domain of the boundary with the boundary's domain. This recursion continues 
+        but we must determine the intersection's domain. For that, we slice the boundary's intersection manifold with the boundary's domain. This recursion continues 
         until the slice is just a point with no domain.
 
         Coincident regions appear in the domains of the manifold and the boundary. We intersect the boundary's coincident region with the domain of the boundary and then map
@@ -560,11 +560,11 @@ class Solid:
             b = 0 # Index of intersection in the boundary's domain
             m = 1 # Index of intersection in the manifold's domain
 
-            # Check for previously computed manifold intersections stored in cache.
-            if cache != None:
+            # Check cache for previously computed manifold intersections.
+            if cache is not None:
                 # First, check for the twin (opposite order of arguments).
                 intersections = cache.get((manifold, boundary.manifold))
-                if intersections != None:
+                if intersections is not None:
                     isTwin = True
                     b = 1 # Index of intersection in the boundary's domain
                     m = 0 # Index of intersection in the manifold's domain
@@ -575,9 +575,21 @@ class Solid:
             # If intersections not previously computed, compute them now.
             if intersections is None:
                 intersections = boundary.manifold.IntersectManifold(manifold)
+                if intersections is NotImplemented:
+                    # Try the other way around in case manifold knows how to intersect boundary.manifold.
+                    intersections = manifold.IntersectManifold(boundary.manifold)
+                    isTwin = True
+                    b = 1 # Index of intersection in the boundary's domain
+                    m = 0 # Index of intersection in the manifold's domain                    
                 # Store intersections in cache.
-                if cache != None:
-                    cache[(boundary.manifold, manifold)] = intersections
+                if cache is not None:
+                    if isTwin:
+                        cache[(manifold, boundary.manifold)] = intersections
+                    else:
+                        cache[(boundary.manifold, manifold)] = intersections
+            
+            if intersections is NotImplemented:
+                continue
 
             # Each intersection is either a crossing (domain manifold) or a coincidence (solid within the domain).
             for intersection in intersections:

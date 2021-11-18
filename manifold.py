@@ -450,7 +450,7 @@ class Hyperplane(Manifold):
             self.normal = transformInverseTranspose @ self.normal
             self.normal = self.normal / np.linalg.norm(self.normal)
             if hasattr(self, 'cofactorNormal'):
-                self.cofactorNormal = transformInverseTranspose @ self.cofactorNormal
+                self.cofactorNormal = abs(np.linalg.det(transform)) * (transformInverseTranspose @ self.cofactorNormal)
 
             self.tangentSpace = transform @ self.tangentSpace
 

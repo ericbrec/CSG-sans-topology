@@ -1,5 +1,6 @@
 import numpy as np
 import solid as sld
+from collections import namedtuple
 
 class Manifold:
     """
@@ -12,6 +13,13 @@ class Manifold:
 
     # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
     maxAlignment = 0.99 # 1 - 1/10^2
+
+    # Return type for IntersectXRay
+    RayCrossing = namedtuple('RayCrossing', ('distance','domainPoint'))
+
+    # Return type for IntersectManifold
+    Crossing = namedtuple('Crossing', ('left','right'))
+    Coincidence = namedtuple('Coincidence', ('left', 'right', 'alignment', 'transform', 'inverse', 'translation'))
 
     def __init__(self):
         pass
@@ -215,7 +223,7 @@ class Manifold:
         -------
         intersections : `list`
             A list of intersections between the ray and the manifold. 
-            Each intersection is of the form (distance to intersection, domain point of intersection).
+            Each intersection is a Manifold.RayCrossing: (distance to intersection, domain point of intersection).
 
         See Also
         --------
@@ -235,22 +243,23 @@ class Manifold:
 
         Returns
         -------
-        intersections : `list`
+        intersections : `list` (Or `NotImplemented` if other is an unknown type of Manifold)
             A list of intersections between the two manifolds. 
             Each intersection records either a crossing or a coincident region.
 
-            For a crossing, intersection is a tuple holding:
-            * intersection[0] : `Manifold` in the manifold's domain where the manifold and the other cross.
-            * intersection[1] : `Manifold` in the other's domain where the manifold and the other cross.
+            For a crossing, intersection is a Manifold.Crossing: (left, right)
+            * left : `Manifold` in the manifold's domain where the manifold and the other cross.
+            * right : `Manifold` in the other's domain where the manifold and the other cross.
             * Both intersection manifolds have the same domain and range (the crossing between the manifold and the other).
 
-            For a coincident region, intersection is a tuple holding:
-            * intersection[0] : `Solid` in the manifold's domain within which the manifold and the other are coincident.
-            * intersection[1] : `Solid` in the other's domain within which the manifold and the other are coincident.
-            * intersection[2] : scalar value holding the normal alignment between the manifold and the other (the dot product of their unit normals).
-            * intersection[3] : `numpy.array` holding the 2D transform from the boundary's domain to the other's domain.
-            * intersection[4] : `numpy.array` holding the 1D translation from the manifold's domain to the other's domain.
-            * Together intersection[3] and intersection[4] form the mapping from the manifold's domain to the other's domain.
+            For a coincident region, intersection is Manifold.Coincidence: (left, right, alignment, transform, inverse, translation)
+            * left : `Solid` in the manifold's domain within which the manifold and the other are coincident.
+            * right : `Solid` in the other's domain within which the manifold and the other are coincident.
+            * alignment : scalar value holding the normal alignment between the manifold and the other (the dot product of their unit normals).
+            * transform : `numpy.array` holding the 2D transform from the boundary's domain to the other's domain.
+            * inverse : `numpy.array` holding the 2D inverse transform from the other's domain to the boundary's domain.
+            * translation : `numpy.array` holding the 1D translation from the manifold's domain to the other's domain.
+            * Together transform, inverse, and translation form the mapping from the manifold's domain to the other's domain and vice-versa.
 
         See Also
         --------
@@ -507,7 +516,7 @@ class Hyperplane(Manifold):
         intersections : `list`
             A list of intersections between the ray and the hyperplane. 
             (Hyperplanes will have at most one intersection, but other types of manifolds can have several.)
-            Each intersection is of the form (distance to intersection, domain point of intersection).
+            Each intersection is a Manifold.RayCrossing: (distance to intersection, domain point of intersection).
 
         See Also
         --------
@@ -526,7 +535,7 @@ class Hyperplane(Manifold):
             # Getting the domain point is a bit trickier. Turns out you throw out the x-components and invert the tangent space.
             domainPoint = np.linalg.inv(self.tangentSpace[1:,:]) @ vectorFromManifold[1:]
             # Each intersection is of the form [distance to intersection, domain point of intersection].
-            intersections.append((xDistanceToManifold, domainPoint))
+            intersections.append(Manifold.RayCrossing(xDistanceToManifold, domainPoint))
 
         return intersections
 
@@ -541,24 +550,24 @@ class Hyperplane(Manifold):
 
         Returns
         -------
-        intersections : `list`
+        intersections : `list` (Or `NotImplemented` if other is not a `Hyperplane`)
             A list of intersections between the two hyperplanes. 
             (Hyperplanes will have at most one intersection, but other types of manifolds can have several.)
             Each intersection records either a crossing or a coincident region.
 
-            For a crossing, intersection is a tuple holding:
-            * intersection[0] : `Manifold` in the hyperplane's domain where the hyperplane and the other cross.
-            * intersection[1] : `Manifold` in the other's domain where the hyperplane and the other cross.
-            * Both intersection manifolds have the same domain and range (the crossing between the hyperplane and the other).
+            For a crossing, intersection is a Manifold.Crossing: (left, right)
+            * left : `Manifold` in the manifold's domain where the manifold and the other cross.
+            * right : `Manifold` in the other's domain where the manifold and the other cross.
+            * Both intersection manifolds have the same domain and range (the crossing between the manifold and the other).
 
-            For a coincident region, intersection is a tuple holding:
-            * intersection[0] : `Solid` in the hyperplane's domain within which the hyperplane and the other are coincident.
-            * intersection[1] : `Solid` in the other's domain within which the hyperplane and the other are coincident.
-            * intersection[2] : scalar value holding the normal alignment between the hyperplane and the other (the dot product of their unit normals).
-            * intersection[3] : `numpy.array` holding the 2D transform from the boundary's domain to the other's domain.
-            * intersection[4] : `numpy.array` holding the 2D inverse transform from the other's domain to the boundary's domain.
-            * intersection[5] : `numpy.array` holding the 1D translation from the hyperplane's domain to the other's domain.
-            * Together intersection[3:6] form the mapping from the hyperplane's domain to the other's domain and vice-versa.
+            For a coincident region, intersection is Manifold.Coincidence: (left, right, alignment, transform, inverse, translation)
+            * left : `Solid` in the manifold's domain within which the manifold and the other are coincident.
+            * right : `Solid` in the other's domain within which the manifold and the other are coincident.
+            * alignment : scalar value holding the normal alignment between the manifold and the other (the dot product of their unit normals).
+            * transform : `numpy.array` holding the 2D transform from the boundary's domain to the other's domain.
+            * inverse : `numpy.array` holding the 2D inverse transform from the other's domain to the boundary's domain.
+            * translation : `numpy.array` holding the 1D translation from the manifold's domain to the other's domain.
+            * Together transform, inverse, and translation form the mapping from the manifold's domain to the other's domain and vice-versa.
 
         See Also
         --------
@@ -640,7 +649,7 @@ class Hyperplane(Manifold):
                 # There is no null space (dimension-2 <= 0)
                 selfDomainTangentSpace = np.array([0.0])
                 otherDomainTangentSpace = np.array([0.0])
-            intersections.append((Hyperplane(selfDomainNormal, selfDomainPoint, selfDomainTangentSpace), Hyperplane(otherDomainNormal, otherDomainPoint, otherDomainTangentSpace)))
+            intersections.append(Manifold.Crossing(Hyperplane(selfDomainNormal, selfDomainPoint, selfDomainTangentSpace), Hyperplane(otherDomainNormal, otherDomainPoint, otherDomainTangentSpace)))
 
         # Otherwise, manifolds are parallel. Now, check if they are coincident.
         else:
@@ -656,8 +665,8 @@ class Hyperplane(Manifold):
                     transform =  map @ self.tangentSpace
                     inverseTransform = np.linalg.inv(transform)
                     translation = map @ (self.point - other.point)
-                    intersections.append((domainCoincidence, domainCoincidence, alignment, transform, inverseTransform, translation))
+                    intersections.append(Manifold.Coincidence(domainCoincidence, domainCoincidence, alignment, transform, inverseTransform, translation))
                 else:
-                    intersections.append((domainCoincidence, domainCoincidence, alignment))
+                    intersections.append(Manifold.Coincidence(domainCoincidence, domainCoincidence, alignment, None, None, None))
 
         return intersections

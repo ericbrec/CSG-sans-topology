@@ -133,7 +133,7 @@ class Solid:
     def __neg__(self):
         return self.Not()
 
-    def Transform(self, transform):
+    def Transform(self, transform, transformInverseTranspose = None):
         """
         Transform the range of the solid.
 
@@ -142,14 +142,20 @@ class Solid:
         transform : `numpy.array`
             A square 2D array transformation.
 
+        transformInverseTranspose : `numpy.array`, optional
+            The inverse transpose of transform (computed if not provided).
+
         Notes
         -----
         Transforms the solid in place, so create a copy as needed.
         """
         assert np.shape(transform) == (self.dimension, self.dimension)
 
+        if transformInverseTranspose is None:
+            transformInverseTranspose = np.transpose(np.linalg.inv(transform))
+
         for boundary in self.boundaries:
-            boundary.manifold.Transform(transform)
+            boundary.manifold.Transform(transform, transformInverseTranspose)
 
     def Translate(self, delta):
         """
@@ -611,8 +617,9 @@ class Solid:
                     #   * intersection[m] is the solid within the manifold's domain inside of which the boundary and given manifold are coincident.
                     #   * intersection[2] is the normal alignment between the boundary and given manifold (same or opposite directions).
                     #   * intersection[3] is transform from the boundary's domain to the given manifold's domain.
-                    #   * intersection[4] is the translation from the boundary's domain to the given manifold's domain.
-                    #   * Together intersection[3] and intersection[4] form the mapping from the boundary's domain to the given manifold's domain.
+                    #   * intersection[4] is inverse transform from the given manifold's domain to the boundary's domain.
+                    #   * intersection[5] is the translation from the boundary's domain to the given manifold's domain.
+                    #   * Together intersection[3:6] form the mapping from the boundary's domain to the given manifold's domain and vice-versa.
 
                     # First, intersect domain coincidence with the domain boundary.
                     domainCoincidence = intersection[b].Intersection(boundary.domain)
@@ -627,11 +634,11 @@ class Solid:
                         if invertDomainCoincidence:
                             domainManifold.FlipNormal()
                         if isTwin:
-                            domainManifold.Translate(-intersection[4])
-                            domainManifold.Transform(np.linalg.inv(intersection[3]))
+                            domainManifold.Translate(-intersection[5])
+                            domainManifold.Transform(intersection[4], intersection[3].T)
                         else:
-                            domainManifold.Transform(intersection[3])
-                            domainManifold.Translate(intersection[4])
+                            domainManifold.Transform(intersection[3], intersection[4].T)
+                            domainManifold.Translate(intersection[5])
                         domainCoincidence.boundaries[i] = Boundary(domainManifold, domainCoincidence.boundaries[i].domain)
                     # Finally, add the domain coincidence to the list of coincidences.
                     coincidences.append((invertDomainCoincidence, domainCoincidence))

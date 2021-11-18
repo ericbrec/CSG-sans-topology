@@ -147,7 +147,7 @@ class Manifold:
         """
         return np.dot(self.Normal(domainPoint), self.CofactorNormal(domainPoint))
 
-    def Transform(self, transform):
+    def Transform(self, transform, transformInverseTranspose = None):
         """
         Transform the range of the manifold.
 
@@ -155,6 +155,9 @@ class Manifold:
         ----------
         transform : `numpy.array`
             A square 2D array transformation.
+
+        transformInverseTranspose : `numpy.array`, optional
+            The inverse transpose of transform (computed if not provided).
 
         Notes
         -----
@@ -418,7 +421,7 @@ class Hyperplane(Manifold):
         """
         return self.CofactorNormal(domainPoint)[0]
 
-    def Transform(self, transform):
+    def Transform(self, transform, transformInverseTranspose = None):
         """
         Transform the range of the hyperplane.
 
@@ -426,6 +429,9 @@ class Hyperplane(Manifold):
         ----------
         transform : `numpy.array`
             A square 2D array transformation.
+
+        transformInverseTranspose : `numpy.array`, optional
+            The inverse transpose of transform (computed if not provided).
 
         Notes
         -----
@@ -437,7 +443,16 @@ class Hyperplane(Manifold):
         """
         assert np.shape(transform) == (self.RangeDimension(), self.RangeDimension())
 
-        self.tangentSpace = transform @ self.tangentSpace
+        if self.RangeDimension() > 1:
+            if transformInverseTranspose is None:
+                transformInverseTranspose = np.transpose(np.linalg.inv(transform))
+
+            self.normal = transformInverseTranspose @ self.normal
+            if hasattr(self, 'cofactorNormal'):
+                self.cofactorNormal = transformInverseTranspose @ self.cofactorNormal
+
+            self.tangentSpace = transform @ self.tangentSpace
+
         self.point = transform @ self.point
 
     def Translate(self, delta):
@@ -540,8 +555,9 @@ class Hyperplane(Manifold):
             * intersection[1] : `Solid` in the other's domain within which the hyperplane and the other are coincident.
             * intersection[2] : scalar value holding the normal alignment between the hyperplane and the other (the dot product of their unit normals).
             * intersection[3] : `numpy.array` holding the 2D transform from the boundary's domain to the other's domain.
-            * intersection[4] : `numpy.array` holding the 1D translation from the hyperplane's domain to the other's domain.
-            * Together intersection[3] and intersection[4] form the mapping from the hyperplane's domain to the other's domain.
+            * intersection[4] : `numpy.array` holding the 2D inverse transform from the other's domain to the boundary's domain.
+            * intersection[5] : `numpy.array` holding the 1D translation from the hyperplane's domain to the other's domain.
+            * Together intersection[3:6] form the mapping from the hyperplane's domain to the other's domain and vice-versa.
 
         See Also
         --------
@@ -566,7 +582,7 @@ class Hyperplane(Manifold):
         Remember, we're solving for `x = (selfDomainPoint otherDomainPoint)`. So, the selfDomainPoint is the first `dimension-1` coordinates of `x`,
         and the otherDomainPoint is the last `dimension-1` coordinates of `x`. Likewise for the two tangent spaces.
 
-        For coincident regions, we need the domains, normal alignment, and mapping from the hyperplane's domain to the other's domain.
+        For coincident regions, we need the domains, normal alignment, and mapping from the hyperplane's domain to the other's domain. (The mapping is irrelevant and excluded for dimensions less than 2.)
         We can tell if the two hyperplanes are coincident if their normal alignment (dot product of their unit normals) is nearly 1 
         in absolute value (`alignment**2 < Manifold.maxAlignment`) and their points are barely separated:
         `-2 * Manifold.minSeparation < dot(hyperplane.normal, hyperplane.point - other.point) < Manifold.minSeparation`. (We give more room 
@@ -635,10 +651,11 @@ class Hyperplane(Manifold):
                 if dimension > 1:
                     # For higher dimensions, also return the mapping from the self domain to the other domain.
                     tangentSpaceTranspose = np.transpose(other.tangentSpace)
-                    inverseMap = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
-                    transform =  inverseMap @ self.tangentSpace
-                    translation = inverseMap @ (self.point - other.point)
-                    intersections.append((domainCoincidence, domainCoincidence, alignment, transform, translation))
+                    map = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
+                    transform =  map @ self.tangentSpace
+                    inverseTransform = np.linalg.inv(transform)
+                    translation = map @ (self.point - other.point)
+                    intersections.append((domainCoincidence, domainCoincidence, alignment, transform, inverseTransform, translation))
                 else:
                     intersections.append((domainCoincidence, domainCoincidence, alignment))
 

@@ -448,6 +448,7 @@ class Hyperplane(Manifold):
                 transformInverseTranspose = np.transpose(np.linalg.inv(transform))
 
             self.normal = transformInverseTranspose @ self.normal
+            self.normal = self.normal / np.linalg.norm(self.normal)
             if hasattr(self, 'cofactorNormal'):
                 self.cofactorNormal = transformInverseTranspose @ self.cofactorNormal
 

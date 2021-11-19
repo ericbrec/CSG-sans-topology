@@ -25,6 +25,13 @@ class Manifold:
         pass
 
     def copy(self):
+        """
+        Copy the manifold.
+
+        Returns
+        -------
+        manifold : `Manifold`
+        """
         return None
 
     def DomainDimension(self):
@@ -304,6 +311,13 @@ class Hyperplane(Manifold):
         return "Hyperplane({0}, {1}, {2})".format(self.normal, self.point, self.tangentSpace)
 
     def copy(self):
+        """
+        Copy the hyperplane.
+
+        Returns
+        -------
+        hyperplane : `Hyperplane`
+        """
         return Hyperplane(self.normal, self.point, self.tangentSpace)
 
     def RangeDimension(self):

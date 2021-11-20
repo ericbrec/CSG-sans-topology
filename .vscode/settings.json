@@ -27,5 +27,11 @@
         "zlabel",
         "zlim"
     ],
-    "terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "Bypass"]
+    "terminal.integrated.profiles.windows": {
+        "Windows Powershell": {
+          "source": "PowerShell",
+          "args": ["-ExecutionPolicy", "Bypass"]
+        }
+      },
+      "terminal.integrated.defaultProfile.windows": "Windows Powershell"
 }

@@ -6,20 +6,21 @@ import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.art3d as art3d
 import mpl_toolkits.mplot3d.proj3d as proj3d
 from matplotlib.backend_bases import MouseButton
+import matplotlib.widgets as widgets
 
 class InteractiveCanvas:
     
-    def PerformBooleanOperation(self, key):
-        print(key)
-        if key == 'i':
-            solid = self.solidA.Intersection(self.solidB)
-            self.key = key
-        elif key == 'u':
+    def PerformBooleanOperation(self, op):
+        print(op)
+        if op == 'OR':
             solid = self.solidA.Union(self.solidB)
-            self.key = key
-        elif key == 'd':
+            self.op = op
+        elif op == 'AND':
+            solid = self.solidA.Intersection(self.solidB)
+            self.op = op
+        elif op == 'DIFF':
             solid = self.solidA.Difference(self.solidB)
-            self.key = key
+            self.op = op
         else:
             solid = self.solidC
 
@@ -38,11 +39,15 @@ class InteractiveCanvas:
         self.ax.set_title('Drag shape to update solid')
         self.canvas = self.ax.figure.canvas
 
+        axRadioButtons = fig.add_axes([0.85, 0.88, 0.12, 0.12])
+        self.radioButtons = widgets.RadioButtons(axRadioButtons, ["OR", "AND", "DIFF"])
+        self.radioButtons.on_clicked(self.on_radio_press)
+
         self.origin = [0.0]*solidB.dimension 
 
         self.solidA = solidA
         self.solidB = solidB
-        self.solidC = self.PerformBooleanOperation('u')
+        self.solidC = self.PerformBooleanOperation('OR') # First radio button
         
         self.linesA = art3d.Line3DCollection(utils.CreateSegmentsFromSolid(self.solidA), linewidth=1, color="blue")
         self.linesB = art3d.Line3DCollection(utils.CreateSegmentsFromSolid(self.solidB), linewidth=1, color="orange")
@@ -57,7 +62,6 @@ class InteractiveCanvas:
 
         self.canvas.mpl_connect('draw_event', self.on_draw)
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
-        self.canvas.mpl_connect('key_press_event', self.on_key_press)
         self.canvas.mpl_connect('button_release_event', self.on_button_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
 
@@ -70,7 +74,7 @@ class InteractiveCanvas:
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
-        if event.inaxes is None or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
+        if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
         self.ax.disable_mouse_rotation()
@@ -78,23 +82,23 @@ class InteractiveCanvas:
 
     def on_button_release(self, event):
         """Callback for mouse button releases."""
-        if event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
+        if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
         self.ax.mouse_init()
-        self.solidC = self.PerformBooleanOperation(self.key)
+        self.solidC = self.PerformBooleanOperation(self.op)
         self.linesC.set_segments(utils.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
-    def on_key_press(self, event):
-        """Callback for key presses."""
-        self.solidC = self.PerformBooleanOperation(event.key)
+    def on_radio_press(self, event):
+        """Callback for radio button selection."""
+        self.solidC = self.PerformBooleanOperation(event)
         self.linesC.set_segments(utils.CreateSegmentsFromSolid(self.solidC))
         self.canvas.draw()
 
     def on_mouse_move(self, event):
         """Callback for mouse movements."""
-        if event.inaxes is None or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
+        if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
         
         point = self.GetPointFromEvent(event)

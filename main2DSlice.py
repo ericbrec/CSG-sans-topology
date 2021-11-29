@@ -5,6 +5,7 @@ import solidUtils as utils
 import matplotlib.pyplot as plt
 import player as player
 from matplotlib.collections import LineCollection
+import matplotlib.widgets as widgets
 
 class InteractiveCanvas:
     
@@ -38,9 +39,9 @@ class InteractiveCanvas:
             self.slice = sld.Solid(self.solid.dimension, False)
         self.lines.set_segments(utils.CreateSegmentsFromSolid(self.slice))
 
-    def on_key_press(self, event):
-        """Callback for key presses."""
-        self.hyperplane = self.ConstructHyperplane(event.key)
+    def on_radio_press(self, event):
+        """Callback for radio button selection."""
+        self.hyperplane = self.ConstructHyperplane(event)
         self.slice = self.solid.Slice(self.hyperplane)
         if not isinstance(self.slice, sld.Solid):
             self.slice = sld.Solid(self.solid.dimension, False)
@@ -53,14 +54,17 @@ class InteractiveCanvas:
         self.ax.set_title("Slice solid by {axis}-axis".format(axis=axis))
         self.canvas = self.ax.figure.canvas
 
+        axRadioButtons = fig.add_axes([0.9, 0.88, 0.08, 0.12])
+        buttons = ["x", "y", "z"]
+        self.radioButtons = widgets.RadioButtons(axRadioButtons, buttons, active=buttons.index(axis))
+        self.radioButtons.on_clicked(self.on_radio_press)
+
         self.solid = solid
         self.offset = 0.0
         self.hyperplane = self.ConstructHyperplane(axis)
 
         self.lines = LineCollection([], linewidth=1, color="blue")
         self.ax.add_collection(self.lines)
-
-        self.canvas.mpl_connect('key_press_event', self.on_key_press)
 
         self.player = player.Player(fig, self.animateSlice, -4.0, 4.0, 0.2, -4.0, init_func=self.initializeCanvas)
 

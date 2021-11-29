@@ -1,5 +1,5 @@
 import mpl_toolkits.axes_grid1
-import matplotlib.widgets
+import matplotlib.widgets as widgets
 from matplotlib.animation import FuncAnimation
 
 class Player(FuncAnimation):
@@ -65,17 +65,17 @@ class Player(FuncAnimation):
         axF = divider.append_axes("right", size="80%", pad=0.05)
         axOldF = divider.append_axes("right", size="100%", pad=0.05)
         axSlider = divider.append_axes("right", size="500%", pad=0.07)
-        self.button_oneback = matplotlib.widgets.Button(axPlayer, label='$\u29CF$')
-        self.button_back = matplotlib.widgets.Button(axB, label='$\u25C0$')
-        self.button_stop = matplotlib.widgets.Button(axS, label='$\u25A0$')
-        self.button_forward = matplotlib.widgets.Button(axF, label='$\u25B6$')
-        self.button_oneforward = matplotlib.widgets.Button(axOldF, label='$\u29D0$')
+        self.button_oneback = widgets.Button(axPlayer, label='$\u29CF$')
+        self.button_back = widgets.Button(axB, label='$\u25C0$')
+        self.button_stop = widgets.Button(axS, label='$\u25A0$')
+        self.button_forward = widgets.Button(axF, label='$\u25B6$')
+        self.button_oneforward = widgets.Button(axOldF, label='$\u29D0$')
         self.button_oneback.on_clicked(self.onebackward)
         self.button_back.on_clicked(self.backward)
         self.button_stop.on_clicked(self.stop)
         self.button_forward.on_clicked(self.forward)
         self.button_oneforward.on_clicked(self.oneforward)
-        self.slider = matplotlib.widgets.Slider(axSlider, '', self.min, self.max, valinit=self.value)
+        self.slider = widgets.Slider(axSlider, '', self.min, self.max, valinit=self.value)
         self.slider.on_changed(self.set_pos)
 
     def set_pos(self, value):

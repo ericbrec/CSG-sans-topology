@@ -5,6 +5,7 @@ import solidUtils as utils
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.art3d as art3d
 import player as player
+import matplotlib.widgets as widgets
 
 class InteractiveCanvas:
     
@@ -17,7 +18,7 @@ class InteractiveCanvas:
             axis = 1
         elif key == 'z':
             axis = 2
-        elif key == "w":
+        elif key == "t":
             axis = 3
 
         if axis >= 0:
@@ -41,9 +42,9 @@ class InteractiveCanvas:
             self.slice = sld.Solid(self.solid.dimension, False)
         self.lines.set_segments(utils.CreateSegmentsFromSolid(self.slice))
 
-    def on_key_press(self, event):
-        """Callback for key presses."""
-        self.hyperplane = self.ConstructHyperplane(event.key)
+    def on_radio_press(self, event):
+        """Callback for radio button selection."""
+        self.hyperplane = self.ConstructHyperplane(event)
         self.slice = self.solid.Slice(self.hyperplane)
         if not isinstance(self.slice, sld.Solid):
             self.slice = sld.Solid(self.solid.dimension, False)
@@ -57,14 +58,17 @@ class InteractiveCanvas:
         self.ax.set_title("Slice solid by {axis}-axis".format(axis=axis))
         self.canvas = self.ax.figure.canvas
 
+        axRadioButtons = fig.add_axes([0.9, 0.88, 0.08, 0.12])
+        buttons = ["x", "y", "z", 't']
+        self.radioButtons = widgets.RadioButtons(axRadioButtons, buttons, active=buttons.index(axis))
+        self.radioButtons.on_clicked(self.on_radio_press)
+
         self.solid = solid
         self.offset = 0.0
         self.hyperplane = self.ConstructHyperplane(axis)
 
         self.lines = art3d.Line3DCollection([], linewidth=1, color="blue")
         self.ax.add_collection(self.lines)
-
-        self.canvas.mpl_connect('key_press_event', self.on_key_press)
 
         self.player = player.Player(fig, self.animateSlice, -4.0, 4.0, 0.2, -4.0, init_func=self.initializeCanvas)
 
@@ -76,5 +80,5 @@ starBlock = utils.ExtrudeSolid(star,[[0,0,-1],[0,0,1]])
 extrudedStarBlock = utils.ExtrudeSolid(starBlock,[[-2,-2,-2,-4],[2,2,2,4]])
 combined = extrudedStarBlock.Union(extrudedCube)
 
-interactor = InteractiveCanvas(combined, 'w')
+interactor = InteractiveCanvas(combined, 't')
 plt.show()

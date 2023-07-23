@@ -72,5 +72,5 @@ extrudedSquare = utils.ExtrudeSolid(square,[[-2,2,-4],[2,-2,4]])
 extrudedStar = utils.ExtrudeSolid(star,[[-2,-2,-4],[2,2,4]])
 combined = extrudedStar.Union(extrudedSquare)
 
-InteractiveCanvas(combined, 'z')
+canvas = InteractiveCanvas(combined, 'z')
 plt.show()

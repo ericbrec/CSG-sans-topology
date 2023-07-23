@@ -121,5 +121,5 @@ cubeB = utils.CreateHypercube([1,1,1], [1,1,1])
 print(cubeB.VolumeIntegral(lambda x: 1.0), 2.0*2.0*2.0)
 print(cubeB.SurfaceIntegral(lambda x, n: n), 2.0*2.0*6.0)
 
-InteractiveCanvas(cubeA, cubeB)
+canvas = InteractiveCanvas(cubeA, cubeB)
 plt.show()

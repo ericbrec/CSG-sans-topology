@@ -78,5 +78,5 @@ starBlock = utils.ExtrudeSolid(star,[[0,0,-1],[0,0,1]])
 extrudedStarBlock = utils.ExtrudeSolid(starBlock,[[-2,-2,-2,-4],[2,2,2,4]])
 combined = extrudedStarBlock.Union(extrudedCube)
 
-InteractiveCanvas(combined, 't')
+canvas = InteractiveCanvas(combined, 't')
 plt.show()

@@ -15,7 +15,7 @@ class Boundary:
         The region of the domain of the manifold that's within the boundary.
     
     tangentSpace : array-like
-        A array of tangents that are linearly independent and orthoganal to the normal.
+        A array of tangents that are linearly independent and orthogonal to the normal.
     
     See also
     --------
@@ -665,7 +665,7 @@ class Solid:
         ------
         To intersect two solids, we slice each solid with the boundaries of the other solid. The slices are the region
         of the domain that intersect the solid. We then intersect the domain of each boundary with its slice of the other solid. Thus,
-        the intersection of two solids becomes a set of interections within the domains of their boundaries. This recursion continues
+        the intersection of two solids becomes a set of intersections within the domains of their boundaries. This recursion continues
         until we are intersecting points whose domains have no boundaries.
 
         The only subtlety is when two boundaries are coincident. To avoid overlapping the coincident region, we keep that region

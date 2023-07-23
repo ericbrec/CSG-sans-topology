@@ -8,7 +8,7 @@ class Manifold:
     normals and tangent spaces whose range is one dimension higher than their domain.
     """
 
-    # If two points are within 0.01 of each eachother, they are coincident
+    # If two points are within 0.01 of each each other, they are coincident
     minSeparation = 0.01
 
     # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
@@ -281,7 +281,7 @@ class Manifold:
 
 class Hyperplane(Manifold):
     """
-    A hyperplane is a `Manifold` defined by a unit normal, a point on the hyperplane, and a tangent space orthoganal to the normal.
+    A hyperplane is a `Manifold` defined by a unit normal, a point on the hyperplane, and a tangent space orthogonal to the normal.
 
     Parameters
     ----------
@@ -292,7 +292,7 @@ class Hyperplane(Manifold):
         A point on the hyperplane.
     
     tangentSpace : array-like
-        A array of tangents that are linearly independent and orthoganal to the normal.
+        A array of tangents that are linearly independent and orthogonal to the normal.
     
     Notes
     -----
@@ -610,7 +610,7 @@ class Hyperplane(Manifold):
         We can tell if the two hyperplanes are coincident if their normal alignment (dot product of their unit normals) is nearly 1 
         in absolute value (`alignment**2 < Manifold.maxAlignment`) and their points are barely separated:
         `-2 * Manifold.minSeparation < dot(hyperplane.normal, hyperplane.point - other.point) < Manifold.minSeparation`. (We give more room 
-        to the outside than the inside to avoid compouding issues from minute gaps.)
+        to the outside than the inside to avoid compounding issues from minute gaps.)
 
         Since hyperplanes are flat, the domains of their coincident regions are the entire domain: `Solid(domain dimension, True)`.
         The normal alignment is the dot product of the unit normals. The mapping from the hyperplane's domain to the other's domain is derived

@@ -1,6 +1,4 @@
 import numpy as np
-import manifold as mf
-import solid as sld
 import solidUtils as utils
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.art3d as art3d

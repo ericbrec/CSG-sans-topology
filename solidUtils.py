@@ -1,5 +1,5 @@
 import numpy as np
-import manifold as mf
+import hyperplane as hp
 import solid as sld
 
 def CreateSegmentsFromSolid(solid):
@@ -24,7 +24,7 @@ def HyperplaneAxisAligned(dimension, axis, offset, flipNormal=False):
     else:
         tangentSpace = np.array([0.0])
     
-    return mf.Hyperplane(normal, point, tangentSpace)
+    return hp.Hyperplane(normal, point, tangentSpace)
 
 def CreateHypercube(size, position = None):
     dimension = len(size)
@@ -54,13 +54,13 @@ def Hyperplane1D(normal, offset):
     assert np.isscalar(normal) or len(normal) == 1
     normalizedNormal = np.atleast_1d(normal)
     normalizedNormal = normalizedNormal / np.linalg.norm(normalizedNormal)
-    return mf.Hyperplane(normalizedNormal, offset * normalizedNormal, 0.0)
+    return hp.Hyperplane(normalizedNormal, offset * normalizedNormal, 0.0)
 
 def Hyperplane2D(normal, offset):
     assert len(normal) == 2
     normalizedNormal = np.atleast_1d(normal)
     normalizedNormal = normalizedNormal / np.linalg.norm(normalizedNormal)
-    return mf.Hyperplane(normalizedNormal, offset * normalizedNormal, np.transpose(np.array([[normal[1], -normal[0]]])))
+    return hp.Hyperplane(normalizedNormal, offset * normalizedNormal, np.transpose(np.array([[normal[1], -normal[0]]])))
 
 def HyperplaneDomainFromPoint(hyperplane, point):
     tangentSpaceTranspose = np.transpose(hyperplane.tangentSpace)
@@ -146,7 +146,7 @@ def ExtrudeSolid(solid, path):
             if solid.dimension > 1:
                 extruded_tangentSpace[0:solid.dimension, 0:solid.dimension-1] = boundary.manifold.tangentSpace[:,:]
             extruded_tangentSpace[:, solid.dimension-1] = tangent[:]
-            extrudedHyperplane = mf.Hyperplane(extruded_normal, extruded_point, extruded_tangentSpace)
+            extrudedHyperplane = hp.Hyperplane(extruded_normal, extruded_point, extruded_tangentSpace)
             # Construct a domain for the extruded boundary
             if boundary.domain.dimension > 0:
                 # Extrude the boundary's domain to include path domain

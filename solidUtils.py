@@ -132,7 +132,7 @@ def ExtrudeSolid(solid, path):
         tangent = tangent / extent
         # Extrude each boundary
         for boundary in solid.boundaries:
-            # Construct a normal orthoganal to both the boundary tangent space and the path tangent
+            # Construct a normal orthogonal to both the boundary tangent space and the path tangent
             extruded_normal = np.full((extrusion.dimension), 0.0)
             extruded_normal[0:solid.dimension] = boundary.manifold.normal[:]
             extruded_normal[solid.dimension] = -np.dot(boundary.manifold.normal, tangent[0:solid.dimension])

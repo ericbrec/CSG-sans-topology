@@ -42,15 +42,15 @@ class Player(FuncAnimation):
         self.forwards = False
         self.start()
 
-    def oneforward(self, event=None):
+    def oneForward(self, event=None):
         self.forwards = True
-        self.onestep()
+        self.oneStep()
 
-    def onebackward(self, event=None):
+    def oneBackward(self, event=None):
         self.forwards = False
-        self.onestep()
+        self.oneStep()
 
-    def onestep(self):
+    def oneStep(self):
         self.value += self.step if self.forwards else -self.step
         self.value = min(max(self.value, self.min), self.max)
         self.artists = self.func(self.value)
@@ -65,16 +65,16 @@ class Player(FuncAnimation):
         axF = divider.append_axes("right", size="80%", pad=0.05)
         axOldF = divider.append_axes("right", size="100%", pad=0.05)
         axSlider = divider.append_axes("right", size="500%", pad=0.07)
-        self.button_oneback = widgets.Button(axPlayer, label='$\u29CF$')
+        self.button_oneBack = widgets.Button(axPlayer, label='$\u29CF$')
         self.button_back = widgets.Button(axB, label='$\u25C0$')
         self.button_stop = widgets.Button(axS, label='$\u25A0$')
         self.button_forward = widgets.Button(axF, label='$\u25B6$')
-        self.button_oneforward = widgets.Button(axOldF, label='$\u29D0$')
-        self.button_oneback.on_clicked(self.onebackward)
+        self.button_oneForward = widgets.Button(axOldF, label='$\u29D0$')
+        self.button_oneBack.on_clicked(self.oneBackward)
         self.button_back.on_clicked(self.backward)
         self.button_stop.on_clicked(self.stop)
         self.button_forward.on_clicked(self.forward)
-        self.button_oneforward.on_clicked(self.oneforward)
+        self.button_oneForward.on_clicked(self.oneForward)
         self.slider = widgets.Slider(axSlider, '', self.min, self.max, valinit=self.value)
         self.slider.on_changed(self.set_pos)
 

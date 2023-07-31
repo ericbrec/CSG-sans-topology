@@ -1,8 +1,8 @@
 import numpy as np
-import solid as sld
-import manifold as mf
+from solid import Solid
+from manifold import Manifold
 
-class Hyperplane(mf.Manifold):
+class Hyperplane(Manifold):
     """
     A hyperplane is a `Manifold` defined by a unit normal, a point on the hyperplane, and a tangent space orthogonal to the normal.
 
@@ -272,7 +272,7 @@ class Hyperplane(mf.Manifold):
             # Getting the domain point is a bit trickier. Turns out you throw out the x-components and invert the tangent space.
             domainPoint = np.linalg.inv(self.tangentSpace[1:,:]) @ vectorFromManifold[1:]
             # Each intersection is of the form [distance to intersection, domain point of intersection].
-            intersections.append(Hyperplane.RayCrossing(xDistanceToManifold, domainPoint))
+            intersections.append(Manifold.RayCrossing(xDistanceToManifold, domainPoint))
 
         return intersections
 
@@ -345,7 +345,8 @@ class Hyperplane(mf.Manifold):
 
         Note that to invert the mapping to go from the other's domain to the hyperplane's domain, you first subtract the translation and then multiply by the inverse of the transform.
         """
-        assert isinstance(other, Hyperplane)
+        if not isinstance(other, Hyperplane):
+            return NotImplemented
         assert self.RangeDimension() == other.RangeDimension()
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
@@ -386,7 +387,7 @@ class Hyperplane(mf.Manifold):
                 # There is no null space (dimension-2 <= 0)
                 selfDomainTangentSpace = np.array([0.0])
                 otherDomainTangentSpace = np.array([0.0])
-            intersections.append(Hyperplane.Crossing(Hyperplane(selfDomainNormal, selfDomainPoint, selfDomainTangentSpace), Hyperplane(otherDomainNormal, otherDomainPoint, otherDomainTangentSpace)))
+            intersections.append(Manifold.Crossing(Hyperplane(selfDomainNormal, selfDomainPoint, selfDomainTangentSpace), Hyperplane(otherDomainNormal, otherDomainPoint, otherDomainTangentSpace)))
 
         # Otherwise, manifolds are parallel. Now, check if they are coincident.
         else:
@@ -394,7 +395,7 @@ class Hyperplane(mf.Manifold):
             # Allow for extra outside separation to avoid issues with minute gaps.
             if -2.0 * Hyperplane.minSeparation < insideSeparation < Hyperplane.minSeparation:
                 # These hyperplanes are coincident. Return the domains in which they coincide (entire domain for hyperplanes) and the normal alignment.
-                domainCoincidence = sld.Solid(dimension-1, True)
+                domainCoincidence = Solid(dimension-1, True)
                 if dimension > 1:
                     # For higher dimensions, also return the mapping from the self domain to the other domain.
                     tangentSpaceTranspose = np.transpose(other.tangentSpace)
@@ -402,8 +403,8 @@ class Hyperplane(mf.Manifold):
                     transform =  map @ self.tangentSpace
                     inverseTransform = np.linalg.inv(transform)
                     translation = map @ (self.point - other.point)
-                    intersections.append(Hyperplane.Coincidence(domainCoincidence, domainCoincidence, alignment, transform, inverseTransform, translation))
+                    intersections.append(Manifold.Coincidence(domainCoincidence, domainCoincidence, alignment, transform, inverseTransform, translation))
                 else:
-                    intersections.append(Hyperplane.Coincidence(domainCoincidence, domainCoincidence, alignment, None, None, None))
+                    intersections.append(Manifold.Coincidence(domainCoincidence, domainCoincidence, alignment, None, None, None))
 
         return intersections

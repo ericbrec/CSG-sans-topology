@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.integrate as integrate
-import manifold as mf
+from manifold import Manifold
 
 class Boundary:
     """
@@ -234,7 +234,7 @@ class Solid:
                     leftPoint = self.boundaries[leftB].manifold.Point(0.0)
                     while rightB < len(self.boundaries):
                         rightPoint = self.boundaries[rightB].manifold.Point(0.0)
-                        if leftPoint - mf.Manifold.minSeparation < rightPoint and self.boundaries[rightB].manifold.Normal(0.0) > 0.0:
+                        if leftPoint - Manifold.minSeparation < rightPoint and self.boundaries[rightB].manifold.Normal(0.0) > 0.0:
                             yield (leftPoint, rightPoint)
                             leftB = rightB
                             rightB += 1
@@ -291,9 +291,9 @@ class Solid:
         if not isinstance(args, tuple):
             args = (args,)
         if epsabs is None:
-            epsabs = mf.Manifold.minSeparation
+            epsabs = Manifold.minSeparation
         if epsrel is None:
-            epsrel = mf.Manifold.minSeparation
+            epsrel = Manifold.minSeparation
 
         # Initialize the return value for the integral
         sum = 0.0
@@ -363,9 +363,9 @@ class Solid:
         if not isinstance(args, tuple):
             args = (args,)
         if epsabs is None:
-            epsabs = mf.Manifold.minSeparation
+            epsabs = Manifold.minSeparation
         if epsrel is None:
-            epsrel = mf.Manifold.minSeparation
+            epsrel = Manifold.minSeparation
 
         # Initialize the return value for the integral
         sum = 0.0
@@ -434,7 +434,7 @@ class Solid:
             for boundary in self.boundaries:
                 normal = boundary.manifold.Normal(0.0)
                 separation = np.dot(normal, boundary.manifold.Point(0.0) - point)
-                if -2.0 * mf.Manifold.minSeparation < separation < mf.Manifold.minSeparation:
+                if -2.0 * Manifold.minSeparation < separation < Manifold.minSeparation:
                     onBoundaryNormal = normal
                     break
                 else:
@@ -446,11 +446,11 @@ class Solid:
                 intersections = boundary.manifold.IntersectXRay(point)
                 for intersection in intersections:
                     # First, check the distance is positive.
-                    if intersection.distance > -mf.Manifold.minSeparation:
+                    if intersection.distance > -Manifold.minSeparation:
                         # Only include the boundary if the ray intersection is inside its domain.
                         if boundary.domain.ContainsPoint(intersection.domainPoint):
                             # Check if intersection lies on the boundary.
-                            if intersection[0] < mf.Manifold.minSeparation:
+                            if intersection[0] < Manifold.minSeparation:
                                 onBoundaryNormal = boundary.manifold.Normal(intersection.domainPoint)
                             else:
                                 # Accumulate winding number based on sign of dot(ray,normal) == normal[0].
@@ -468,7 +468,7 @@ class Solid:
             def windingIntegrand(boundaryPoint, boundaryNormal, onBoundaryNormalList):
                 vector = boundaryPoint - point
                 vectorLength = np.linalg.norm(vector)
-                if vectorLength < mf.Manifold.minSeparation:
+                if vectorLength < Manifold.minSeparation:
                     onBoundaryNormalList[0] = boundaryNormal
                     vectorLength = 1.0
                 return vector / (vectorLength**self.dimension)
@@ -592,12 +592,12 @@ class Solid:
 
             # Each intersection is either a crossing (domain manifold) or a coincidence (solid within the domain).
             for intersection in intersections:
-                if isinstance(intersection, mf.Manifold.Crossing):
+                if isinstance(intersection, Manifold.Crossing):
                     intersectionSlice = boundary.domain.Slice(intersection.right if isTwin else intersection.left, cache)
                     if intersectionSlice:
                         slice.boundaries.append(Boundary(intersection.left if isTwin else intersection.right,intersectionSlice))
 
-                elif isinstance(intersection, mf.Manifold.Coincidence):
+                elif isinstance(intersection, Manifold.Coincidence):
                     # First, intersect domain coincidence with the domain boundary.
                     if isTwin:
                         domainCoincidence = intersection.right.Intersection(boundary.domain)

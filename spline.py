@@ -1,9 +1,9 @@
 import numpy as np
-import solid as sld
-import manifold as mf
-import bspy
+from manifold import Manifold
+from hyperplane import Hyperplane
+from bspy import Spline as BspySpline
 
-class Spline(mf.Manifold):
+class Spline(Manifold):
     """
     A spline is a `Manifold` defined by b-spline basis and set of coefficients, whose dependent 
     variables outnumber its independent variables by one.
@@ -202,7 +202,7 @@ class Spline(mf.Manifold):
 
     def IntersectXRay(self, point):
         """
-        Intersect a ray along the x-axis with the hyperplane.
+        Intersect a ray along the x-axis with the spline.
 
         Parameters
         ----------
@@ -212,8 +212,7 @@ class Spline(mf.Manifold):
         Returns
         -------
         intersections : `list`
-            A list of intersections between the ray and the hyperplane. 
-            (Hyperplanes will have at most one intersection, but other types of manifolds can have several.)
+            A list of intersections between the ray and the spline. 
             Each intersection is a Manifold.RayCrossing: (distance to intersection, domain point of intersection).
 
         See Also
@@ -221,37 +220,34 @@ class Spline(mf.Manifold):
         `solid.Solid.WindingNumber` : Compute the winding number for a point relative to the solid.
         """
         assert len(point) == self.RangeDimension()
+        # Construct a lower range spline whose zeros are the ray intersection points.
+        coefs = np.delete(self.spline.coefs, 0, axis=0)
+        coefs[:] -= point[1:]
+        spline = BspySpline(self.spline.nInd, self.spline.nDep - 1, self.spline.order, self.spline.nCoef, self.spline.knots, coefs)
+        zeros = spline.zeros()
 
-        # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
+        # Generate list of intersections.
         intersections = []
-
-        # Ensure hyperplane intersects x-axis
-        if self.normal[0]*self.normal[0] > 1.0 - Hyperplane.maxAlignment:
-            # Getting the xDistance to the manifold is simple geometry.
-            vectorFromManifold = point - self.point
-            xDistanceToManifold = -np.dot(self.normal, vectorFromManifold) / self.normal[0]
-            # Getting the domain point is a bit trickier. Turns out you throw out the x-components and invert the tangent space.
-            domainPoint = np.linalg.inv(self.tangentSpace[1:,:]) @ vectorFromManifold[1:]
-            # Each intersection is of the form [distance to intersection, domain point of intersection].
-            intersections.append(Hyperplane.RayCrossing(xDistanceToManifold, domainPoint))
+        for zero in zeros:
+            intersections.append(Manifold.RayCrossing(self.spline(zero)[0] - point[0], zero))
 
         return intersections
 
     def IntersectManifold(self, other):
         """
-        Intersect two hyperplanes.
+        Intersect a spline or hyperplane.
 
         Parameters
         ----------
-        other : `Hyperplane`
-            The `Hyperplane` intersecting the hyperplane.
+        other : `Spline` or `Hyperplane`
+            The `Manifold` intersecting the `Spline`.
 
         Returns
         -------
-        intersections : `list` (Or `NotImplemented` if other is not a `Hyperplane`)
-            A list of intersections between the two hyperplanes. 
-            (Hyperplanes will have at most one intersection, but other types of manifolds can have several.)
+        intersections : `list` (Or `NotImplemented` if other is not a `Hyperplane` nor a `Spline`)
+            A list of intersections between the two manifolds. 
             Each intersection records either a crossing or a coincident region.
+            Coincident regions are currently not implemented for splines.
 
             For a crossing, intersection is a Manifold.Crossing: (left, right)
             * left : `Manifold` in the manifold's domain where the manifold and the other cross.
@@ -306,16 +302,22 @@ class Spline(mf.Manifold):
 
         Note that to invert the mapping to go from the other's domain to the hyperplane's domain, you first subtract the translation and then multiply by the inverse of the transform.
         """
-        assert isinstance(other, Hyperplane)
         assert self.RangeDimension() == other.RangeDimension()
 
         # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
         intersections = []
         dimension = self.RangeDimension()
 
+        if isinstance(other, Hyperplane):
+            pass
+        elif isinstance(other, Spline):
+            pass
+        else:
+            return NotImplemented
+
         # Check if manifolds intersect (are not parallel)
         alignment = np.dot(self.normal, other.normal)
-        if alignment * alignment < Hyperplane.maxAlignment:
+        if alignment * alignment < Spline.maxAlignment:
             # We're solving the system Ax = b using singular value decomposition, 
             #   where A = (self.tangentSpace -other.tangentSpace), x = (selfDomainPoint otherDomainPoint), and b = other.point - self.point.
             # Construct A.
@@ -347,24 +349,6 @@ class Spline(mf.Manifold):
                 # There is no null space (dimension-2 <= 0)
                 selfDomainTangentSpace = np.array([0.0])
                 otherDomainTangentSpace = np.array([0.0])
-            intersections.append(Hyperplane.Crossing(Hyperplane(selfDomainNormal, selfDomainPoint, selfDomainTangentSpace), Hyperplane(otherDomainNormal, otherDomainPoint, otherDomainTangentSpace)))
-
-        # Otherwise, manifolds are parallel. Now, check if they are coincident.
-        else:
-            insideSeparation = np.dot(self.normal, self.point - other.point)
-            # Allow for extra outside separation to avoid issues with minute gaps.
-            if -2.0 * Hyperplane.minSeparation < insideSeparation < Hyperplane.minSeparation:
-                # These hyperplanes are coincident. Return the domains in which they coincide (entire domain for hyperplanes) and the normal alignment.
-                domainCoincidence = sld.Solid(dimension-1, True)
-                if dimension > 1:
-                    # For higher dimensions, also return the mapping from the self domain to the other domain.
-                    tangentSpaceTranspose = np.transpose(other.tangentSpace)
-                    map = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
-                    transform =  map @ self.tangentSpace
-                    inverseTransform = np.linalg.inv(transform)
-                    translation = map @ (self.point - other.point)
-                    intersections.append(Hyperplane.Coincidence(domainCoincidence, domainCoincidence, alignment, transform, inverseTransform, translation))
-                else:
-                    intersections.append(Hyperplane.Coincidence(domainCoincidence, domainCoincidence, alignment, None, None, None))
+            intersections.append(Manifold.Crossing(Spline(selfDomainNormal, selfDomainPoint, selfDomainTangentSpace), Spline(otherDomainNormal, otherDomainPoint, otherDomainTangentSpace)))
 
         return intersections

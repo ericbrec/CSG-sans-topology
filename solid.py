@@ -634,7 +634,7 @@ class Solid:
 
         # For a point without coincidences, slice is based on point containment.
         if slice.dimension < 1 and len(coincidences) == 0:
-            slice.containsInfinity =  self.ContainsPoint(manifold.Point(0.0))
+            slice.containsInfinity = self.ContainsPoint(manifold.Point(0.0))
 
         return slice
 

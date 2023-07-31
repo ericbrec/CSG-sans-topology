@@ -267,88 +267,45 @@ class Spline(Manifold):
         --------
         `solid.Solid.Slice` : Slice the solid by a manifold.
         `numpy.linalg.svd` : Compute the singular value decomposition of a 2D array.
+        `bspy.Spline.contours` : Find all the contour curves of a spline whose nInd is one larger than its nDep.
 
         Notes
         -----
-        Hyperplanes are parallel when their unit normals are aligned (dot product is nearly 1 or -1). Otherwise, they cross each other.
-
-        To solve the crossing, we find the intersection by solving the underdetermined system of equations formed by assigning points 
-        in one hyperplane (`self`) to points in the other (`other`). That is: 
-        `self.tangentSpace * selfDomainPoint + self.point = other.tangentSpace * otherDomainPoint + other.point`. This system is `dimension` equations
-        with `2*(dimension-1)` unknowns (the two domain points).
-        
-        There are more unknowns than equations, so it's underdetermined. The number of free variables is `2*(dimension-1) - dimension = dimension-2`.
-        To solve the system, we rephrase it as `Ax = b`, where `A = (self.tangentSpace -other.tangentSpace)`, `x = (selfDomainPoint otherDomainPoint)`, 
-        and `b = other.point - self.point`. Then we take the singular value decomposition of `A = U * Sigma * VTranspose`, using `numpy.linalg.svd`.
-        The particular solution for x is given by `x = V * SigmaInverse * UTranspose * b`,
-        where we only consider the first `dimension` number of vectors in `V` (the rest are zeroed out, i.e. the null space of `A`).
-        The null space of `A` (the last `dimension-2` vectors in `V`) spans the free variable space, so those vectors form the tangent space of the intersection.
-        Remember, we're solving for `x = (selfDomainPoint otherDomainPoint)`. So, the selfDomainPoint is the first `dimension-1` coordinates of `x`,
-        and the otherDomainPoint is the last `dimension-1` coordinates of `x`. Likewise for the two tangent spaces.
-
-        For coincident regions, we need the domains, normal alignment, and mapping from the hyperplane's domain to the other's domain. (The mapping is irrelevant and excluded for dimensions less than 2.)
-        We can tell if the two hyperplanes are coincident if their normal alignment (dot product of their unit normals) is nearly 1 
-        in absolute value (`alignment**2 < Manifold.maxAlignment`) and their points are barely separated:
-        `-2 * Manifold.minSeparation < dot(hyperplane.normal, hyperplane.point - other.point) < Manifold.minSeparation`. (We give more room 
-        to the outside than the inside to avoid compounding issues from minute gaps.)
-
-        Since hyperplanes are flat, the domains of their coincident regions are the entire domain: `Solid(domain dimension, True)`.
-        The normal alignment is the dot product of the unit normals. The mapping from the hyperplane's domain to the other's domain is derived
-        from setting the hyperplanes to each other: 
-        `hyperplane.tangentSpace * selfDomainPoint + hyperplane.point = other.tangentSpace * otherDomainPoint + other.point`. Then solve for
-        `otherDomainPoint = inverse(transpose(other.tangentSpace) * other.tangentSpace)) * transpose(other.tangentSpace) * (hyperplane.tangentSpace * selfDomainPoint + hyperplane.point - other.point)`.
-        You get the transform is `inverse(transpose(other.tangentSpace) * other.tangentSpace)) * transpose(other.tangentSpace) * hyperplane.tangentSpace`,
-        and the translation is `inverse(transpose(other.tangentSpace) * other.tangentSpace)) * transpose(other.tangentSpace) * (hyperplane.point - other.point)`.
-
-        Note that to invert the mapping to go from the other's domain to the hyperplane's domain, you first subtract the translation and then multiply by the inverse of the transform.
+        This method basically wraps the `bspy.Spline.contours` call. We construct a spline that represents the 
+        intersection and then call contours. The only subtly is getting the normal of the contours to always 
+        points outward. We do that by picking a point on the contour, checking the normal direction, and 
+        flipping it as needed.
         """
         assert self.RangeDimension() == other.RangeDimension()
 
-        # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
-        intersections = []
-        dimension = self.RangeDimension()
-
         if isinstance(other, Hyperplane):
-            pass
+            # Construct a new spline that represents the intersection.
+            spline = self.spline.dot(other.normal) - np.dot(other.normal, other.point)
+            # Find the intersection contours, which are returned as splines.
+            contours = spline.contours()
+            # Convert each contour into a Manifold.Crossing.
+            intersections = []
+            nDep = self.spline.nInd
+            for contour in contours:
+                left = contour
+                # TODO: Construct the right spline.
+                right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.accuracy, contour.metadata)
+                intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
         elif isinstance(other, Spline):
-            pass
+            # Construct a new spline that represents the intersection.
+            spline = self.spline - other.spline
+            # Find the intersection contours, which are returned as splines.
+            contours = spline.contours()
+            # Convert each contour into a Manifold.Crossing.
+            intersections = []
+            nDep = self.spline.nInd
+            for contour in contours:
+                left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.accuracy, contour.metadata)
+                right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.accuracy, contour.metadata)
+                intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
         else:
             return NotImplemented
 
-        # Check if manifolds intersect (are not parallel)
-        alignment = np.dot(self.normal, other.normal)
-        if alignment * alignment < Spline.maxAlignment:
-            # We're solving the system Ax = b using singular value decomposition, 
-            #   where A = (self.tangentSpace -other.tangentSpace), x = (selfDomainPoint otherDomainPoint), and b = other.point - self.point.
-            # Construct A.
-            A = np.concatenate((self.tangentSpace, -other.tangentSpace),axis=1)
-            # Compute the singular value decomposition of A.
-            U, sigma, VTranspose = np.linalg.svd(A)
-            # Compute the inverse of Sigma and transpose of V.
-            SigmaInverse = np.diag(np.reciprocal(sigma))
-            V = np.transpose(VTranspose)
-            # Compute x = V * SigmaInverse * UTranspose * (other.point - self.point)
-            x = V[:, 0:dimension] @ SigmaInverse @ np.transpose(U) @ (other.point - self.point)
-
-            # The self intersection normal is just the dot product of other normal with the self tangent space.
-            selfDomainNormal = np.dot(other.normal, self.tangentSpace)
-            selfDomainNormal = selfDomainNormal / np.linalg.norm(selfDomainNormal)
-            # The other intersection normal is just the dot product of self normal with the other tangent space.
-            otherDomainNormal = np.dot(self.normal, other.tangentSpace)
-            otherDomainNormal = otherDomainNormal / np.linalg.norm(otherDomainNormal)
-            # The self intersection point is the first dimension-1 coordinates of x.
-            selfDomainPoint = x[0:dimension-1]
-            # The other intersection point is the last dimension-1 coordinates of x.
-            otherDomainPoint = x[dimension-1:]
-            if dimension > 2:
-                # The self intersection tangent space is the first dimension-1 coordinates of the null space (the last dimension-2 vectors in V).
-                selfDomainTangentSpace = V[0:dimension-1, dimension:]
-                # The other intersection tangent space is the last dimension-1 coordinates of the null space (the last dimension-2 vectors in V).
-                otherDomainTangentSpace = V[dimension-1:, dimension:]
-            else:
-                # There is no null space (dimension-2 <= 0)
-                selfDomainTangentSpace = np.array([0.0])
-                otherDomainTangentSpace = np.array([0.0])
-            intersections.append(Manifold.Crossing(Spline(selfDomainNormal, selfDomainPoint, selfDomainTangentSpace), Spline(otherDomainNormal, otherDomainPoint, otherDomainTangentSpace)))
+        # Ensure the normal of each Spline points outward.
 
         return intersections

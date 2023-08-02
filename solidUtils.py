@@ -1,6 +1,8 @@
 import numpy as np
 from solid import Solid, Boundary
 from hyperplane import Hyperplane
+from spline import Spline
+from bspy import Spline as BspySpline
 
 def CreateSegmentsFromSolid(solid):
     segments = []
@@ -66,8 +68,8 @@ def HyperplaneDomainFromPoint(hyperplane, point):
     tangentSpaceTranspose = np.transpose(hyperplane.tangentSpace)
     return np.linalg.inv(tangentSpaceTranspose @ hyperplane.tangentSpace) @ tangentSpaceTranspose @ (point - hyperplane.point)
 
-def CreateSolidFromPoints(dimension, points, containsInfinity = False):
-    # CreateSolidFromPoints only works for dimension 2 so far.
+def CreateFacetedSolidFromPoints(dimension, points, containsInfinity = False):
+    # CreateFacetedSolidFromPoints only works for dimension 2 so far.
     assert dimension == 2
     assert len(points) > 2
     assert len(points[0]) == dimension
@@ -96,6 +98,35 @@ def CreateSolidFromPoints(dimension, points, containsInfinity = False):
 
     return solid
 
+def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
+    # CreateFacetedSolidFromPoints only works for dimension 2 so far.
+    assert dimension == 2
+    assert len(points) > 2
+    assert len(points[0]) == dimension
+
+    solid = Solid(dimension, containsInfinity)
+
+    t = 0.0
+    previousPoint = np.array(points[0])
+    dataPoints = [t, *previousPoint]
+    for point in points[1:]:
+        point = np.array(point)
+        t += np.linalg.norm(point - previousPoint)
+        dataPoints.append((t, *point))
+        previousPoint = point
+    point = np.array(points[0])
+    t += np.linalg.norm(point - previousPoint)
+    dataPoints.append((t, *point))
+
+    spline = Spline(BspySpline.least_squares(dimension - 1, dimension, (4,) * (dimension - 1), dataPoints))
+    domain = Solid(dimension-1, False)
+    domainDomain = Solid(dimension-2, True) # Domain for 1D points.
+    domain.boundaries.append(Boundary(Hyperplane1D(-1.0, 0.0), domainDomain))
+    domain.boundaries.append(Boundary(Hyperplane1D(1.0, t), domainDomain))
+    solid.boundaries.append(Boundary(spline, domain))
+
+    return solid
+
 def CreateStar(radius, center, angle):
     vertices = []
     points = 5
@@ -105,7 +136,7 @@ def CreateStar(radius, center, angle):
     nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
     u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt
 
-    star = CreateSolidFromPoints(2, vertices)
+    star = CreateFacetedSolidFromPoints(2, vertices)
     for boundary in star.boundaries:
         u0 = boundary.domain.boundaries[0].manifold.point[0]
         u1 = boundary.domain.boundaries[1].manifold.point[0]

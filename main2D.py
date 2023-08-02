@@ -104,7 +104,7 @@ class InteractiveCanvas:
         self.canvas.mpl_connect('button_release_event', self.on_button_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
 
-triangleA = utils.CreateSolidFromPoints(2, [[2,2],[2,-4],[-4,-4]])
+triangleA = utils.CreateFacetedSolidFromPoints(2, [[2,2],[2,-4],[-4,-4]])
 print(triangleA.VolumeIntegral(lambda x: 1.0), 18)
 print(triangleA.SurfaceIntegral(lambda x, n: n), 12 + 6*np.sqrt(2.0))
 print(triangleA.WindingNumber(np.array([-2,-1])))

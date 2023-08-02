@@ -328,9 +328,9 @@ class Spline(Manifold):
             return NotImplemented
 
         # Ensure the normals point outwards for both Manifolds in each intersection.
+        # Note that evaluating left and right at 0.0 is always valid because either they are points or curves with [0.0, 1.0] domains.
+        domainPoint = np.atleast_1d(0.0)
         for intersection in intersections:
-            # Note that evaluating left and right at 0.0 is always valid because either they are points or curves with [0.0, 1.0] domains.
-            domainPoint = (0.0,)
             if np.dot(self.TangentSpace(intersection.left.Point(domainPoint)) @ intersection.left.Normal(domainPoint), other.Normal(intersection.right.Point(domainPoint))) < 0.0:
                 intersection.left.FlipNormal()
             if np.dot(other.TangentSpace(intersection.right.Point(domainPoint)) @ intersection.right.Normal(domainPoint), self.Normal(intersection.left.Point(domainPoint))) < 0.0:

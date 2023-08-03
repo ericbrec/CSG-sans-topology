@@ -5,7 +5,7 @@ from hyperplane import Hyperplane
 from spline import Spline
 from bspy import Spline as BspySpline
 
-def SolidEdges(solid, subdivisions = 1):
+def SolidEdges(solid, subdivide = False):
     """
     A generator for edges of the solid.
 
@@ -23,7 +23,7 @@ def SolidEdges(solid, subdivisions = 1):
     """
     if solid.dimension > 1:
         for boundary in solid.boundaries:
-            for domainEdge in SolidEdges(boundary.domain, 1 if isinstance(boundary.manifold, Hyperplane) else 20):
+            for domainEdge in SolidEdges(boundary.domain, not isinstance(boundary.manifold, Hyperplane)):
                 yield (boundary.manifold.Point(domainEdge[0]), boundary.manifold.Point(domainEdge[1]), boundary.manifold.Normal(domainEdge[0]))
     else:
         solid.boundaries.sort(key=Boundary.SortKey)
@@ -35,11 +35,15 @@ def SolidEdges(solid, subdivisions = 1):
                 while rightB < len(solid.boundaries):
                     rightPoint = solid.boundaries[rightB].manifold.Point(0.0)
                     if leftPoint - Manifold.minSeparation < rightPoint and solid.boundaries[rightB].manifold.Normal(0.0) > 0.0:
-                        dt = (rightPoint - leftPoint - 0.00001) / subdivisions
-                        t = leftPoint.copy()
-                        for i in range(subdivisions):
-                            yield (t, t + dt)
-                            t += dt
+                        if subdivide:
+                            dt = 0.1
+                            t = leftPoint.copy()
+                            while t + dt < rightPoint:
+                                yield (t, t + dt)
+                                t += dt
+                            yield (t, rightPoint)
+                        else:
+                            yield (leftPoint, rightPoint)
                         leftB = rightB
                         rightB += 1
                         break
@@ -142,7 +146,7 @@ def CreateFacetedSolidFromPoints(dimension, points, containsInfinity = False):
     return solid
 
 def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
-    # CreateFacetedSolidFromPoints only works for dimension 2 so far.
+    # CreateSmoothSolidFromPoints only works for dimension 2 so far.
     assert dimension == 2
     assert len(points) > 2
     assert len(points[0]) == dimension
@@ -162,7 +166,6 @@ def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
     dataPoints.append((t, *point))
 
     spline = Spline(BspySpline.least_squares(dimension - 1, dimension, (4,) * (dimension - 1), dataPoints))
-    spline.FlipNormal()
     domain = Solid(dimension-1, False)
     domainDomain = Solid(dimension-2, True) # Domain for 1D points.
     domain.boundaries.append(Boundary(Hyperplane1D(-1.0, 0.0), domainDomain))
@@ -172,14 +175,20 @@ def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
     return solid
 
 def CreateStar(radius, center, angle, smooth = False):
-    vertices = []
     points = 5
-    for i in range(points):
-        vertices.append([radius*np.cos(angle - ((2*i)%points)*6.2832/points) + center[0], radius*np.sin(angle - ((2*i)%points)*6.2832/points) + center[1]])
+    vertices = []
 
     if smooth:
+        dAngle = 6.2832 / points
+        for i in range(points):
+            vertices.append([radius*np.cos(angle + i*dAngle) + center[0], radius*np.sin(angle + i*dAngle) + center[1]])
+            vertices.append([0.5*radius*np.cos(angle + (i + 0.5)*dAngle) + center[0], 0.5*radius*np.sin(angle + (i + 0.5)*dAngle) + center[1]])
+
         star = CreateSmoothSolidFromPoints(2, vertices)
     else:
+        for i in range(points):
+            vertices.append([radius*np.cos(angle - ((2*i)%points)*6.2832/points) + center[0], radius*np.sin(angle - ((2*i)%points)*6.2832/points) + center[1]])
+
         star = CreateFacetedSolidFromPoints(2, vertices)
 
         nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])

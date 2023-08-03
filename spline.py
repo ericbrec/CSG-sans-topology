@@ -94,7 +94,7 @@ class Spline(Manifold):
             wrt[i] = 1
             tangentSpace[:, i] = self.spline.derivative(wrt, domainPoint)
             wrt[i] = 0
-        return self.tangentSpace
+        return tangentSpace
 
     def CofactorNormal(self, domainPoint):
         """
@@ -284,12 +284,13 @@ class Spline(Manifold):
             # Compute the inverse of the tangent space to map Spline-Hyperplane intersection points to the domain of the Hyperplane.
             inverseTangentSpace = np.linalg.inv(other.tangentSpace.T @ other.tangentSpace)
             # Construct a new spline that represents the intersection.
-            spline = self.spline.dot(other.normal) - np.dot(other.normal, other.point)
+            spline = self.spline.dot(other.normal) - np.atleast_1d(np.dot(other.normal, other.point))
             if nDep == 1:
                 # Find the intersection points.
                 zeros = spline.zeros()
                 # Convert each point into a Manifold.Crossing.
                 for zero in zeros:
+                    zero = np.atleast_1d(zero)
                     intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, inverseTangentSpace @ other.tangentSpace.T @ (self.spline(zero) - other.point), 0.0)))
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.

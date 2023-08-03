@@ -23,7 +23,7 @@ def SolidEdges(solid, subdivisions = 1):
     """
     if solid.dimension > 1:
         for boundary in solid.boundaries:
-            for domainEdge in SolidEdges(boundary.domain, 1 if isinstance(boundary.manifold, Hyperplane) else 10):
+            for domainEdge in SolidEdges(boundary.domain, 1 if isinstance(boundary.manifold, Hyperplane) else 20):
                 yield (boundary.manifold.Point(domainEdge[0]), boundary.manifold.Point(domainEdge[1]), boundary.manifold.Normal(domainEdge[0]))
     else:
         solid.boundaries.sort(key=Boundary.SortKey)
@@ -35,7 +35,7 @@ def SolidEdges(solid, subdivisions = 1):
                 while rightB < len(solid.boundaries):
                     rightPoint = solid.boundaries[rightB].manifold.Point(0.0)
                     if leftPoint - Manifold.minSeparation < rightPoint and solid.boundaries[rightB].manifold.Normal(0.0) > 0.0:
-                        dt = (rightPoint - leftPoint) / subdivisions
+                        dt = (rightPoint - leftPoint - 0.00001) / subdivisions
                         t = leftPoint.copy()
                         for i in range(subdivisions):
                             yield (t, t + dt)
@@ -151,7 +151,7 @@ def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
 
     t = 0.0
     previousPoint = np.array(points[0])
-    dataPoints = [t, *previousPoint]
+    dataPoints = [(t, *previousPoint)]
     for point in points[1:]:
         point = np.array(point)
         t += np.linalg.norm(point - previousPoint)
@@ -162,6 +162,7 @@ def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
     dataPoints.append((t, *point))
 
     spline = Spline(BspySpline.least_squares(dimension - 1, dimension, (4,) * (dimension - 1), dataPoints))
+    spline.FlipNormal()
     domain = Solid(dimension-1, False)
     domainDomain = Solid(dimension-2, True) # Domain for 1D points.
     domain.boundaries.append(Boundary(Hyperplane1D(-1.0, 0.0), domainDomain))
@@ -170,21 +171,24 @@ def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
 
     return solid
 
-def CreateStar(radius, center, angle):
+def CreateStar(radius, center, angle, smooth = False):
     vertices = []
     points = 5
     for i in range(points):
         vertices.append([radius*np.cos(angle - ((2*i)%points)*6.2832/points) + center[0], radius*np.sin(angle - ((2*i)%points)*6.2832/points) + center[1]])
 
-    nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
-    u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt
+    if smooth:
+        star = CreateSmoothSolidFromPoints(2, vertices)
+    else:
+        star = CreateFacetedSolidFromPoints(2, vertices)
 
-    star = CreateFacetedSolidFromPoints(2, vertices)
-    for boundary in star.boundaries:
-        u0 = boundary.domain.boundaries[0].manifold.point[0]
-        u1 = boundary.domain.boundaries[1].manifold.point[0]
-        boundary.domain.boundaries.append(Boundary(Hyperplane1D(1.0, u0 + (1.0 - u)*(u1 - u0)), Solid(0, True)))
-        boundary.domain.boundaries.append(Boundary(Hyperplane1D(-1.0, -(u0 + u*(u1 - u0))), Solid(0, True)))
+        nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
+        u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt
+        for boundary in star.boundaries:
+            u0 = boundary.domain.boundaries[0].manifold.point[0]
+            u1 = boundary.domain.boundaries[1].manifold.point[0]
+            boundary.domain.boundaries.append(Boundary(Hyperplane1D(1.0, u0 + (1.0 - u)*(u1 - u0)), Solid(0, True)))
+            boundary.domain.boundaries.append(Boundary(Hyperplane1D(-1.0, -(u0 + u*(u1 - u0))), Solid(0, True)))
 
     return star
 

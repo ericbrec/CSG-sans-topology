@@ -1,13 +1,56 @@
 import numpy as np
 from solid import Solid, Boundary
+from manifold import Manifold
 from hyperplane import Hyperplane
 from spline import Spline
 from bspy import Spline as BspySpline
 
+def SolidEdges(solid, subdivisions = 1):
+    """
+    A generator for edges of the solid.
+
+    Yields
+    -------
+    (point1, point2, normal) : `tuple(numpy.array, numpy.array, numpy.array)`
+        Starting point, ending point, and normal for an edge of the solid.
+
+
+    Notes
+    -----
+    The edges are not guaranteed to be connected or in any particular order, and typically aren't.
+
+    If the solid is a number line (dimension 1), the generator yields a tuple with two scalar values (start, end).
+    """
+    if solid.dimension > 1:
+        for boundary in solid.boundaries:
+            for domainEdge in SolidEdges(boundary.domain, 1 if isinstance(boundary.manifold, Hyperplane) else 10):
+                yield (boundary.manifold.Point(domainEdge[0]), boundary.manifold.Point(domainEdge[1]), boundary.manifold.Normal(domainEdge[0]))
+    else:
+        solid.boundaries.sort(key=Boundary.SortKey)
+        leftB = 0
+        rightB = 0
+        while leftB < len(solid.boundaries):
+            if solid.boundaries[leftB].manifold.Normal(0.0) < 0.0:
+                leftPoint = solid.boundaries[leftB].manifold.Point(0.0)
+                while rightB < len(solid.boundaries):
+                    rightPoint = solid.boundaries[rightB].manifold.Point(0.0)
+                    if leftPoint - Manifold.minSeparation < rightPoint and solid.boundaries[rightB].manifold.Normal(0.0) > 0.0:
+                        dt = (rightPoint - leftPoint) / subdivisions
+                        t = leftPoint.copy()
+                        for i in range(subdivisions):
+                            yield (t, t + dt)
+                            t += dt
+                        leftB = rightB
+                        rightB += 1
+                        break
+                    rightB += 1
+            leftB += 1
+
+
 def CreateSegmentsFromSolid(solid):
     segments = []
     
-    for edge in solid.Edges():
+    for edge in SolidEdges(solid):
         middle = 0.5 * (edge[0] + edge[1])
         normal = middle + 0.1 * edge[2]
         segments.append((edge[0], edge[1]))

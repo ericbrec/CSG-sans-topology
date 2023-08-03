@@ -205,43 +205,6 @@ class Solid:
 
         return point
 
-    def Edges(self):
-        """
-        A generator for edges of the solid.
-
-        Yields
-        -------
-        (point1, point2, normal) : `tuple(numpy.array, numpy.array, numpy.array)`
-            Starting point, ending point, and normal for an edge of the solid.
-
-
-        Notes
-        -----
-        The edges are not guaranteed to be connected or in any particular order, and typically aren't.
-
-        If the solid is a number line (dimension 1), the generator yields a tuple with two scalar values (start, end).
-        """
-        if self.dimension > 1:
-            for boundary in self.boundaries:
-                for domainEdge in boundary.domain.Edges():
-                    yield (boundary.manifold.Point(domainEdge[0]), boundary.manifold.Point(domainEdge[1]), boundary.manifold.Normal(domainEdge[0]))
-        else:
-            self.boundaries.sort(key=Boundary.SortKey)
-            leftB = 0
-            rightB = 0
-            while leftB < len(self.boundaries):
-                if self.boundaries[leftB].manifold.Normal(0.0) < 0.0:
-                    leftPoint = self.boundaries[leftB].manifold.Point(0.0)
-                    while rightB < len(self.boundaries):
-                        rightPoint = self.boundaries[rightB].manifold.Point(0.0)
-                        if leftPoint - Manifold.minSeparation < rightPoint and self.boundaries[rightB].manifold.Normal(0.0) > 0.0:
-                            yield (leftPoint, rightPoint)
-                            leftB = rightB
-                            rightB += 1
-                            break
-                        rightB += 1
-                leftB += 1
-
     def VolumeIntegral(self, f, args=(), epsabs=None, epsrel=None, *quadArgs):
         """
         Compute the volume integral of a function within the solid.

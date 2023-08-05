@@ -269,11 +269,83 @@ class Manifold:
 
         See Also
         --------
+        `CachedIntersectManifold` : Intersect two manifolds, caching the result for twins (same intersection but swapping self and other).
         `solid.Solid.Slice` : Slice the solid by a manifold.
-        `numpy.linalg.svd` : Compute the singular value decomposition of a 2D array.
 
         Notes
         -----
         To invert the mapping to go from the other's domain to the manifold's domain, you first subtract the translation and then multiply by the inverse of the transform.
         """
         return NotImplemented
+
+    def CachedIntersectManifold(self, other, cache = None):
+        """
+        Intersect two manifolds, caching the result for twins (same intersection but swapping self and other).
+
+        Parameters
+        ----------
+        other : `Manifold`
+            The `Manifold` intersecting the manifold.
+        
+        cache : `dict`, optional
+            A dictionary to cache `Manifold` intersections, speeding computation. The default is `None`.
+
+        Returns
+        -------
+        intersections : `list` (Or `NotImplemented` if other is an unknown type of Manifold)
+            A list of intersections between the two manifolds. 
+            Each intersection records either a crossing or a coincident region.
+
+            For a crossing, intersection is a Manifold.Crossing: (left, right)
+            * left : `Manifold` in the manifold's domain where the manifold and the other cross.
+            * right : `Manifold` in the other's domain where the manifold and the other cross.
+            * Both intersection manifolds have the same domain and range (the crossing between the manifold and the other).
+
+            For a coincident region, intersection is Manifold.Coincidence: (left, right, alignment, transform, inverse, translation)
+            * left : `Solid` in the manifold's domain within which the manifold and the other are coincident.
+            * right : `Solid` in the other's domain within which the manifold and the other are coincident.
+            * alignment : scalar value holding the normal alignment between the manifold and the other (the dot product of their unit normals).
+            * transform : `numpy.array` holding the 2D transform from the boundary's domain to the other's domain.
+            * inverse : `numpy.array` holding the 2D inverse transform from the other's domain to the boundary's domain.
+            * translation : `numpy.array` holding the 1D translation from the manifold's domain to the other's domain.
+            * Together transform, inverse, and translation form the mapping from the manifold's domain to the other's domain and vice-versa.
+
+        isTwin : `bool`
+            True if this intersection is the twin from the cache (the intersection with self and other swapped).
+
+        See Also
+        --------
+        `IntersectManifold` : Intersect two manifolds.
+        `solid.Solid.Slice` : Slice the solid by a manifold.
+
+        Notes
+        -----
+        To invert the mapping to go from the other's domain to the manifold's domain, you first subtract the translation and then multiply by the inverse of the transform.
+        """
+        intersections = None
+        isTwin = False
+        # Check cache for previously computed manifold intersections.
+        if cache is not None:
+            # First, check for the twin (opposite order of arguments).
+            intersections = cache.get((other, self))
+            if intersections is not None:
+                isTwin = True
+            else:
+                # Next, check for the original order (not twin).
+                intersections = cache.get((self, other))
+
+        # If intersections not previously computed, compute them now.
+        if intersections is None:
+            intersections = self.IntersectManifold(other)
+            if intersections is NotImplemented:
+                # Try the other way around in case other knows how to intersect self.
+                intersections = other.IntersectManifold(self)
+                isTwin = True
+            # Store intersections in cache.
+            if cache is not None:
+                if isTwin:
+                    cache[(other, self)] = intersections
+                else:
+                    cache[(self, other)] = intersections
+        
+        return intersections, isTwin

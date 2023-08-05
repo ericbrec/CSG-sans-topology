@@ -524,32 +524,8 @@ class Solid:
 
         # Intersect each of this solid's boundaries with the manifold.
         for boundary in self.boundaries:
-            intersections = None
-            isTwin = False
-            # Check cache for previously computed manifold intersections.
-            if cache is not None:
-                # First, check for the twin (opposite order of arguments).
-                intersections = cache.get((manifold, boundary.manifold))
-                if intersections is not None:
-                    isTwin = True
-                else:
-                    # Next, check for the original order (not twin).
-                    intersections = cache.get((boundary.manifold, manifold))
-
-            # If intersections not previously computed, compute them now.
-            if intersections is None:
-                intersections = boundary.manifold.IntersectManifold(manifold)
-                if intersections is NotImplemented:
-                    # Try the other way around in case manifold knows how to intersect boundary.manifold.
-                    intersections = manifold.IntersectManifold(boundary.manifold)
-                    isTwin = True
-                # Store intersections in cache.
-                if cache is not None:
-                    if isTwin:
-                        cache[(manifold, boundary.manifold)] = intersections
-                    else:
-                        cache[(boundary.manifold, manifold)] = intersections
-            
+            # Intersect manifolds, checking if the intersection is already in the cache.
+            intersections, isTwin = boundary.manifold.CachedIntersectManifold(manifold, cache)
             if intersections is NotImplemented:
                 continue
 

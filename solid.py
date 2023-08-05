@@ -577,14 +577,14 @@ class Solid:
 
         return slice
 
-    def Intersection(self, solid, cache = None):
+    def Intersection(self, other, cache = None):
         """
         Intersect two solids.
 
         Parameters
         ----------
-        solid : `Solid`
-            The passed `Solid` intersecting the solid.
+        other : `Solid`
+            The `Solid` intersecting self.
         
         cache : `dict`, optional
             A dictionary to cache `Manifold` intersections, speeding computation. If no dictionary is passed, one is created.
@@ -592,7 +592,7 @@ class Solid:
         Returns
         -------
         combinedSolid : `Solid`
-            A `Solid` that represents the intersection between the passed `solid` and the solid.
+            A `Solid` that represents the intersection between self and other.
 
         See Also
         --------
@@ -610,7 +610,7 @@ class Solid:
         The only subtlety is when two boundaries are coincident. To avoid overlapping the coincident region, we keep that region
         for one slice and trim it away for the other. We use a manifold intersection cache to keep track of these pairs, as well as to reduce computation. 
         """
-        assert self.dimension == solid.dimension
+        assert self.dimension == other.dimension
 
         # Manifold intersections are expensive and come in symmetric pairs (m1 intersect m2, m2 intersect m1).
         # So, we create a manifold intersections cache (dictionary) to store and reuse intersection pairs.
@@ -619,19 +619,19 @@ class Solid:
             cache = {}
 
         # Start with a solid without boundaries.
-        combinedSolid = Solid(self.dimension, self.containsInfinity and solid.containsInfinity)
+        combinedSolid = Solid(self.dimension, self.containsInfinity and other.containsInfinity)
 
         for boundary in self.boundaries:
-            # Slice self boundary manifold by solid. Trim away duplicate twin.
-            slice = solid.Slice(boundary.manifold, cache, True)
+            # Slice self boundary manifold by other. Trim away duplicate twin.
+            slice = other.Slice(boundary.manifold, cache, True)
             # Intersect slice with the boundary's domain.
             newDomain = boundary.domain.Intersection(slice, cache)
             if newDomain:
-                # Self boundary intersects solid, so create a new boundary with the intersected domain.
+                # Self boundary intersects other, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
 
-        for boundary in solid.boundaries:
-            # Slice solid boundary manifold by self.  Trim away duplicate twin.
+        for boundary in other.boundaries:
+            # Slice other boundary manifold by self. Trim away duplicate twin.
             slice = self.Slice(boundary.manifold, cache, True)
             # Intersect slice with the boundary's domain.
             newDomain = boundary.domain.Intersection(slice, cache)
@@ -644,50 +644,50 @@ class Solid:
     def __mul__(self, other):
         return self.Intersection(other)
 
-    def Union(self, solid):
+    def Union(self, other):
         """
         Union two solids.
 
         Parameters
         ----------
-        solid : `Solid`
-            The passed `Solid` unioning the solid.
+        other : `Solid`
+            The `Solid` unioning self.
 
         Returns
         -------
         combinedSolid : `Solid`
-            A `Solid` that represents the union between the passed `solid` and the solid.
+            A `Solid` that represents the union between self and other.
 
         See Also
         --------
         `Intersect` : Intersect two solids.
         `Difference` : Subtract one solid from another. 
         """
-        return self.Not().Intersection(solid.Not()).Not()
+        return self.Not().Intersection(other.Not()).Not()
 
     def __add__(self, other):
         return self.Union(other)
 
-    def Difference(self, solid):
+    def Difference(self, other):
         """
         Subtract one solid from another.
 
         Parameters
         ----------
-        solid : `Solid`
-            The passed `Solid` is subtracted from the solid.
+        other : `Solid`
+            The `Solid` subtracted from self.
 
         Returns
         -------
         combinedSolid : `Solid`
-            A `Solid` that represents the subtraction of the passed `solid` from the solid.
+            A `Solid` that represents the subtraction of other from self.
 
         See Also
         --------
         `Intersect` : Intersect two solids.
         `Union` : Union two solids.
         """
-        return self.Intersection(solid.Not())
+        return self.Intersection(other.Not())
 
     def __sub__(self, other):
         return self.Difference(other)

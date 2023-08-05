@@ -164,6 +164,10 @@ def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
     point = np.array(points[0])
     t += np.linalg.norm(point - previousPoint)
     dataPoints.append((t, *point))
+    tangent = np.array(points[1], np.float64) - np.array(points[-1], np.float64)
+    tangent /= np.linalg.norm(tangent)
+    dataPoints[0] = [*dataPoints[0], *tangent]
+    dataPoints[-1] = [*dataPoints[-1], *tangent]
 
     spline = Spline(BspySpline.least_squares(dimension - 1, dimension, (4,) * (dimension - 1), dataPoints))
     domain = Solid(dimension-1, False)

@@ -70,13 +70,13 @@ class InteractiveCanvas:
 
         self.player = player.Player(fig, self.animateSlice, -4.0, 4.0, 0.2, -4.0, init_func=self.initializeCanvas)
 
+if __name__ == "__main__":
+    cube = utils.CreateHypercube([.75,1.5,.75], [0,0,0])
+    extrudedCube = utils.ExtrudeSolid(cube,[[-2,2,-2,-4],[2,-2,2,4]])
+    star = utils.CreateStar(1.0, [0.0, 0.0], 90.0*6.28/360.0)
+    starBlock = utils.ExtrudeSolid(star,[[0,0,-1],[0,0,1]])
+    extrudedStarBlock = utils.ExtrudeSolid(starBlock,[[-2,-2,-2,-4],[2,2,2,4]])
+    combined = extrudedStarBlock.Union(extrudedCube)
 
-cube = utils.CreateHypercube([.75,1.5,.75], [0,0,0])
-extrudedCube = utils.ExtrudeSolid(cube,[[-2,2,-2,-4],[2,-2,2,4]])
-star = utils.CreateStar(1.0, [0.0, 0.0], 90.0*6.28/360.0)
-starBlock = utils.ExtrudeSolid(star,[[0,0,-1],[0,0,1]])
-extrudedStarBlock = utils.ExtrudeSolid(starBlock,[[-2,-2,-2,-4],[2,2,2,4]])
-combined = extrudedStarBlock.Union(extrudedCube)
-
-canvas = InteractiveCanvas(combined, 't')
-plt.show()
+    canvas = InteractiveCanvas(combined, 't')
+    plt.show()

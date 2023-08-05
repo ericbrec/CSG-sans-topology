@@ -66,11 +66,12 @@ class InteractiveCanvas:
 
         self.player = player.Player(fig, self.animateSlice, -4.0, 4.0, 0.2, -4.0, init_func=self.initializeCanvas)
 
-square = utils.CreateHypercube([1,1], [0,0])
-star = utils.CreateStar(2.0, [0.0, 0.0], 90.0*6.28/360.0)
-extrudedSquare = utils.ExtrudeSolid(square,[[-2,2,-4],[2,-2,4]])
-extrudedStar = utils.ExtrudeSolid(star,[[-2,-2,-4],[2,2,4]])
-combined = extrudedStar.Union(extrudedSquare)
+if __name__ == "__main__":
+    square = utils.CreateHypercube([1,1], [0,0])
+    star = utils.CreateStar(2.0, [0.0, 0.0], 90.0*6.28/360.0)
+    extrudedSquare = utils.ExtrudeSolid(square,[[-2,2,-4],[2,-2,4]])
+    extrudedStar = utils.ExtrudeSolid(star,[[-2,-2,-4],[2,2,4]])
+    combined = extrudedStar.Union(extrudedSquare)
 
-canvas = InteractiveCanvas(combined, 'z')
-plt.show()
+    canvas = InteractiveCanvas(combined, 'z')
+    plt.show()

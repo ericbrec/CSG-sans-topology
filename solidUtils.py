@@ -5,7 +5,7 @@ from hyperplane import Hyperplane
 from spline import Spline
 from bspy import Spline as BspySpline
 
-def SolidEdges(solid, subdivide = False):
+def solid_edges(solid, subdivide = False):
     """
     A generator for edges of the solid.
 
@@ -23,18 +23,24 @@ def SolidEdges(solid, subdivide = False):
     """
     if solid.dimension > 1:
         for boundary in solid.boundaries:
-            for domainEdge in SolidEdges(boundary.domain, not isinstance(boundary.manifold, Hyperplane)):
-                yield (boundary.manifold.Point(domainEdge[0]), boundary.manifold.Point(domainEdge[1]), boundary.manifold.Normal(domainEdge[0]))
+            for domainEdge in solid_edges(boundary.domain, not isinstance(boundary.manifold, Hyperplane)):
+                yield (boundary.manifold.point(domainEdge[0]), boundary.manifold.point(domainEdge[1]), boundary.manifold.normal(domainEdge[0]))
     else:
-        solid.boundaries.sort(key=Boundary.SortKey)
+        def sort_key(boundary):
+            if boundary.domain.dimension > 0:
+                return 0.0
+            else:
+                return (boundary.manifold.point(0.0), -boundary.manifold.normal(0.0))
+
+        solid.boundaries.sort(key=sort_key)
         leftB = 0
         rightB = 0
         while leftB < len(solid.boundaries):
-            if solid.boundaries[leftB].manifold.Normal(0.0) < 0.0:
-                leftPoint = solid.boundaries[leftB].manifold.Point(0.0)
+            if solid.boundaries[leftB].manifold.normal(0.0) < 0.0:
+                leftPoint = solid.boundaries[leftB].manifold.point(0.0)
                 while rightB < len(solid.boundaries):
-                    rightPoint = solid.boundaries[rightB].manifold.Point(0.0)
-                    if leftPoint - Manifold.minSeparation < rightPoint and solid.boundaries[rightB].manifold.Normal(0.0) > 0.0:
+                    rightPoint = solid.boundaries[rightB].manifold.point(0.0)
+                    if leftPoint - Manifold.minSeparation < rightPoint and solid.boundaries[rightB].manifold.normal(0.0) > 0.0:
                         if subdivide:
                             dt = 0.1
                             t = leftPoint.copy()
@@ -51,10 +57,10 @@ def SolidEdges(solid, subdivide = False):
             leftB += 1
 
 
-def CreateSegmentsFromSolid(solid):
+def create_segments_from_solid(solid):
     segments = []
     
-    for edge in SolidEdges(solid):
+    for edge in solid_edges(solid):
         middle = 0.5 * (edge[0] + edge[1])
         normal = middle + 0.1 * edge[2]
         segments.append((edge[0], edge[1]))
@@ -62,7 +68,7 @@ def CreateSegmentsFromSolid(solid):
     
     return segments
 
-def HyperplaneAxisAligned(dimension, axis, offset, flipNormal=False):
+def hyperplane_axis_aligned(dimension, axis, offset, flipNormal=False):
     assert dimension > 0
     diagonal = np.identity(dimension)
     sign = -1.0 if flipNormal else 1.0
@@ -75,7 +81,7 @@ def HyperplaneAxisAligned(dimension, axis, offset, flipNormal=False):
     
     return Hyperplane(normal, point, tangentSpace)
 
-def CreateHypercube(size, position = None):
+def create_hypercube(size, position = None):
     dimension = len(size)
     solid = Solid(dimension, False)
     if position is None:
@@ -89,34 +95,34 @@ def CreateHypercube(size, position = None):
             del domainSize[i]
             domainPosition = position.copy()
             del domainPosition[i]
-            domain = CreateHypercube(domainSize, domainPosition)
+            domain = create_hypercube(domainSize, domainPosition)
         else:
             domain = Solid(0, True)
-        hyperplane = HyperplaneAxisAligned(dimension, i, size[i] + position[i], False)
+        hyperplane = hyperplane_axis_aligned(dimension, i, size[i] + position[i], False)
         solid.boundaries.append(Boundary(hyperplane,domain))
-        hyperplane = HyperplaneAxisAligned(dimension, i, size[i] - position[i], True)
+        hyperplane = hyperplane_axis_aligned(dimension, i, size[i] - position[i], True)
         solid.boundaries.append(Boundary(hyperplane,domain))
 
     return solid
 
-def Hyperplane1D(normal, offset):
+def hyperplane_1D(normal, offset):
     assert np.isscalar(normal) or len(normal) == 1
     normalizedNormal = np.atleast_1d(normal)
     normalizedNormal = normalizedNormal / np.linalg.norm(normalizedNormal)
     return Hyperplane(normalizedNormal, offset * normalizedNormal, 0.0)
 
-def Hyperplane2D(normal, offset):
+def hyperplane_2D(normal, offset):
     assert len(normal) == 2
     normalizedNormal = np.atleast_1d(normal)
     normalizedNormal = normalizedNormal / np.linalg.norm(normalizedNormal)
     return Hyperplane(normalizedNormal, offset * normalizedNormal, np.transpose(np.array([[normal[1], -normal[0]]])))
 
-def HyperplaneDomainFromPoint(hyperplane, point):
+def hyperplane_domain_from_point(hyperplane, point):
     tangentSpaceTranspose = np.transpose(hyperplane.tangentSpace)
-    return np.linalg.inv(tangentSpaceTranspose @ hyperplane.tangentSpace) @ tangentSpaceTranspose @ (point - hyperplane.point)
+    return np.linalg.inv(tangentSpaceTranspose @ hyperplane.tangentSpace) @ tangentSpaceTranspose @ (point - hyperplane._point)
 
-def CreateFacetedSolidFromPoints(dimension, points, containsInfinity = False):
-    # CreateFacetedSolidFromPoints only works for dimension 2 so far.
+def create_faceted_solid_from_points(dimension, points, containsInfinity = False):
+    # create_faceted_solid_from_points only works for dimension 2 so far.
     assert dimension == 2
     assert len(points) > 2
     assert len(points[0]) == dimension
@@ -129,24 +135,24 @@ def CreateFacetedSolidFromPoints(dimension, points, containsInfinity = False):
         vector = point - previousPoint
         normal = np.array([-vector[1], vector[0]])
         normal = normal / np.linalg.norm(normal)
-        hyperplane = Hyperplane2D(normal,np.dot(normal,point))
+        hyperplane = hyperplane_2D(normal,np.dot(normal,point))
         domain = Solid(dimension-1, False)
         domainDomain = Solid(dimension-2, True) # Domain for 1D points.
-        previousPointDomain = HyperplaneDomainFromPoint(hyperplane, previousPoint)
-        pointDomain = HyperplaneDomainFromPoint(hyperplane, point)
+        previousPointDomain = hyperplane_domain_from_point(hyperplane, previousPoint)
+        pointDomain = hyperplane_domain_from_point(hyperplane, point)
         if previousPointDomain < pointDomain:
-            domain.boundaries.append(Boundary(Hyperplane1D(-1.0, -previousPointDomain), domainDomain))
-            domain.boundaries.append(Boundary(Hyperplane1D(1.0, pointDomain), domainDomain))
+            domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -previousPointDomain), domainDomain))
+            domain.boundaries.append(Boundary(hyperplane_1D(1.0, pointDomain), domainDomain))
         else:
-            domain.boundaries.append(Boundary(Hyperplane1D(-1.0, -pointDomain), domainDomain))
-            domain.boundaries.append(Boundary(Hyperplane1D(1.0, previousPointDomain), domainDomain))
+            domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -pointDomain), domainDomain))
+            domain.boundaries.append(Boundary(hyperplane_1D(1.0, previousPointDomain), domainDomain))
         solid.boundaries.append(Boundary(hyperplane, domain))
         previousPoint = point
 
     return solid
 
-def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
-    # CreateSmoothSolidFromPoints only works for dimension 2 so far.
+def create_smooth_solid_from_points(dimension, points, containsInfinity = False):
+    # create_smooth_solid_from_points only works for dimension 2 so far.
     assert dimension == 2
     assert len(points) > 2
     assert len(points[0]) == dimension
@@ -172,13 +178,13 @@ def CreateSmoothSolidFromPoints(dimension, points, containsInfinity = False):
     spline = Spline(BspySpline.least_squares(dimension - 1, dimension, (4,) * (dimension - 1), dataPoints))
     domain = Solid(dimension-1, False)
     domainDomain = Solid(dimension-2, True) # Domain for 1D points.
-    domain.boundaries.append(Boundary(Hyperplane1D(-1.0, 0.0), domainDomain))
-    domain.boundaries.append(Boundary(Hyperplane1D(1.0, t), domainDomain))
+    domain.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), domainDomain))
+    domain.boundaries.append(Boundary(hyperplane_1D(1.0, t), domainDomain))
     solid.boundaries.append(Boundary(spline, domain))
 
     return solid
 
-def CreateStar(radius, center, angle, smooth = False):
+def create_star(radius, center, angle, smooth = False):
     points = 5
     vertices = []
 
@@ -188,24 +194,24 @@ def CreateStar(radius, center, angle, smooth = False):
             vertices.append([radius*np.cos(angle + i*dAngle) + center[0], radius*np.sin(angle + i*dAngle) + center[1]])
             vertices.append([0.5*radius*np.cos(angle + (i + 0.5)*dAngle) + center[0], 0.5*radius*np.sin(angle + (i + 0.5)*dAngle) + center[1]])
 
-        star = CreateSmoothSolidFromPoints(2, vertices)
+        star = create_smooth_solid_from_points(2, vertices)
     else:
         for i in range(points):
             vertices.append([radius*np.cos(angle - ((2*i)%points)*6.2832/points) + center[0], radius*np.sin(angle - ((2*i)%points)*6.2832/points) + center[1]])
 
-        star = CreateFacetedSolidFromPoints(2, vertices)
+        star = create_faceted_solid_from_points(2, vertices)
 
         nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
         u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt
         for boundary in star.boundaries:
-            u0 = boundary.domain.boundaries[0].manifold.point[0]
-            u1 = boundary.domain.boundaries[1].manifold.point[0]
-            boundary.domain.boundaries.append(Boundary(Hyperplane1D(1.0, u0 + (1.0 - u)*(u1 - u0)), Solid(0, True)))
-            boundary.domain.boundaries.append(Boundary(Hyperplane1D(-1.0, -(u0 + u*(u1 - u0))), Solid(0, True)))
+            u0 = boundary.domain.boundaries[0].manifold._point[0]
+            u1 = boundary.domain.boundaries[1].manifold._point[0]
+            boundary.domain.boundaries.append(Boundary(hyperplane_1D(1.0, u0 + (1.0 - u)*(u1 - u0)), Solid(0, True)))
+            boundary.domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -(u0 + u*(u1 - u0))), Solid(0, True)))
 
     return star
 
-def ExtrudeSolid(solid, path):
+def extrude_solid(solid, path):
     assert len(path) > 1
     assert solid.dimension+1 == len(path[0])
     
@@ -225,12 +231,12 @@ def ExtrudeSolid(solid, path):
         for boundary in solid.boundaries:
             # Construct a normal orthogonal to both the boundary tangent space and the path tangent
             extruded_normal = np.full((extrusion.dimension), 0.0)
-            extruded_normal[0:solid.dimension] = boundary.manifold.normal[:]
-            extruded_normal[solid.dimension] = -np.dot(boundary.manifold.normal, tangent[0:solid.dimension])
+            extruded_normal[0:solid.dimension] = boundary.manifold._normal[:]
+            extruded_normal[solid.dimension] = -np.dot(boundary.manifold._normal, tangent[0:solid.dimension])
             extruded_normal = extruded_normal / np.linalg.norm(extruded_normal)
             # Construct a point that adds the boundary point to the path point
             extruded_point = np.full((extrusion.dimension), 0.0)
-            extruded_point[0:solid.dimension] = boundary.manifold.point[:]
+            extruded_point[0:solid.dimension] = boundary.manifold._point[:]
             extruded_point += point
             # Combine the boundary tangent space and the path tangent
             extruded_tangentSpace = np.full((extrusion.dimension, solid.dimension), 0.0)
@@ -247,11 +253,11 @@ def ExtrudeSolid(solid, path):
                 domainPoint = np.full((solid.dimension), 0.0)
                 domainPoint[solid.dimension-1] = extent
                 domainPath.append(domainPoint)
-                extrudedDomain = ExtrudeSolid(boundary.domain, domainPath)
+                extrudedDomain = extrude_solid(boundary.domain, domainPath)
             else:
                 extrudedDomain = Solid(solid.dimension, False)
-                extrudedDomain.boundaries.append(Boundary(Hyperplane1D(-1.0, 0.0), Solid(0, True)))
-                extrudedDomain.boundaries.append(Boundary(Hyperplane1D(1.0, extent), Solid(0, True)))
+                extrudedDomain.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), Solid(0, True)))
+                extrudedDomain.boundaries.append(Boundary(hyperplane_1D(1.0, extent), Solid(0, True)))
             # Add extruded boundary
             extrusion.boundaries.append(Boundary(extrudedHyperplane, extrudedDomain))
         
@@ -259,11 +265,11 @@ def ExtrudeSolid(solid, path):
         point = nextPoint
 
     # Add end cap boundaries
-    extrudedHyperplane = HyperplaneAxisAligned(extrusion.dimension, solid.dimension, 0.0, True)
-    extrudedHyperplane.Translate(path[0])
+    extrudedHyperplane = hyperplane_axis_aligned(extrusion.dimension, solid.dimension, 0.0, True)
+    extrudedHyperplane.translate(path[0])
     extrusion.boundaries.append(Boundary(extrudedHyperplane, solid))
-    extrudedHyperplane = HyperplaneAxisAligned(extrusion.dimension, solid.dimension, 0.0, False)
-    extrudedHyperplane.Translate(path[-1])
+    extrudedHyperplane = hyperplane_axis_aligned(extrusion.dimension, solid.dimension, 0.0, False)
+    extrudedHyperplane.translate(path[-1])
     extrusion.boundaries.append(Boundary(extrudedHyperplane, solid))
 
     return extrusion

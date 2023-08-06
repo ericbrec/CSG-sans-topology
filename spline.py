@@ -35,7 +35,7 @@ class Spline(Manifold):
         """
         return Spline(type(self.spline)(self.spline.nInd, self.spline.nDep, self.spline.order, self.spline.nCoef, self.spline.knots, self.spline.coefs, self.spline.accuracy))
 
-    def RangeDimension(self):
+    def range_dimension(self):
         """
         Return the range dimension.
 
@@ -45,7 +45,7 @@ class Spline(Manifold):
         """
         return self.spline.nDep
 
-    def Normal(self, domainPoint):
+    def normal(self, domainPoint):
         """
         Return the normal.
 
@@ -60,7 +60,7 @@ class Spline(Manifold):
         """
         return self.normalDirection * self.spline.normal(domainPoint)
 
-    def Point(self, domainPoint):
+    def point(self, domainPoint):
         """
         Return the point.
 
@@ -75,7 +75,7 @@ class Spline(Manifold):
         """
         return self.spline(domainPoint)
 
-    def TangentSpace(self, domainPoint):
+    def tangent_space(self, domainPoint):
         """
         Return the tangent space.
 
@@ -96,7 +96,7 @@ class Spline(Manifold):
             wrt[i] = 0
         return tangentSpace
 
-    def CofactorNormal(self, domainPoint):
+    def cofactor_normal(self, domainPoint):
         """
         Return the cofactor normal.
 
@@ -115,12 +115,12 @@ class Spline(Manifold):
 
         See Also
         --------
-        `solid.Solid.VolumeIntegral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.SurfaceIntegral` : Compute the surface integral of a vector field on the boundary of the solid.
+        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
+        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
         """
         return self.normalDirection * self.spline.normal(domainPoint, False)
 
-    def FirstCofactor(self, domainPoint):
+    def first_cofactor(self, domainPoint):
         """
         Return the first coordinate of the cofactor normal.
 
@@ -139,14 +139,14 @@ class Spline(Manifold):
 
         See Also
         --------
-        `solid.Solid.VolumeIntegral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.SurfaceIntegral` : Compute the surface integral of a vector field on the boundary of the solid.
+        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
+        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
         """
         return self.normalDirection * self.spline.normal(domainPoint, False, (0,))
 
-    def Transform(self, transform, transformInverseTranspose = None):
+    def transform(self, transform, transformInverseTranspose = None):
         """
-        Transform the range of the hyperplane.
+        transform the range of the hyperplane.
 
         Parameters
         ----------
@@ -162,14 +162,14 @@ class Spline(Manifold):
 
         See Also
         --------
-        `solid.Solid.Transform` : Transform the range of the solid.
+        `solid.Solid.transform` : transform the range of the solid.
         """
-        assert np.shape(transform) == (self.RangeDimension(), self.RangeDimension())
+        assert np.shape(transform) == (self.range_dimension(), self.range_dimension())
         self.spline = self.spline.transform(transform)
         
-    def Translate(self, delta):
+    def translate(self, delta):
         """
-        Translate the range of the hyperplane.
+        translate the range of the hyperplane.
 
         Parameters
         ----------
@@ -182,12 +182,12 @@ class Spline(Manifold):
 
         See Also
         --------
-        `solid.Solid.Translate` : Translate the range of the solid.
+        `solid.Solid.translate` : translate the range of the solid.
         """
-        assert len(delta) == self.RangeDimension()
+        assert len(delta) == self.range_dimension()
         self.spline = self.spline.translate(delta)
 
-    def FlipNormal(self):
+    def flip_normal(self):
         """
         Flip the direction of the normal.
 
@@ -197,11 +197,11 @@ class Spline(Manifold):
 
         See Also
         --------
-        `solid.Solid.Not` : Return the compliment of the solid: whatever was inside is outside and vice-versa.
+        `solid.Solid.compliment` : Return the compliment of the solid: whatever was inside is outside and vice-versa.
         """
         self.normalDirection *= -1.0
 
-    def IntersectXRay(self, point):
+    def intersect_x_ray(self, point):
         """
         Intersect a ray along the x-axis with the spline.
 
@@ -218,9 +218,9 @@ class Spline(Manifold):
 
         See Also
         --------
-        `solid.Solid.WindingNumber` : Compute the winding number for a point relative to the solid.
+        `solid.Solid.winding_number` : Compute the winding number for a point relative to the solid.
         """
-        assert len(point) == self.RangeDimension()
+        assert len(point) == self.range_dimension()
         # Construct a lower range spline whose zeros are the ray intersection points.
         coefs = np.delete(self.spline.coefs, 0, axis=0)
         coefs[:] -= point[1:]
@@ -234,7 +234,7 @@ class Spline(Manifold):
 
         return intersections
 
-    def IntersectManifold(self, other):
+    def intersect_manifold(self, other):
         """
         Intersect a spline or hyperplane.
 
@@ -266,7 +266,7 @@ class Spline(Manifold):
 
         See Also
         --------
-        `solid.Solid.Slice` : Slice the solid by a manifold.
+        `solid.Solid.slice` : slice the solid by a manifold.
         `numpy.linalg.svd` : Compute the singular value decomposition of a 2D array.
         `bspy.Spline.zeros` : Find the roots of a spline (nInd must match nDep).
         `bspy.Spline.contours` : Find all the contour curves of a spline whose nInd is one larger than its nDep.
@@ -277,21 +277,21 @@ class Spline(Manifold):
         intersection and then call zeros or contours, depending on the dimension. The only subtly is getting the normals of intersections to always 
         point outward. We do that by picking an intersection point, checking the normal direction, and flipping it as needed.
         """
-        assert self.RangeDimension() == other.RangeDimension()
+        assert self.range_dimension() == other.range_dimension()
         intersections = []
         nDep = self.spline.nInd
         if isinstance(other, Hyperplane):
             # Compute the inverse of the tangent space to map Spline-Hyperplane intersection points to the domain of the Hyperplane.
             inverseTangentSpace = np.linalg.inv(other.tangentSpace.T @ other.tangentSpace)
             # Construct a new spline that represents the intersection.
-            spline = self.spline.dot(other.normal) - np.atleast_1d(np.dot(other.normal, other.point))
+            spline = self.spline.dot(other._normal) - np.atleast_1d(np.dot(other._normal, other._point))
             if nDep == 1:
                 # Find the intersection points.
                 zeros = spline.zeros()
                 # Convert each point into a Manifold.Crossing.
                 for zero in zeros:
                     zero = np.atleast_1d(zero)
-                    intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, inverseTangentSpace @ other.tangentSpace.T @ (self.spline(zero) - other.point), 0.0)))
+                    intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, inverseTangentSpace @ other.tangentSpace.T @ (self.spline(zero) - other._point), 0.0)))
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.
                 contours = spline.contours()
@@ -301,7 +301,7 @@ class Spline(Manifold):
                     points = []
                     for t in np.linspace(0.0, 1.0, contour.nCoef[0]):
                         zero = contour((t,))
-                        points.append((t, *(inverseTangentSpace @ other.tangentSpace.T @ (self.spline(zero) - other.point))))
+                        points.append((t, *(inverseTangentSpace @ other.tangentSpace.T @ (self.spline(zero) - other._point))))
                     right = BspySpline.least_squares(contour.nInd, nDep, contour.order, points, contour.knots, 0, contour.metadata)
                     intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
             else:
@@ -332,9 +332,9 @@ class Spline(Manifold):
         # Note that evaluating left and right at 0.0 is always valid because either they are points or curves with [0.0, 1.0] domains.
         domainPoint = np.atleast_1d(0.0)
         for intersection in intersections:
-            if np.dot(self.TangentSpace(intersection.left.Point(domainPoint)) @ intersection.left.Normal(domainPoint), other.Normal(intersection.right.Point(domainPoint))) < 0.0:
-                intersection.left.FlipNormal()
-            if np.dot(other.TangentSpace(intersection.right.Point(domainPoint)) @ intersection.right.Normal(domainPoint), self.Normal(intersection.left.Point(domainPoint))) < 0.0:
-                intersection.right.FlipNormal()
+            if np.dot(self.tangent_space(intersection.left.point(domainPoint)) @ intersection.left.normal(domainPoint), other.normal(intersection.right.point(domainPoint))) < 0.0:
+                intersection.left.flip_normal()
+            if np.dot(other.tangent_space(intersection.right.point(domainPoint)) @ intersection.right.normal(domainPoint), self.normal(intersection.left.point(domainPoint))) < 0.0:
+                intersection.right.flip_normal()
 
         return intersections

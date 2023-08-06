@@ -11,13 +11,13 @@ class InteractiveCanvas:
     def PerformBooleanOperation(self, op):
         print(op)
         if op == 'OR':
-            solid = self.solidA.Union(self.solidB)
+            solid = self.solidA.union(self.solidB)
             self.op = op
         elif op == 'AND':
-            solid = self.solidA.Intersection(self.solidB)
+            solid = self.solidA.intersection(self.solidB)
             self.op = op
         elif op == 'DIFF':
-            solid = self.solidA.Difference(self.solidB)
+            solid = self.solidA.difference(self.solidB)
             self.op = op
         else:
             solid = self.solidC
@@ -47,9 +47,9 @@ class InteractiveCanvas:
         self.solidB = solidB
         self.solidC = self.PerformBooleanOperation('OR') # First radio button
         
-        self.linesA = art3d.Line3DCollection(utils.CreateSegmentsFromSolid(self.solidA), linewidth=1, color="blue")
-        self.linesB = art3d.Line3DCollection(utils.CreateSegmentsFromSolid(self.solidB), linewidth=1, color="orange")
-        self.linesC = art3d.Line3DCollection(utils.CreateSegmentsFromSolid(self.solidC), linewidth=3, color="red")
+        self.linesA = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidA), linewidth=1, color="blue")
+        self.linesB = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidB), linewidth=1, color="orange")
+        self.linesC = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidC), linewidth=3, color="red")
         
         self.ax.set(xlabel="x", ylabel="y", zlabel="z")
         self.ax.set(xlim3d = (-4, 4), ylim3d = (-4, 4), zlim3d = (-4, 4))
@@ -85,13 +85,13 @@ class InteractiveCanvas:
 
         self.ax.mouse_init()
         self.solidC = self.PerformBooleanOperation(self.op)
-        self.linesC.set_segments(utils.CreateSegmentsFromSolid(self.solidC))
+        self.linesC.set_segments(utils.create_segments_from_solid(self.solidC))
         self.canvas.draw()
 
     def on_radio_press(self, event):
         """Callback for radio button selection."""
         self.solidC = self.PerformBooleanOperation(event)
-        self.linesC.set_segments(utils.CreateSegmentsFromSolid(self.solidC))
+        self.linesC.set_segments(utils.create_segments_from_solid(self.solidC))
         self.canvas.draw()
 
     def on_mouse_move(self, event):
@@ -101,10 +101,10 @@ class InteractiveCanvas:
         
         point = self.GetPointFromEvent(event)
         delta = point - self.origin
-        self.solidB.Translate(delta)
+        self.solidB.translate(delta)
         self.origin = point
 
-        self.linesB.set_segments(utils.CreateSegmentsFromSolid(self.solidB))
+        self.linesB.set_segments(utils.create_segments_from_solid(self.solidB))
         
         self.canvas.restore_region(self.background)
         self.ax.draw_artist(self.linesC)
@@ -113,14 +113,14 @@ class InteractiveCanvas:
         self.canvas.blit(self.ax.bbox)
 
 if __name__ == "__main__":
-    cubeA = utils.CreateHypercube([2,2,2], [0,0,0])
-    print(cubeA.VolumeIntegral(lambda x: 1.0), 4.0*4.0*4.0)
-    print(cubeA.SurfaceIntegral(lambda x, n: n), 4.0*4.0*6.0)
-    print(cubeA.WindingNumber([1,1,0]))
-    print(cubeA.WindingNumber([4,1,0]))
-    cubeB = utils.CreateHypercube([1,1,1], [1,1,1])
-    print(cubeB.VolumeIntegral(lambda x: 1.0), 2.0*2.0*2.0)
-    print(cubeB.SurfaceIntegral(lambda x, n: n), 2.0*2.0*6.0)
+    cubeA = utils.create_hypercube([2,2,2], [0,0,0])
+    print(cubeA.volume_integral(lambda x: 1.0), 4.0*4.0*4.0)
+    print(cubeA.surface_integral(lambda x, n: n), 4.0*4.0*6.0)
+    print(cubeA.winding_number([1,1,0]))
+    print(cubeA.winding_number([4,1,0]))
+    cubeB = utils.create_hypercube([1,1,1], [1,1,1])
+    print(cubeB.volume_integral(lambda x: 1.0), 2.0*2.0*2.0)
+    print(cubeB.surface_integral(lambda x, n: n), 2.0*2.0*6.0)
 
     canvas = InteractiveCanvas(cubeA, cubeB)
     plt.show()

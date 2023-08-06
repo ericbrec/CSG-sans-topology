@@ -13,10 +13,10 @@ class Manifold:
     # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
     maxAlignment = 0.99 # 1 - 1/10^2
 
-    # Return type for IntersectXRay
+    # Return type for intersect_x_ray
     RayCrossing = namedtuple('RayCrossing', ('distance','domainPoint'))
 
-    # Return type for IntersectManifold
+    # Return type for intersect_manifold
     Crossing = namedtuple('Crossing', ('left','right'))
     Coincidence = namedtuple('Coincidence', ('left', 'right', 'alignment', 'transform', 'inverse', 'translation'))
 
@@ -33,7 +33,7 @@ class Manifold:
         """
         return None
 
-    def DomainDimension(self):
+    def domain_dimension(self):
         """
         Return the domain dimension.
 
@@ -41,9 +41,9 @@ class Manifold:
         -------
         dimension : `int`
         """
-        return self.RangeDimension() - 1
+        return self.range_dimension() - 1
 
-    def RangeDimension(self):
+    def range_dimension(self):
         """
         Return the range dimension.
 
@@ -53,7 +53,7 @@ class Manifold:
         """
         return 0
 
-    def Normal(self, domainPoint):
+    def normal(self, domainPoint):
         """
         Return the normal.
 
@@ -68,7 +68,7 @@ class Manifold:
         """
         return None
 
-    def Point(self, domainPoint):
+    def point(self, domainPoint):
         """
         Return the point.
 
@@ -83,7 +83,7 @@ class Manifold:
         """
         return None
 
-    def TangentSpace(self, domainPoint):
+    def tangent_space(self, domainPoint):
         """
         Return the tangent space.
 
@@ -98,7 +98,7 @@ class Manifold:
         """
         return None
 
-    def CofactorNormal(self, domainPoint):
+    def cofactor_normal(self, domainPoint):
         """
         Return the cofactor normal.
 
@@ -117,12 +117,12 @@ class Manifold:
 
         See Also
         --------
-        `solid.Solid.VolumeIntegral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.SurfaceIntegral` : Compute the surface integral of a vector field on the boundary of the solid.
+        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
+        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
         """
         return None
 
-    def FirstCofactor(self, domainPoint):
+    def first_cofactor(self, domainPoint):
         """
         Return the first coordinate of the cofactor normal.
 
@@ -141,12 +141,12 @@ class Manifold:
 
         See Also
         --------
-        `solid.Solid.VolumeIntegral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.SurfaceIntegral` : Compute the surface integral of a vector field on the boundary of the solid.
+        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
+        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
         """
         return 0.0
 
-    def Determinant(self, domainPoint):
+    def determinant(self, domainPoint):
         """
         Returns the determinant, which is the length of the cofactor normal (also the normal dotted with the cofactor normal).
 
@@ -159,19 +159,19 @@ class Manifold:
         -------
         determinant : scalar
         """
-        return np.dot(self.Normal(domainPoint), self.CofactorNormal(domainPoint))
+        return np.dot(self.normal(domainPoint), self.cofactor_normal(domainPoint))
 
-    def Transform(self, transform, transformInverseTranspose = None):
+    def transform(self, matrix, matrixInverseTranspose = None):
         """
         Transform the range of the manifold.
 
         Parameters
         ----------
-        transform : `numpy.array`
+        matrix : `numpy.array`
             A square 2D array transformation.
 
-        transformInverseTranspose : `numpy.array`, optional
-            The inverse transpose of transform (computed if not provided).
+        matrixInverseTranspose : `numpy.array`, optional
+            The inverse transpose of matrix (computed if not provided).
 
         Notes
         -----
@@ -179,11 +179,11 @@ class Manifold:
 
         See Also
         --------
-        `solid.Solid.Transform` : Transform the range of the solid.
+        `solid.Solid.transform` : transform the range of the solid.
         """
-        assert np.shape(transform) == (self.RangeDimension(), self.RangeDimension())
+        assert np.shape(matrix) == (self.range_dimension(), self.range_dimension())
 
-    def Translate(self, delta):
+    def translate(self, delta):
         """
         Translate the range of the manifold.
 
@@ -198,11 +198,11 @@ class Manifold:
 
         See Also
         --------
-        `solid.Solid.Translate` : Translate the range of the solid.
+        `solid.Solid.translate` : translate the range of the solid.
         """
-        assert len(delta) == self.RangeDimension()
+        assert len(delta) == self.range_dimension()
 
-    def FlipNormal(self):
+    def flip_normal(self):
         """
         Flip the direction of the normal.
 
@@ -212,11 +212,11 @@ class Manifold:
 
         See Also
         --------
-        `solid.Solid.Not` : Return the compliment of the solid: whatever was inside is outside and vice-versa.
+        `solid.Solid.compliment` : Return the compliment of the solid: whatever was inside is outside and vice-versa.
         """
         pass
 
-    def IntersectXRay(self, point):
+    def intersect_x_ray(self, point):
         """
         Intersect a ray along the x-axis with the manifold.
 
@@ -233,12 +233,12 @@ class Manifold:
 
         See Also
         --------
-        `solid.Solid.WindingNumber` : Compute the winding number for a point relative to the solid.
+        `solid.Solid.winding_number` : Compute the winding number for a point relative to the solid.
         """
-        assert len(point) == self.RangeDimension()
+        assert len(point) == self.range_dimension()
         return []
 
-    def IntersectManifold(self, other):
+    def intersect_manifold(self, other):
         """
         Intersect two manifolds.
 
@@ -269,8 +269,8 @@ class Manifold:
 
         See Also
         --------
-        `CachedIntersectManifold` : Intersect two manifolds, caching the result for twins (same intersection but swapping self and other).
-        `solid.Solid.Slice` : Slice the solid by a manifold.
+        `cached_intersect_manifold` : Intersect two manifolds, caching the result for twins (same intersection but swapping self and other).
+        `solid.Solid.slice` : slice the solid by a manifold.
 
         Notes
         -----
@@ -278,7 +278,7 @@ class Manifold:
         """
         return NotImplemented
 
-    def CachedIntersectManifold(self, other, cache = None):
+    def cached_intersect_manifold(self, other, cache = None):
         """
         Intersect two manifolds, caching the result for twins (same intersection but swapping self and other).
 
@@ -315,8 +315,8 @@ class Manifold:
 
         See Also
         --------
-        `IntersectManifold` : Intersect two manifolds.
-        `solid.Solid.Slice` : Slice the solid by a manifold.
+        `intersect_manifold` : Intersect two manifolds.
+        `solid.Solid.slice` : slice the solid by a manifold.
 
         Notes
         -----
@@ -336,10 +336,10 @@ class Manifold:
 
         # If intersections not previously computed, compute them now.
         if intersections is None:
-            intersections = self.IntersectManifold(other)
+            intersections = self.intersect_manifold(other)
             if intersections is NotImplemented:
                 # Try the other way around in case other knows how to intersect self.
-                intersections = other.IntersectManifold(self)
+                intersections = other.intersect_manifold(self)
                 isTwin = True
             # Store intersections in cache.
             if cache is not None:

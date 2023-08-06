@@ -21,8 +21,8 @@ class InteractiveCanvas:
 
         if axis >= 0:
             self.key = key
-            self.ax.set_title("Slice solid by {axis}-axis".format(axis=key))
-            hyperplane = utils.HyperplaneAxisAligned(self.solid.dimension, axis, self.offset)
+            self.ax.set_title("slice solid by {axis}-axis".format(axis=key))
+            hyperplane = utils.hyperplane_axis_aligned(self.solid.dimension, axis, self.offset)
         else:
             hyperplane = self.hyperplane
 
@@ -34,26 +34,26 @@ class InteractiveCanvas:
 
     def animateSlice(self, offset):
         self.offset = offset
-        self.hyperplane.point = self.offset * self.hyperplane.normal
-        self.slice = self.solid.Slice(self.hyperplane)
+        self.hyperplane._point = self.offset * self.hyperplane._normal
+        self.slice = self.solid.slice(self.hyperplane)
         if not isinstance(self.slice, sld.Solid):
             self.slice = sld.Solid(self.solid.dimension, False)
-        self.lines.set_segments(utils.CreateSegmentsFromSolid(self.slice))
+        self.lines.set_segments(utils.create_segments_from_solid(self.slice))
 
     def on_radio_press(self, event):
         """Callback for radio button selection."""
         self.hyperplane = self.ConstructHyperplane(event)
-        self.slice = self.solid.Slice(self.hyperplane)
+        self.slice = self.solid.slice(self.hyperplane)
         if not isinstance(self.slice, sld.Solid):
             self.slice = sld.Solid(self.solid.dimension, False)
-        self.lines.set_segments(utils.CreateSegmentsFromSolid(self.slice))
+        self.lines.set_segments(utils.create_segments_from_solid(self.slice))
         self.canvas.draw()
 
     def __init__(self, solid, axis):
 
         fig = plt.figure(figsize=(6, 6))
         self.ax = fig.add_subplot(projection='3d')
-        self.ax.set_title("Slice solid by {axis}-axis".format(axis=axis))
+        self.ax.set_title("slice solid by {axis}-axis".format(axis=axis))
         self.canvas = self.ax.figure.canvas
 
         axRadioButtons = fig.add_axes([0.9, 0.88, 0.08, 0.12])
@@ -71,12 +71,12 @@ class InteractiveCanvas:
         self.player = player.Player(fig, self.animateSlice, -4.0, 4.0, 0.2, -4.0, init_func=self.initializeCanvas)
 
 if __name__ == "__main__":
-    cube = utils.CreateHypercube([.75,1.5,.75], [0,0,0])
-    extrudedCube = utils.ExtrudeSolid(cube,[[-2,2,-2,-4],[2,-2,2,4]])
-    star = utils.CreateStar(1.0, [0.0, 0.0], 90.0*6.28/360.0)
-    starBlock = utils.ExtrudeSolid(star,[[0,0,-1],[0,0,1]])
-    extrudedStarBlock = utils.ExtrudeSolid(starBlock,[[-2,-2,-2,-4],[2,2,2,4]])
-    combined = extrudedStarBlock.Union(extrudedCube)
+    cube = utils.create_hypercube([.75,1.5,.75], [0,0,0])
+    extrudedCube = utils.extrude_solid(cube,[[-2,2,-2,-4],[2,-2,2,4]])
+    star = utils.create_star(1.0, [0.0, 0.0], 90.0*6.28/360.0)
+    starBlock = utils.extrude_solid(star,[[0,0,-1],[0,0,1]])
+    extrudedStarBlock = utils.extrude_solid(starBlock,[[-2,-2,-2,-4],[2,2,2,4]])
+    combined = extrudedStarBlock.union(extrudedCube)
 
     canvas = InteractiveCanvas(combined, 't')
     plt.show()

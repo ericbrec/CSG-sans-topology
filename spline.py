@@ -282,7 +282,7 @@ class Spline(Manifold):
         nDep = self.spline.nInd
         if isinstance(other, Hyperplane):
             # Compute the inverse of the tangent space to map Spline-Hyperplane intersection points to the domain of the Hyperplane.
-            inverseTangentSpace = np.linalg.inv(other.tangentSpace.T @ other.tangentSpace)
+            inverseTangentSpace = np.linalg.inv(other._tangentSpace.T @ other._tangentSpace)
             # Construct a new spline that represents the intersection.
             spline = self.spline.dot(other._normal) - np.atleast_1d(np.dot(other._normal, other._point))
             if nDep == 1:
@@ -291,7 +291,7 @@ class Spline(Manifold):
                 # Convert each point into a Manifold.Crossing.
                 for zero in zeros:
                     zero = np.atleast_1d(zero)
-                    intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, inverseTangentSpace @ other.tangentSpace.T @ (self.spline(zero) - other._point), 0.0)))
+                    intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, inverseTangentSpace @ other._tangentSpace.T @ (self.spline(zero) - other._point), 0.0)))
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.
                 contours = spline.contours()
@@ -301,7 +301,7 @@ class Spline(Manifold):
                     points = []
                     for t in np.linspace(0.0, 1.0, contour.nCoef[0]):
                         zero = contour((t,))
-                        points.append((t, *(inverseTangentSpace @ other.tangentSpace.T @ (self.spline(zero) - other._point))))
+                        points.append((t, *(inverseTangentSpace @ other._tangentSpace.T @ (self.spline(zero) - other._point))))
                     right = BspySpline.least_squares(contour.nInd, nDep, contour.order, points, contour.knots, 0, contour.metadata)
                     intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
             else:

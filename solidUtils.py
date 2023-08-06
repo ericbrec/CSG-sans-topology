@@ -118,8 +118,8 @@ def hyperplane_2D(normal, offset):
     return Hyperplane(normalizedNormal, offset * normalizedNormal, np.transpose(np.array([[normal[1], -normal[0]]])))
 
 def hyperplane_domain_from_point(hyperplane, point):
-    tangentSpaceTranspose = np.transpose(hyperplane.tangentSpace)
-    return np.linalg.inv(tangentSpaceTranspose @ hyperplane.tangentSpace) @ tangentSpaceTranspose @ (point - hyperplane._point)
+    tangentSpaceTranspose = np.transpose(hyperplane._tangentSpace)
+    return np.linalg.inv(tangentSpaceTranspose @ hyperplane._tangentSpace) @ tangentSpaceTranspose @ (point - hyperplane._point)
 
 def create_faceted_solid_from_points(dimension, points, containsInfinity = False):
     # create_faceted_solid_from_points only works for dimension 2 so far.
@@ -241,7 +241,7 @@ def extrude_solid(solid, path):
             # Combine the boundary tangent space and the path tangent
             extruded_tangentSpace = np.full((extrusion.dimension, solid.dimension), 0.0)
             if solid.dimension > 1:
-                extruded_tangentSpace[0:solid.dimension, 0:solid.dimension-1] = boundary.manifold.tangentSpace[:,:]
+                extruded_tangentSpace[0:solid.dimension, 0:solid.dimension-1] = boundary.manifold._tangentSpace[:,:]
             extruded_tangentSpace[:, solid.dimension-1] = tangent[:]
             extrudedHyperplane = Hyperplane(extruded_normal, extruded_point, extruded_tangentSpace)
             # Construct a domain for the extruded boundary

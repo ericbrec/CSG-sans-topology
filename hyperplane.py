@@ -25,13 +25,13 @@ class Hyperplane(Manifold):
     def __init__(self, normal, point, tangentSpace):
         self._normal = np.atleast_1d(np.array(normal))
         self._point = np.atleast_1d(np.array(point))
-        self.tangentSpace = np.atleast_1d(np.array(tangentSpace))
+        self._tangentSpace = np.atleast_1d(np.array(tangentSpace))
 
     def __str__(self):
         return "normal: {0}, point: {1}".format(self._normal, self._point)
 
     def __repr__(self):
-        return "Hyperplane({0}, {1}, {2})".format(self._normal, self._point, self.tangentSpace)
+        return "Hyperplane({0}, {1}, {2})".format(self._normal, self._point, self._tangentSpace)
 
     def copy(self):
         """
@@ -41,7 +41,7 @@ class Hyperplane(Manifold):
         -------
         hyperplane : `Hyperplane`
         """
-        return Hyperplane(self._normal, self._point, self.tangentSpace)
+        return Hyperplane(self._normal, self._point, self._tangentSpace)
 
     def range_dimension(self):
         """
@@ -81,7 +81,7 @@ class Hyperplane(Manifold):
         -------
         point : `numpy.array`
         """
-        return np.dot(self.tangentSpace, domainPoint) + self._point
+        return np.dot(self._tangentSpace, domainPoint) + self._point
 
     def tangent_space(self, domainPoint):
         """
@@ -96,7 +96,7 @@ class Hyperplane(Manifold):
         -------
         tangentSpace : `numpy.array`
         """
-        return self.tangentSpace
+        return self._tangentSpace
 
     def cofactor_normal(self, domainPoint):
         """
@@ -121,27 +121,27 @@ class Hyperplane(Manifold):
         `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
         """
         # Compute and cache cofactor normal on demand.
-        if not hasattr(self, 'cofactorNormal'):
+        if not hasattr(self, '_cofactorNormal'):
             dimension = self.range_dimension()
             if dimension > 1:
                 minor = np.zeros((dimension-1, dimension-1))
-                self.cofactorNormal = np.array(self._normal) # We change it, so make a copy.
+                self._cofactorNormal = np.array(self._normal) # We change it, so make a copy.
                 sign = 1.0
                 for i in range(dimension):
                     if i > 0:
-                        minor[0:i, :] = self.tangentSpace[0:i, :]
+                        minor[0:i, :] = self._tangentSpace[0:i, :]
                     if i < dimension - 1:
-                        minor[i:, :] = self.tangentSpace[i+1:, :]
-                    self.cofactorNormal[i] = sign * np.linalg.det(minor)
+                        minor[i:, :] = self._tangentSpace[i+1:, :]
+                    self._cofactorNormal[i] = sign * np.linalg.det(minor)
                     sign *= -1.0
         
                 # Ensure cofactorNormal points in the same direction as normal.
-                if np.dot(self.cofactorNormal, self._normal) < 0.0:
-                    self.cofactorNormal = -self.cofactorNormal
+                if np.dot(self._cofactorNormal, self._normal) < 0.0:
+                    self._cofactorNormal = -self._cofactorNormal
             else:
-                self.cofactorNormal = self._normal
+                self._cofactorNormal = self._normal
         
-        return self.cofactorNormal
+        return self._cofactorNormal
 
     def first_cofactor(self, domainPoint):
         """
@@ -195,10 +195,10 @@ class Hyperplane(Manifold):
 
             self._normal = transformInverseTranspose @ self._normal
             self._normal = self._normal / np.linalg.norm(self._normal)
-            if hasattr(self, 'cofactorNormal'):
-                self.cofactorNormal = abs(np.linalg.det(transform)) * (transformInverseTranspose @ self.cofactorNormal)
+            if hasattr(self, '_cofactorNormal'):
+                self._cofactorNormal = abs(np.linalg.det(transform)) * (transformInverseTranspose @ self._cofactorNormal)
 
-            self.tangentSpace = transform @ self.tangentSpace
+            self._tangentSpace = transform @ self._tangentSpace
 
         self._point = transform @ self._point
 
@@ -236,8 +236,8 @@ class Hyperplane(Manifold):
         `solid.Solid.compliment` : Return the compliment of the solid: whatever was inside is outside and vice-versa.
         """
         self._normal = -self._normal
-        if hasattr(self, 'cofactorNormal'):
-            self.cofactorNormal = -self.cofactorNormal
+        if hasattr(self, '_cofactorNormal'):
+            self._cofactorNormal = -self._cofactorNormal
 
     def intersect_x_ray(self, point):
         """
@@ -270,7 +270,7 @@ class Hyperplane(Manifold):
             vectorFromManifold = point - self._point
             xDistanceToManifold = -np.dot(self._normal, vectorFromManifold) / self._normal[0]
             # Getting the domain point is a bit trickier. Turns out you throw out the x-components and invert the tangent space.
-            domainPoint = np.linalg.inv(self.tangentSpace[1:,:]) @ vectorFromManifold[1:]
+            domainPoint = np.linalg.inv(self._tangentSpace[1:,:]) @ vectorFromManifold[1:]
             # Each intersection is of the form [distance to intersection, domain point of intersection].
             intersections.append(Manifold.RayCrossing(xDistanceToManifold, domainPoint))
 
@@ -317,11 +317,11 @@ class Hyperplane(Manifold):
 
         To solve the crossing, we find the intersection by solving the underdetermined system of equations formed by assigning points 
         in one hyperplane (`self`) to points in the other (`other`). That is: 
-        `self.tangentSpace * selfDomainPoint + self._point = other.tangentSpace * otherDomainPoint + other._point`. This system is `dimension` equations
+        `self._tangentSpace * selfDomainPoint + self._point = other._tangentSpace * otherDomainPoint + other._point`. This system is `dimension` equations
         with `2*(dimension-1)` unknowns (the two domain points).
         
         There are more unknowns than equations, so it's underdetermined. The number of free variables is `2*(dimension-1) - dimension = dimension-2`.
-        To solve the system, we rephrase it as `Ax = b`, where `A = (self.tangentSpace -other.tangentSpace)`, `x = (selfDomainPoint otherDomainPoint)`, 
+        To solve the system, we rephrase it as `Ax = b`, where `A = (self._tangentSpace -other._tangentSpace)`, `x = (selfDomainPoint otherDomainPoint)`, 
         and `b = other._point - self._point`. Then we take the singular value decomposition of `A = U * Sigma * VTranspose`, using `numpy.linalg.svd`.
         The particular solution for x is given by `x = V * SigmaInverse * UTranspose * b`,
         where we only consider the first `dimension` number of vectors in `V` (the rest are zeroed out, i.e. the null space of `A`).
@@ -338,10 +338,10 @@ class Hyperplane(Manifold):
         Since hyperplanes are flat, the domains of their coincident regions are the entire domain: `Solid(domain dimension, True)`.
         The normal alignment is the dot product of the unit normals. The mapping from the hyperplane's domain to the other's domain is derived
         from setting the hyperplanes to each other: 
-        `hyperplane.tangentSpace * selfDomainPoint + hyperplane._point = other.tangentSpace * otherDomainPoint + other._point`. Then solve for
-        `otherDomainPoint = inverse(transpose(other.tangentSpace) * other.tangentSpace)) * transpose(other.tangentSpace) * (hyperplane.tangentSpace * selfDomainPoint + hyperplane._point - other._point)`.
-        You get the transform is `inverse(transpose(other.tangentSpace) * other.tangentSpace)) * transpose(other.tangentSpace) * hyperplane.tangentSpace`,
-        and the translation is `inverse(transpose(other.tangentSpace) * other.tangentSpace)) * transpose(other.tangentSpace) * (hyperplane._point - other._point)`.
+        `hyperplane._tangentSpace * selfDomainPoint + hyperplane._point = other._tangentSpace * otherDomainPoint + other._point`. Then solve for
+        `otherDomainPoint = inverse(transpose(other._tangentSpace) * other._tangentSpace)) * transpose(other._tangentSpace) * (hyperplane._tangentSpace * selfDomainPoint + hyperplane._point - other._point)`.
+        You get the transform is `inverse(transpose(other._tangentSpace) * other._tangentSpace)) * transpose(other._tangentSpace) * hyperplane._tangentSpace`,
+        and the translation is `inverse(transpose(other._tangentSpace) * other._tangentSpace)) * transpose(other._tangentSpace) * (hyperplane._point - other._point)`.
 
         Note that to invert the mapping to go from the other's domain to the hyperplane's domain, you first subtract the translation and then multiply by the inverse of the transform.
         """
@@ -357,9 +357,9 @@ class Hyperplane(Manifold):
         alignment = np.dot(self._normal, other._normal)
         if alignment * alignment < Hyperplane.maxAlignment:
             # We're solving the system Ax = b using singular value decomposition, 
-            #   where A = (self.tangentSpace -other.tangentSpace), x = (selfDomainPoint otherDomainPoint), and b = other._point - self._point.
+            #   where A = (self._tangentSpace -other._tangentSpace), x = (selfDomainPoint otherDomainPoint), and b = other._point - self._point.
             # Construct A.
-            A = np.concatenate((self.tangentSpace, -other.tangentSpace),axis=1)
+            A = np.concatenate((self._tangentSpace, -other._tangentSpace),axis=1)
             # Compute the singular value decomposition of A.
             U, sigma, VTranspose = np.linalg.svd(A)
             # Compute the inverse of Sigma and transpose of V.
@@ -369,10 +369,10 @@ class Hyperplane(Manifold):
             x = V[:, 0:dimension] @ SigmaInverse @ np.transpose(U) @ (other._point - self._point)
 
             # The self intersection normal is just the dot product of other normal with the self tangent space.
-            selfDomainNormal = np.dot(other._normal, self.tangentSpace)
+            selfDomainNormal = np.dot(other._normal, self._tangentSpace)
             selfDomainNormal = selfDomainNormal / np.linalg.norm(selfDomainNormal)
             # The other intersection normal is just the dot product of self normal with the other tangent space.
-            otherDomainNormal = np.dot(self._normal, other.tangentSpace)
+            otherDomainNormal = np.dot(self._normal, other._tangentSpace)
             otherDomainNormal = otherDomainNormal / np.linalg.norm(otherDomainNormal)
             # The self intersection point is the first dimension-1 coordinates of x.
             selfDomainPoint = x[0:dimension-1]
@@ -398,9 +398,9 @@ class Hyperplane(Manifold):
                 domainCoincidence = Solid(dimension-1, True)
                 if dimension > 1:
                     # For higher dimensions, also return the mapping from the self domain to the other domain.
-                    tangentSpaceTranspose = np.transpose(other.tangentSpace)
-                    map = np.linalg.inv(tangentSpaceTranspose @ other.tangentSpace) @ tangentSpaceTranspose
-                    transform =  map @ self.tangentSpace
+                    tangentSpaceTranspose = np.transpose(other._tangentSpace)
+                    map = np.linalg.inv(tangentSpaceTranspose @ other._tangentSpace) @ tangentSpaceTranspose
+                    transform =  map @ self._tangentSpace
                     inverseTransform = np.linalg.inv(transform)
                     translation = map @ (self._point - other._point)
                     intersections.append(Manifold.Coincidence(domainCoincidence, domainCoincidence, alignment, transform, inverseTransform, translation))

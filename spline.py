@@ -145,28 +145,28 @@ class Spline(Manifold):
         """
         return self.normalDirection * self.spline.normal(domainPoint, False, (0,))
 
-    def transform(self, transform, transformInverseTranspose = None):
+    def transform(self, matrix, matrixInverseTranspose = None):
         """
-        transform the range of the hyperplane.
+        Transform the range of the spline.
 
         Parameters
         ----------
-        transform : `numpy.array`
+        matrix : `numpy.array`
             A square 2D array transformation.
 
-        transformInverseTranspose : `numpy.array`, optional
-            The inverse transpose of transform (computed if not provided).
+        matrixInverseTranspose : `numpy.array`, optional
+            The inverse transpose of matrix (computed if not provided).
 
         Notes
         -----
-        Transforms the hyperplane in place, so create a copy as needed.
+        Transforms the spline in place, so create a copy as needed.
 
         See Also
         --------
-        `solid.Solid.transform` : transform the range of the solid.
+        `solid.Solid.transform` : Transform the range of the solid.
         """
-        assert np.shape(transform) == (self.range_dimension(), self.range_dimension())
-        self.spline = self.spline.transform(transform)
+        assert np.shape(matrix) == (self.range_dimension(), self.range_dimension())
+        self.spline = self.spline.transform(matrix)
         
     def translate(self, delta):
         """

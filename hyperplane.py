@@ -167,17 +167,17 @@ class Hyperplane(Manifold):
         """
         return self.cofactor_normal(domainPoint)[0]
 
-    def transform(self, transform, transformInverseTranspose = None):
+    def transform(self, matrix, matrixInverseTranspose = None):
         """
-        transform the range of the hyperplane.
+        Transform the range of the hyperplane.
 
         Parameters
         ----------
-        transform : `numpy.array`
+        matrix : `numpy.array`
             A square 2D array transformation.
 
-        transformInverseTranspose : `numpy.array`, optional
-            The inverse transpose of transform (computed if not provided).
+        matrixInverseTranspose : `numpy.array`, optional
+            The inverse transpose of matrix (computed if not provided).
 
         Notes
         -----
@@ -185,22 +185,22 @@ class Hyperplane(Manifold):
 
         See Also
         --------
-        `solid.Solid.transform` : transform the range of the solid.
+        `solid.Solid.transform` : Transform the range of the solid.
         """
-        assert np.shape(transform) == (self.range_dimension(), self.range_dimension())
+        assert np.shape(matrix) == (self.range_dimension(), self.range_dimension())
 
         if self.range_dimension() > 1:
-            if transformInverseTranspose is None:
-                transformInverseTranspose = np.transpose(np.linalg.inv(transform))
+            if matrixInverseTranspose is None:
+                matrixInverseTranspose = np.transpose(np.linalg.inv(matrix))
 
-            self._normal = transformInverseTranspose @ self._normal
+            self._normal = matrixInverseTranspose @ self._normal
             self._normal = self._normal / np.linalg.norm(self._normal)
             if hasattr(self, '_cofactorNormal'):
-                self._cofactorNormal = abs(np.linalg.det(transform)) * (transformInverseTranspose @ self._cofactorNormal)
+                self._cofactorNormal = abs(np.linalg.det(matrix)) * (matrixInverseTranspose @ self._cofactorNormal)
 
-            self._tangentSpace = transform @ self._tangentSpace
+            self._tangentSpace = matrix @ self._tangentSpace
 
-        self._point = transform @ self._point
+        self._point = matrix @ self._point
 
     def translate(self, delta):
         """

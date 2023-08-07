@@ -3,8 +3,7 @@ import matplotlib.widgets as widgets
 from matplotlib.animation import FuncAnimation
 
 class Player(FuncAnimation):
-    def __init__(self, fig, func, min = 0.0, max = 100.0, step = 1.0, initial=None, init_func=None, fargs=None,
-                 save_count=None, pos=(0.17, 0.94), **kwargs):
+    def __init__(self, fig, func, min = 0.0, max = 100.0, step = 1.0, initial=None, init_func=None, fargs=None, pos=(0.17, 0.94), **kwargs):
         self.min = min
         self.max = max
         self.step = step
@@ -14,7 +13,7 @@ class Player(FuncAnimation):
         self.fig = fig
         self.func = func
         self.setup(pos)
-        FuncAnimation.__init__(self, self.fig, self.update, frames=self.play(), init_func=init_func, fargs=fargs, save_count=save_count, **kwargs)
+        FuncAnimation.__init__(self, self.fig, self.update, frames=self.play(), init_func=init_func, fargs=fargs, cache_frame_data=False, **kwargs)
 
     def play(self):
         while self.runs:

@@ -1,4 +1,5 @@
 import numpy as np
+from solid import Solid, Boundary
 from manifold import Manifold
 from hyperplane import Hyperplane
 from bspy import Spline as BspySpline
@@ -338,3 +339,43 @@ class Spline(Manifold):
                 intersection.right.flip_normal()
 
         return intersections
+
+    def complete_domain(self, domain = None):
+        """
+        Return a valid domain for the spline.
+
+        Parameters
+        ----------
+        domain : `solid.Solid`, optional
+            A full or partial domain that may be incomplete, missing some of the spline's inherent domain boundaries. 
+            It's dimension must match `self.domain_dimension`. The default is `None`, in which case a domain will be created.
+
+        Returns
+        -------
+        domain : `solid.Solid`
+            A complete domain for the spline, consistent with the domain passed (if any). 
+            This value will match the domain passed (the argument is changed).
+
+        See Also
+        --------
+        `solid.Solid.slice` : Slice the solid by a manifold.
+
+        Notes
+        -----
+        A spline's domain is determined by its knot array for each dimension.
+        """
+        assert domain is None or self.domain_dimension() == domain.dimension
+        if domain is None:
+            domain = Solid(self.domain_dimension(), False)
+        splineDomain = self.spline.domain()
+        assert domain.dimension == 1
+        if domain.dimension == 1:
+            if len(domain.boundaries) > 0:
+                domain.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
+                domainDomain = Solid(0, True) # Domain for 1D points.
+                if domain.boundaries[0].manifold._normal > 0.0:
+                    domain.boundaries.insert(0, Boundary(Hyperplane(-1.0, splineDomain[0][0], 0.0), domainDomain))
+                if domain.boundaries[-1].manifold._normal < 0.0:
+                    domain.boundaries.append(Boundary(Hyperplane(1.0, splineDomain[0][1], 0.0), domainDomain))
+
+        return domain

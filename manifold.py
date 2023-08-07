@@ -349,3 +349,30 @@ class Manifold:
                     cache[(self, other)] = intersections
         
         return intersections, isTwin
+
+    def complete_domain(self, domain = None):
+        """
+        Return a valid domain for the manifold.
+
+        Parameters
+        ----------
+        domain : `solid.Solid`, optional
+            A full or partial domain that may be incomplete, missing some of the manifold's inherent domain boundaries. 
+            It's dimension must match `self.domain_dimension`. The default is `None`, in which case a domain will be created.
+
+        Returns
+        -------
+        domain : `solid.Solid`
+            A complete domain for the manifold, consistent with the domain passed (if any). 
+            This value will match the domain passed (the argument is changed).
+
+        See Also
+        --------
+        `solid.Solid.slice` : slice the solid by a manifold.
+
+        Notes
+        -----
+        For manifolds without inherent domain boundaries (like hyperplanes), the default return value 
+        is a boundary-less domain that contains infinity.
+        """
+        return None

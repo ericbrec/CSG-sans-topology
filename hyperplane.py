@@ -408,3 +408,31 @@ class Hyperplane(Manifold):
                     intersections.append(Manifold.Coincidence(domainCoincidence, domainCoincidence, alignment, None, None, None))
 
         return intersections
+
+    def complete_domain(self, domain = None):
+        """
+        Return a valid domain for the hyperplane.
+
+        Parameters
+        ----------
+        domain : `solid.Solid`, optional
+            A full or partial domain that may be incomplete, missing some of the hyperplane's inherent domain boundaries. 
+            It's dimension must match `self.domain_dimension`. The default is `None`, in which case a domain will be created.
+
+        Returns
+        -------
+        domain : `solid.Solid`
+            A complete domain for the hyperplane, consistent with the domain passed (if any). 
+            This value will match the domain passed (the argument is changed).
+
+        See Also
+        --------
+        `solid.Solid.slice` : Slice the solid by a manifold.
+
+        Notes
+        -----
+        Since hyperplanes have no inherent domain boundaries, the default return value 
+        is a boundary-less domain that contains infinity.
+        """
+        assert domain is None or self.domain_dimension() == domain.dimension
+        return Solid(self.domain_dimension(), True) if domain is None else domain

@@ -366,6 +366,29 @@ class Spline(Manifold):
                 intersection.right.flip_normal()
 
         return intersections
+    
+    @staticmethod
+    def create_domain(bounds):
+        assert len(bounds[0]) == 2
+        dimension = len(bounds)
+        domain = Solid(dimension, False)
+        for i in range(dimension):
+            if dimension > 1:
+                domainDomain = Spline.create_domain(np.delete(bounds, i, axis=0))
+            else:
+                domainDomain = Solid(0, True)
+            diagonal = np.identity(dimension)
+            unitVector = diagonal[i]
+            if dimension > 1:
+                tangentSpace = np.delete(diagonal, i, axis=1)
+            else:
+                tangentSpace = np.array([0.0])
+            hyperplane = Hyperplane(-unitVector, bounds[i][0] * unitVector, tangentSpace)
+            domain.boundaries.append(Boundary(hyperplane, domainDomain))
+            hyperplane = Hyperplane(unitVector, bounds[i][1] * unitVector, tangentSpace)
+            domain.boundaries.append(Boundary(hyperplane, domainDomain))
+
+        return domain        
 
     def complete_domain(self, domain = None):
         """
@@ -406,10 +429,19 @@ class Spline(Manifold):
                 if direction * domain.boundaries[-1].manifold._normal > 0.0:
                     domain.boundaries.append(Boundary(Hyperplane(-direction, splineDomain[0][1], 0.0), domainDomain))
             elif domain.containsInfinity:
-                # Spline domains are bounded, so reset the containsInfinity flag and provide the bounds.
-                domain.containsInfinity = False
+                # Spline domains are bounded, so create a new domain based on the bounds.
+                domain = Spline.create_domain(splineDomain)
+        elif domain.dimension == 2:
+            if len(domain.boundaries) > 0:
+                domain.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
                 domainDomain = Solid(0, True) # Domain for 1D points.
-                domain.boundaries.append(Boundary(Hyperplane(-1.0, splineDomain[0][0], 0.0), domainDomain))
-                domain.boundaries.append(Boundary(Hyperplane(1.0, splineDomain[0][1], 0.0), domainDomain))
+                direction = 1.0 if domain.containsInfinity else -1.0
+                if direction * domain.boundaries[0].manifold._normal < 0.0:
+                    domain.boundaries.insert(0, Boundary(Hyperplane(direction, splineDomain[0][0], 0.0), domainDomain))
+                if direction * domain.boundaries[-1].manifold._normal > 0.0:
+                    domain.boundaries.append(Boundary(Hyperplane(-direction, splineDomain[0][1], 0.0), domainDomain))
+            elif domain.containsInfinity:
+                # Spline domains are bounded, so create a new domain based on the bounds.
+                domain = Spline.create_domain(splineDomain)
 
         return domain

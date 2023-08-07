@@ -556,7 +556,7 @@ class Solid:
                     # Finally, add the domain coincidence to the list of coincidences.
                     coincidences.append((invertDomainCoincidence, domainCoincidence))
 
-        # If there are no intersections at all, slice is entire domain or nothing based on point containment.
+        # If there are no intersections (no crossings or coincidences), slice is entire domain or nothing based on point containment.
         if noIntersections:
             slice.containsInfinity = self.contains_point(manifold.any_point())
 

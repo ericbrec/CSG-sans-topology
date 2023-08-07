@@ -83,6 +83,27 @@ class Manifold:
         """
         return None
 
+    def any_point(self):
+        """
+        Return an arbitrary point on the manifold.
+
+        Returns
+        -------
+        point : `numpy.array`
+            A point on the manifold.
+
+        See Also
+        --------
+        `Solid.any_point` : Return an arbitrary point on the solid.
+        `Boundary.any_point` : Return an arbitrary point on the boundary.
+
+        Notes
+        -----
+        The any_point method for solids and boundaries do not call this method, because the point returned 
+        may not be within the solid or boundary.
+        """
+        return None
+
     def tangent_space(self, domainPoint):
         """
         Return the tangent space.

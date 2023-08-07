@@ -78,6 +78,30 @@ class Spline(Manifold):
         """
         return self.spline(domainPoint)
 
+    def any_point(self):
+        """
+        Return an arbitrary point on the spline.
+
+        Returns
+        -------
+        point : `numpy.array`
+            A point on the spline.
+
+        See Also
+        --------
+        `Solid.any_point` : Return an arbitrary point on the solid.
+        `Boundary.any_point` : Return an arbitrary point on the boundary.
+
+        Notes
+        -----
+        The any_point method for solids and boundaries do not call this method, because the point returned 
+        may not be within the solid or boundary.
+        """
+        domainPoint = []
+        for knots, nCoef in zip(self.spline.knots, self.spline.nCoef):
+            domainPoint.append(knots[nCoef])
+        return self.spline(domainPoint)
+
     def tangent_space(self, domainPoint):
         """
         Return the tangent space.
@@ -233,6 +257,7 @@ class Spline(Manifold):
         # Generate list of intersections.
         intersections = []
         for zero in zeros:
+            zero = np.atleast_1d(zero)
             intersections.append(Manifold.RayCrossing(self.spline(zero)[0] - point[0], zero))
 
         return intersections
@@ -368,7 +393,7 @@ class Spline(Manifold):
         """
         assert domain is None or self.domain_dimension() == domain.dimension
         if domain is None:
-            domain = Solid(self.domain_dimension(), False)
+            domain = Solid(self.domain_dimension(), True)
         splineDomain = self.spline.domain()
         assert domain.dimension == 1
         if domain.dimension == 1:
@@ -380,5 +405,11 @@ class Spline(Manifold):
                     domain.boundaries.insert(0, Boundary(Hyperplane(direction, splineDomain[0][0], 0.0), domainDomain))
                 if direction * domain.boundaries[-1].manifold._normal > 0.0:
                     domain.boundaries.append(Boundary(Hyperplane(-direction, splineDomain[0][1], 0.0), domainDomain))
+            elif domain.containsInfinity:
+                # Spline domains are bounded, so reset the containsInfinity flag and provide the bounds.
+                domain.containsInfinity = False
+                domainDomain = Solid(0, True) # Domain for 1D points.
+                domain.boundaries.append(Boundary(Hyperplane(-1.0, splineDomain[0][0], 0.0), domainDomain))
+                domain.boundaries.append(Boundary(Hyperplane(1.0, splineDomain[0][1], 0.0), domainDomain))
 
         return domain

@@ -83,6 +83,27 @@ class Hyperplane(Manifold):
         """
         return np.dot(self._tangentSpace, domainPoint) + self._point
 
+    def any_point(self):
+        """
+        Return an arbitrary point on the hyperplane.
+
+        Returns
+        -------
+        point : `numpy.array`
+            A point on the hyperplane.
+
+        See Also
+        --------
+        `Solid.any_point` : Return an arbitrary point on the solid.
+        `Boundary.any_point` : Return an arbitrary point on the boundary.
+
+        Notes
+        -----
+        The any_point method for solids and boundaries do not call this method, because the point returned 
+        may not be within the solid or boundary.
+        """
+        return self._point
+
     def tangent_space(self, domainPoint):
         """
         Return the tangent space.

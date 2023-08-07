@@ -34,7 +34,9 @@ class Spline(Manifold):
         -------
         spline : `Spline`
         """
-        return Spline(type(self.spline)(self.spline.nInd, self.spline.nDep, self.spline.order, self.spline.nCoef, self.spline.knots, self.spline.coefs, self.spline.accuracy))
+        spline = Spline(type(self.spline)(self.spline.nInd, self.spline.nDep, self.spline.order, self.spline.nCoef, self.spline.knots, self.spline.coefs, self.spline.accuracy))
+        spline.normalDirection = self.normalDirection
+        return spline
 
     def range_dimension(self):
         """

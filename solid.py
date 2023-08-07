@@ -555,7 +555,7 @@ class Solid:
                     # Finally, add the domain coincidence to the list of coincidences.
                     coincidences.append((invertDomainCoincidence, domainCoincidence))
 
-        # Ensure the slice is a valid and complete domain for the manifold.
+        # Ensure the slice includes the manifold's inherent (implicit) boundaries, making it valid and complete.
         slice = manifold.complete_domain(slice)
 
         # We've gone through all boundaries. Now that we have a complete manifold domain, join it with each domain coincidence.

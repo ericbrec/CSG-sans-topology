@@ -364,7 +364,7 @@ class Spline(Manifold):
 
         Notes
         -----
-        A spline's domain is determined by its knot array for each dimension.
+        A spline's inherent domain is determined by its knot array for each dimension.
         """
         assert domain is None or self.domain_dimension() == domain.dimension
         if domain is None:
@@ -375,9 +375,10 @@ class Spline(Manifold):
             if len(domain.boundaries) > 0:
                 domain.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
                 domainDomain = Solid(0, True) # Domain for 1D points.
-                if domain.boundaries[0].manifold._normal > 0.0:
-                    domain.boundaries.insert(0, Boundary(Hyperplane(-1.0, splineDomain[0][0], 0.0), domainDomain))
-                if domain.boundaries[-1].manifold._normal < 0.0:
-                    domain.boundaries.append(Boundary(Hyperplane(1.0, splineDomain[0][1], 0.0), domainDomain))
+                direction = 1.0 if domain.containsInfinity else -1.0
+                if direction * domain.boundaries[0].manifold._normal < 0.0:
+                    domain.boundaries.insert(0, Boundary(Hyperplane(direction, splineDomain[0][0], 0.0), domainDomain))
+                if direction * domain.boundaries[-1].manifold._normal > 0.0:
+                    domain.boundaries.append(Boundary(Hyperplane(-direction, splineDomain[0][1], 0.0), domainDomain))
 
         return domain

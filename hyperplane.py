@@ -438,7 +438,7 @@ class Hyperplane(Manifold):
         ----------
         domain : `solid.Solid`, optional
             A full or partial domain that may be incomplete, missing some of the hyperplane's inherent domain boundaries. 
-            It's dimension must match `self.domain_dimension`. The default is `None`, in which case a domain will be created.
+            Its dimension must match `self.domain_dimension`. The default is `None`, in which case a domain will be created.
 
         Returns
         -------

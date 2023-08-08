@@ -368,13 +368,16 @@ class Spline(Manifold):
         return intersections
     
     @staticmethod
-    def create_domain(bounds):
+    def _create_domain(bounds, domain = None):
         assert len(bounds[0]) == 2
         dimension = len(bounds)
-        domain = Solid(dimension, False)
+        if domain is None:
+            domain = Solid(dimension, False)
+        else:
+            domain.containsInfinity = False
         for i in range(dimension):
             if dimension > 1:
-                domainDomain = Spline.create_domain(np.delete(bounds, i, axis=0))
+                domainDomain = Spline._create_domain(np.delete(bounds, i, axis=0))
             else:
                 domainDomain = Solid(0, True)
             diagonal = np.identity(dimension)
@@ -417,31 +420,82 @@ class Spline(Manifold):
         assert domain is None or self.domain_dimension() == domain.dimension
         if domain is None:
             domain = Solid(self.domain_dimension(), True)
-        splineDomain = self.spline.domain()
-        assert domain.dimension == 1
+        bounds = self.spline.domain()
+        assert domain.dimension == 1 or domain.dimension == 2
+
+        # For curves, add endpoints of domain as needed.
         if domain.dimension == 1:
             if len(domain.boundaries) > 0:
-                domain.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
+                domain.boundaries.sort(key=lambda b: (b.manifold.point(0.0), b.manifold.normal(0.0)))
                 domainDomain = Solid(0, True) # Domain for 1D points.
-                direction = 1.0 if domain.containsInfinity else -1.0
-                if direction * domain.boundaries[0].manifold._normal < 0.0:
-                    domain.boundaries.insert(0, Boundary(Hyperplane(direction, splineDomain[0][0], 0.0), domainDomain))
-                if direction * domain.boundaries[-1].manifold._normal > 0.0:
-                    domain.boundaries.append(Boundary(Hyperplane(-direction, splineDomain[0][1], 0.0), domainDomain))
-            elif domain.containsInfinity:
+                direction = -1.0 if domain.containsInfinity else 1.0
+                if direction * domain.boundaries[0].manifold._normal > 0.0:
+                    domain.boundaries.insert(0, Boundary(Hyperplane(-direction, bounds[0][0], 0.0), domainDomain))
+                if direction * domain.boundaries[-1].manifold._normal < 0.0:
+                    domain.boundaries.append(Boundary(Hyperplane(direction, bounds[0][1], 0.0), domainDomain))
+                domain.containsInfinity = False
+            
+            if domain.containsInfinity:
                 # Spline domains are bounded, so create a new domain based on the bounds.
-                domain = Spline.create_domain(splineDomain)
+                domain = Spline._create_domain(bounds, domain)
+        
+        # For surfaces, add bounding box of domain based on where partial domain touches it.
         elif domain.dimension == 2:
             if len(domain.boundaries) > 0:
-                domain.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
-                domainDomain = Solid(0, True) # Domain for 1D points.
-                direction = 1.0 if domain.containsInfinity else -1.0
-                if direction * domain.boundaries[0].manifold._normal < 0.0:
-                    domain.boundaries.insert(0, Boundary(Hyperplane(direction, splineDomain[0][0], 0.0), domainDomain))
-                if direction * domain.boundaries[-1].manifold._normal > 0.0:
-                    domain.boundaries.append(Boundary(Hyperplane(-direction, splineDomain[0][1], 0.0), domainDomain))
-            elif domain.containsInfinity:
-                # Spline domains are bounded, so create a new domain based on the bounds.
-                domain = Spline.create_domain(splineDomain)
+                newBoundaries = [None] * bounds.size # Cache for new domain boundaries
+                pointDomain = Solid(0, True) # Domain for 1D points.
+
+                # Function for adding domain points to new boundaries.
+                def process_domain_point(boundary, domainPoint):
+                    point = boundary.manifold.point(domainPoint)
+                    # See if and where point touches bounding box of domain.
+                    for i in range(domain.dimension):
+                        for j in range(2):
+                            if abs(point[i] - bounds[i][j]) < Manifold.minSeparation:
+                                index = i * 2 + j
+                                newBoundary = newBoundaries[index] # Lookup new boundary in cache
+                                if newBoundary is None:
+                                    # Boundary doesn't exist, so create it and add it to the cache and the domain
+                                    direction = -1.0 if j == 0 else 1.0
+                                    normal = np.array((0.0, 0.0))
+                                    normal[i] = 1.0
+                                    tangent = np.array((0.0, 0.0))
+                                    tangent[1-i] = 1.0
+                                    newBoundary = Boundary(Hyperplane(direction * normal, bounds[i][j] * normal, tangent), Solid(1, False))
+                                    newBoundaries[index] = newBoundary
+                                    domain.boundaries.append(newBoundary)
+                                # Now add the point onto the new boundary, with a direction based on the point's normal and the domain containing infinity
+                                normal = boundary.manifold.normal(domainPoint) * (-1.0 if domain.containsInfinity else 1.0)
+                                newBoundary.domain.boundaries.append(Boundary(Hyperplane(np.sign(normal[1-i]), point[1-i], 0.0), pointDomain))
+
+                # Go through each boundary and check if either of its endpoints lies on the spline's bounds.
+                # We use a while loop, because endpoints may add new boundaries.
+                b = 0
+                lenBoundariesOriginally = len(domain.boundaries)
+                while b < len(domain.boundaries):
+                    boundary = domain.boundaries[b]
+                    domainDomain = boundary.domain
+                    if len(domainDomain.boundaries) > 0:
+                        domainDomain.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
+                        if b >= lenBoundariesOriginally:
+                            # New boundary, so let's complete its own domain first (basically the same code as for curves).
+                            for i in range(domain.dimension):
+                                if abs(boundary.manifold._normal[i]) > Manifold.minSeparation:
+                                    break
+                            if domainDomain.boundaries[0].manifold._normal > 0.0:
+                                domainDomain.boundaries.insert(0, Boundary(Hyperplane(-1.0, bounds[1-i][0], 0.0), pointDomain))
+                            if domainDomain.boundaries[-1].manifold._normal < 0.0:
+                                domainDomain.boundaries.append(Boundary(Hyperplane(1.0, bounds[1-i][1], 0.0), pointDomain))
+                            domain.containsInfinity = False # We've reached the actual bounds, so remove infinity
+                        # Process the boundary's first point.
+                        process_domain_point(boundary, domainDomain.boundaries[0]._point)
+                        # Process the boundary's last point.
+                        if len(domainDomain.boundaries) > 1:
+                            process_domain_point(boundary, domainDomain.boundaries[-1]._point)
+                    b += 1
+
+            # If no partial boundaries touched the spline bounds and the domain contains infinity, add the bounds.                
+            if domain.containsInfinity:
+                domain = Spline._create_domain(bounds, domain)
 
         return domain

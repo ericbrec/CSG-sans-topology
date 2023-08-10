@@ -366,66 +366,30 @@ class Spline(Manifold):
                 intersection.right.flip_normal()
 
         return intersections
-    
-    # Create a hypercube domain for a spline based on its bounds.
-    @staticmethod
-    def _create_domain(bounds, domain = None):
-        dimension = len(bounds)
-        assert len(bounds[0]) == 2
-        assert domain is None or domain.dimension == dimension
-        if domain is None:
-            domain = Solid(dimension, False)
-        direction = -1.0 if domain.containsInfinity else 1.0
-        for i in range(dimension):
-            if dimension > 1:
-                domainDomain = Spline._create_domain(np.delete(bounds, i, axis=0))
-            else:
-                domainDomain = Solid(0, True)
-            diagonal = np.identity(dimension)
-            unitVector = diagonal[i]
-            if dimension > 1:
-                tangentSpace = np.delete(diagonal, i, axis=1)
-            else:
-                tangentSpace = np.array([0.0])
-            hyperplane = Hyperplane(-direction * unitVector, bounds[i][0] * unitVector, tangentSpace)
-            domain.boundaries.append(Boundary(hyperplane, domainDomain))
-            hyperplane = Hyperplane(direction * unitVector, bounds[i][1] * unitVector, tangentSpace)
-            domain.boundaries.append(Boundary(hyperplane, domainDomain))
 
-        return domain        
-
-    def complete_domain(self, domain = None):
+    def complete_domain(self, domain):
         """
-        Return a valid domain for the spline.
+        Add any missing inherent (implicit) boundaries of this manifold to the given domain that are needed to make the domain valid and complete.
 
         Parameters
         ----------
-        domain : `solid.Solid`, optional
-            A full or partial domain that may be incomplete, missing some of the spline's inherent domain boundaries. 
-            Its dimension must match `self.domain_dimension`. The default is `None`, in which case a domain will be created.
-
-        Returns
-        -------
         domain : `solid.Solid`
-            A complete domain for the spline, consistent with the domain passed (if any). 
-            This value will match the domain passed (the contents of the domain are changed).
+            A domain for this manifold that may be incomplete, missing some of the manifold's inherent domain boundaries. 
+            Its dimension must match `self.domain_dimension()`.
 
         See Also
         --------
-        `solid.Solid.slice` : Slice the solid by a manifold.
+        `solid.Solid.slice` : slice the solid by a manifold.
 
         Notes
         -----
-        A spline's inherent domain is determined by its knot array for each dimension. If you pass in an empty domain,
-        it will remain empty. To receive a domain that incorporates the full bounds of the spline, do not pass in a domain.
+        A spline's inherent domain is determined by its knot array for each dimension. 
+        If you pass in an empty domain, it will remain empty.
         """
         dimension = self.domain_dimension()
-        bounds = self.spline.domain()
-        if domain is None:
-            return Spline._create_domain(bounds)
-       
         assert domain.dimension == dimension
         assert domain.dimension == 1 or domain.dimension == 2
+        bounds = self.spline.domain()
 
         if len(domain.boundaries) == 0:
             return domain

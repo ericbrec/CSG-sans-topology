@@ -520,7 +520,7 @@ class Solid:
             # Intersect manifolds, checking if the intersection is already in the cache.
             intersections, isTwin = boundary.manifold.cached_intersect_manifold(manifold, cache)
             if intersections is NotImplemented:
-                continue
+                raise NotImplementedError()
 
             # Each intersection is either a crossing (domain manifold) or a coincidence (solid within the domain).
             for intersection in intersections:
@@ -561,7 +561,7 @@ class Solid:
             slice.containsInfinity = self.contains_point(manifold.any_point())
 
         # Ensure the slice includes the manifold's inherent (implicit) boundaries, making it valid and complete.
-        slice = manifold.complete_domain(slice)
+        manifold.complete_domain(slice)
 
         # Now that we have a complete manifold domain, join it with each domain coincidence.
         for domainCoincidence in coincidences:

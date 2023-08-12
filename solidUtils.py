@@ -23,7 +23,7 @@ def solid_edges(solid, subdivide = False):
     """
     if solid.dimension > 1:
         for boundary in solid.boundaries:
-            for domainEdge in solid_edges(boundary.domain, not isinstance(boundary.manifold, Hyperplane)):
+            for domainEdge in solid_edges(boundary.domain, subdivide or not isinstance(boundary.manifold, Hyperplane)):
                 yield (boundary.manifold.point(domainEdge[0]), boundary.manifold.point(domainEdge[1]), boundary.manifold.normal(domainEdge[0]))
     else:
         def sort_key(boundary):

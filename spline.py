@@ -249,9 +249,9 @@ class Spline(Manifold):
         """
         assert len(point) == self.range_dimension()
         # Construct a lower range spline whose zeros are the ray intersection points.
-        coefs = np.delete(self.spline.coefs, 0, axis=0)
-        coefs[:] -= point[1:]
-        spline = BspySpline(self.spline.nInd, self.spline.nDep - 1, self.spline.order, self.spline.nCoef, self.spline.knots, coefs)
+        coefs = np.delete(self.spline.coefs, 0, axis=0).T
+        coefs -= point[1:]
+        spline = BspySpline(self.spline.nInd, self.spline.nDep - 1, self.spline.order, self.spline.nCoef, self.spline.knots, coefs.T)
         zeros = spline.zeros()
 
         # Generate list of intersections.

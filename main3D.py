@@ -1,5 +1,8 @@
 import numpy as np
 import solidUtils as utils
+from solid import Solid, Boundary
+from spline import Spline
+from bspy import Spline as BspySpline
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.art3d as art3d
 import mpl_toolkits.mplot3d.proj3d as proj3d
@@ -62,6 +65,7 @@ class InteractiveCanvas:
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
         self.canvas.mpl_connect('button_release_event', self.on_button_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
+        self.dragging = False
 
     def on_draw(self, event):
         """Callback for draws."""
@@ -75,14 +79,18 @@ class InteractiveCanvas:
         if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
-        self.ax.disable_mouse_rotation()
-        self.origin = self.GetPointFromEvent(event)
+        point = proj3d.transform(*self.solidB.any_point(), self.ax.M)
+        if abs(event.xdata - point[0]) + abs(event.ydata - point[1]) < 0.05:
+            self.ax.disable_mouse_rotation()
+            self.origin = self.GetPointFromEvent(event)
+            self.dragging = True
 
     def on_button_release(self, event):
         """Callback for mouse button releases."""
-        if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
+        if not self.dragging:
             return
 
+        self.dragging = False
         self.ax.mouse_init()
         self.solidC = self.PerformBooleanOperation(self.op)
         self.linesC.set_segments(utils.create_segments_from_solid(self.solidC))
@@ -96,9 +104,9 @@ class InteractiveCanvas:
 
     def on_mouse_move(self, event):
         """Callback for mouse movements."""
-        if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
+        if not self.dragging or event.inaxes is not self.ax:
             return
-        
+
         point = self.GetPointFromEvent(event)
         delta = point - self.origin
         self.solidB.translate(delta)
@@ -113,7 +121,7 @@ class InteractiveCanvas:
         self.canvas.blit(self.ax.bbox)
 
 if __name__ == "__main__":
-    cubeA = utils.create_hypercube([2,2,2], [0,0,0])
+    cubeA = utils.create_hypercube([2,2,2], [0,0,-3])
     print(cubeA.volume_integral(lambda x: 1.0), 4.0*4.0*4.0)
     print(cubeA.surface_integral(lambda x, n: n), 4.0*4.0*6.0)
     print(cubeA.winding_number([1,1,0]))
@@ -121,6 +129,21 @@ if __name__ == "__main__":
     cubeB = utils.create_hypercube([1,1,1], [1,1,1])
     print(cubeB.volume_integral(lambda x: 1.0), 2.0*2.0*2.0)
     print(cubeB.surface_integral(lambda x, n: n), 2.0*2.0*6.0)
+
+    
+    order = 3
+    knots = [0.0] * order + [1.0] * order
+    nCoef = len(knots) - order
+    spline = Spline(BspySpline(2, 3, (order, order), (nCoef, nCoef), (knots, knots), \
+        (((-1.0, -1.0, -1.0), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)), \
+        ((-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0)), \
+        ((1.0, 0.0, 1.0), (0.0, -1.0, 0.0), (1.0, 0.0, 1.0)))))
+    spline.flip_normal()
+    print(spline.normal((0.5, 0.5)))
+    cap = utils.hyperplane_axis_aligned(3, 2, 1.0, False)
+    paraboloid = Solid(3, False)
+    paraboloid.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
+    paraboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
 
     canvas = InteractiveCanvas(cubeA, cubeB)
     plt.show()

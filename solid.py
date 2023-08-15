@@ -490,6 +490,7 @@ class Solid:
         --------
         `intersection` : Intersect two solids.
         `manifold.Manifold.intersect_manifold` : Intersect two manifolds.
+        `manifold.Manifold.complete_slice` : Add any missing inherent (implicit) boundaries of this manifold's domain to the given slice.
 
         Notes
         -----
@@ -513,7 +514,6 @@ class Solid:
         # Start with an empty slice and no domain coincidences.
         slice = Solid(self.dimension-1, self.containsInfinity)
         coincidences = []
-        noIntersections = True
 
         # Intersect each of this solid's boundaries with the manifold.
         for boundary in self.boundaries:
@@ -524,7 +524,6 @@ class Solid:
 
             # Each intersection is either a crossing (domain manifold) or a coincidence (solid within the domain).
             for intersection in intersections:
-                noIntersections = False
                 if isinstance(intersection, Manifold.Crossing):
                     intersectionSlice = boundary.domain.slice(intersection.right if isTwin else intersection.left, cache)
                     if intersectionSlice:
@@ -556,12 +555,8 @@ class Solid:
                     # Finally, add the domain coincidence to the list of coincidences.
                     coincidences.append((invertDomainCoincidence, domainCoincidence))
 
-        # If there are no intersections (no crossings or coincidences), slice is entire domain or nothing based on point containment.
-        if noIntersections:
-            slice.containsInfinity = self.contains_point(manifold.any_point())
-
         # Ensure the slice includes the manifold's inherent (implicit) boundaries, making it valid and complete.
-        manifold.complete_domain(slice)
+        manifold.complete_slice(slice, self)
 
         # Now that we have a complete manifold domain, join it with each domain coincidence.
         for domainCoincidence in coincidences:

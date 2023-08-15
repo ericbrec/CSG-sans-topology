@@ -430,9 +430,19 @@ class Hyperplane(Manifold):
 
         return intersections
 
-    def complete_domain(self, domain):
+    def complete_slice(self, slice, solid):
         """
-        Add any missing inherent (implicit) boundaries of this manifold to the given domain that are needed to make the domain valid and complete.
+        Add any missing inherent (implicit) boundaries of this manifold's domain to the given slice of the 
+        given solid that are needed to make the slice valid and complete.
+
+        Parameters
+        ----------
+        slice : `solid.Solid`
+            The slice of the given solid formed by the manifold. The slice may be incomplete, missing some of the 
+            manifold's inherent domain boundaries. Its dimension must match `self.domain_dimension()`.
+
+        solid : `solid.Solid`
+            The solid being sliced by the manifold. Its dimension must match `self.range_dimension()`.
 
         Parameters
         ----------
@@ -446,6 +456,10 @@ class Hyperplane(Manifold):
 
         Notes
         -----
-        Since hyperplanes have no inherent domain boundaries, this operation does nothing.
+        Since hyperplanes have no inherent domain boundaries, this operation only tests for 
+        point containment for zero-dimension hyperplanes (points).
         """
-        assert domain is None or self.domain_dimension() == domain.dimension
+        assert self.domain_dimension() == slice.dimension
+        assert self.range_dimension() == solid.dimension
+        if slice.dimension == 0:
+            slice.containsInfinity = solid.contains_point(self.any_point())

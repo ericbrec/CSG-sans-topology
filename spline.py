@@ -498,10 +498,10 @@ class Spline(Manifold):
                     sliceDomain.boundaries.insert(0, Boundary(Hyperplane(-sliceDomain.boundaries[0].manifold._normal, bounds[1-i][0], 0.0), pointDomain))
                     sliceDomain.boundaries.append(Boundary(Hyperplane(-sliceDomain.boundaries[-1].manifold._normal, bounds[1-i][1], 0.0), pointDomain))
                 # Process the boundary's first point.
-                process_domain_point(boundary, sliceDomain.boundaries[0]._point)
+                process_domain_point(boundary, sliceDomain.boundaries[0].manifold._point)
                 # Process the boundary's last point.
                 if len(sliceDomain.boundaries) > 1:
-                    process_domain_point(boundary, sliceDomain.boundaries[-1]._point)
+                    process_domain_point(boundary, sliceDomain.boundaries[-1].manifold._point)
                 b += 1
         
         if not boundaryAdded:

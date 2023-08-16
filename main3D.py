@@ -41,14 +41,14 @@ class InteractiveCanvas:
         self.canvas = self.ax.figure.canvas
 
         axRadioButtons = fig.add_axes([0.85, 0.88, 0.12, 0.12])
-        self.radioButtons = widgets.RadioButtons(axRadioButtons, ["OR", "AND", "DIFF"])
+        self.radioButtons = widgets.RadioButtons(axRadioButtons, ["AND", "OR", "DIFF"])
         self.radioButtons.on_clicked(self.on_radio_press)
 
         self.origin = [0.0]*solidB.dimension 
 
         self.solidA = solidA
         self.solidB = solidB
-        self.solidC = self.PerformBooleanOperation('OR') # First radio button
+        self.solidC = self.PerformBooleanOperation('AND') # First radio button
         
         self.linesA = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidA), linewidth=1, color="blue")
         self.linesB = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidB), linewidth=1, color="orange")
@@ -121,7 +121,7 @@ class InteractiveCanvas:
         self.canvas.blit(self.ax.bbox)
 
 if __name__ == "__main__":
-    cubeA = utils.create_hypercube([2,2,2], [0,0,-4])
+    cubeA = utils.create_hypercube([2,2,2], [0,0,-2.5])
     print(cubeA.volume_integral(lambda x: 1.0), 4.0*4.0*4.0)
     print(cubeA.surface_integral(lambda x, n: n), 4.0*4.0*6.0)
     print(cubeA.winding_number([1,1,0]))
@@ -137,9 +137,8 @@ if __name__ == "__main__":
     spline = Spline(BspySpline(2, 3, (order, order), (nCoef, nCoef), (knots, knots), \
         (((-1.0, -1.0, -1.0), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)), \
         ((-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0)), \
-        ((1.0, 0.0, 1.0), (0.0, -1.0, 0.0), (1.0, 0.0, 1.0)))))
+        ((1.0, 0.0, 1.0), (0.0, -5.0, 0.0), (1.0, 0.0, 1.0)))))
     spline.flip_normal()
-    print(spline.normal((0.5, 0.5)))
     cap = utils.hyperplane_axis_aligned(3, 2, 1.0, False)
     paraboloid = Solid(3, False)
     paraboloid.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))

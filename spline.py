@@ -464,15 +464,15 @@ class Spline(Manifold):
                 # See if and where point touches bounding box of slice.
                 for i in range(slice.dimension):
                     for j in range(2):
-                        if abs(point[i] - bounds[i][j]) < Manifold.minSeparation:
-                            index = i * 2 + j
-                            newBoundary = newBoundaries[index] # Lookup new boundary in cache
+                        index = i * 2 + j
+                        newBoundary = newBoundaries[index] # Lookup new boundary in cache
+                        if boundary is not newBoundary and abs(point[i] - bounds[i][j]) < Manifold.minSeparation:
                             if newBoundary is None:
                                 # Boundary doesn't exist, so create it and add it to the cache and the slice
                                 direction = boundaryDirection * (-1.0 if j == 0 else 1.0)
                                 unitVector = np.array((0.0, 0.0))
                                 unitVector[i] = 1.0
-                                tangent = np.array((0.0, 0.0))
+                                tangent = np.array(((0.0, 0.0),)).T # Tangent space shape must be (2, 1)
                                 tangent[1-i] = 1.0
                                 newBoundary = Boundary(Hyperplane(direction * unitVector, bounds[i][j] * unitVector, tangent), Solid(1, False))
                                 newBoundaries[index] = newBoundary
@@ -480,7 +480,7 @@ class Spline(Manifold):
                                 boundaryAdded = True
                             # Now add the point onto the new boundary, with a direction based on the point's normal and the boundary direction.
                             normal = boundary.manifold.normal(domainPoint)
-                            newBoundary.slice.boundaries.append(Boundary(Hyperplane(boundaryDirection * np.sign(normal[1-i]), point[1-i], 0.0), pointDomain))
+                            newBoundary.domain.boundaries.append(Boundary(Hyperplane(boundaryDirection * np.sign(normal[1-i]), point[1-i], 0.0), pointDomain))
 
             # Go through each boundary and check if either of its endpoints lies on the spline's bounds.
             # We use a while loop, because endpoints may add new boundaries.

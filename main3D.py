@@ -121,7 +121,7 @@ class InteractiveCanvas:
         self.canvas.blit(self.ax.bbox)
 
 if __name__ == "__main__":
-    cubeA = utils.create_hypercube([2,2,2], [0,0,-2.5])
+    cubeA = utils.create_hypercube([2,2,2], [0,-2,-2.5])
     print(cubeA.volume_integral(lambda x: 1.0), 4.0*4.0*4.0)
     print(cubeA.surface_integral(lambda x, n: n), 4.0*4.0*6.0)
     print(cubeA.winding_number([1,1,0]))

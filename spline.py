@@ -441,10 +441,6 @@ class Spline(Manifold):
         bounds = self.spline.domain()
         boundaryAdded = False
 
-        # Direction of new boundaries
-        boundaryDirection = -1.0 if slice.containsInfinity else 1.0
-        slice.containsInfinity = False
-        
         # For curves, add endpoints of slice.
         if slice.dimension == 1 and slice.boundaries:
             slice.boundaries.sort(key=lambda b: (b.manifold.point(0.0), b.manifold.normal(0.0)))
@@ -453,57 +449,35 @@ class Spline(Manifold):
             slice.boundaries.append(Boundary(Hyperplane(-slice.boundaries[-1].manifold._normal, bounds[0][1], 0.0), sliceDomain))
             boundaryAdded = True
 
-        # For surfaces, add bounding box edges to slice based on where partial slice touches them.
+        # For surfaces, add bounding box for domain and intersect it with existing slice boundaries.
         if slice.dimension == 2 and slice.boundaries:
-            newBoundaries = [None] * bounds.size # Cache for new slice boundaries
-            pointDomain = Solid(0, True) # Domain for 1D points.
+            pointDomain = Solid(0, True) # Create domain for 1D points.
+            boundaryCount = len(slice.boundaries) # Keep track of existing slice boundaries
+            self.establish_domain_bounds(slice, bounds) # Add bounding box to slice boundaries
+            boundaryAdded = True
 
             # Nested function for adding slice points to new boundaries.
             def process_domain_point(boundary, domainPoint):
                 point = boundary.manifold.point(domainPoint)
                 # See if and where point touches bounding box of slice.
-                for i in range(slice.dimension):
-                    for j in range(2):
-                        index = i * 2 + j
-                        newBoundary = newBoundaries[index] # Lookup new boundary in cache
-                        if boundary is not newBoundary and abs(point[i] - bounds[i][j]) < Manifold.minSeparation:
-                            if newBoundary is None:
-                                # Boundary doesn't exist, so create it and add it to the cache and the slice
-                                direction = boundaryDirection * (-1.0 if j == 0 else 1.0)
-                                unitVector = np.array((0.0, 0.0))
-                                unitVector[i] = 1.0
-                                tangent = np.array(((0.0, 0.0),)).T # Tangent space shape must be (2, 1)
-                                tangent[1-i] = 1.0
-                                newBoundary = Boundary(Hyperplane(direction * unitVector, bounds[i][j] * unitVector, tangent), Solid(1, False))
-                                newBoundaries[index] = newBoundary
-                                slice.boundaries.append(newBoundary)
-                                boundaryAdded = True
-                            # Now add the point onto the new boundary, with a direction based on the point's normal and the boundary direction.
-                            normal = boundary.manifold.normal(domainPoint)
-                            newBoundary.domain.boundaries.append(Boundary(Hyperplane(boundaryDirection * np.sign(normal[1-i]), point[1-i], 0.0), pointDomain))
+                for newBoundary in slice.boundaries[boundaryCount:]:
+                    vector = domainPoint - newBoundary.manifold._point
+                    if np.dot(newBoundary.manifold._normal, vector) < Manifold.minSeparation:
+                        # Add the point onto the new boundary.
+                        normal = np.sign(newBoundary.manifold._tangentSpace.T @ boundary.manifold.normal(domainPoint)) * (-1 if slice.containsInfinity else 1.0)
+                        newBoundary.domain.boundaries.append(Boundary(Hyperplane(normal, newBoundary.manifold._tangentSpace.T @ vector, 0.0), pointDomain))
+                        break
 
-            # Go through each boundary and check if either of its endpoints lies on the spline's bounds.
-            # We use a while loop, because endpoints may add new boundaries.
-            b = 0
-            lenBoundariesOriginally = len(slice.boundaries)
-            while b < len(slice.boundaries):
-                boundary = slice.boundaries[b]
+            # Go through existing boundaries and check if either of their endpoints lies on the spline's bounds.
+            for boundary in slice.boundaries[:boundaryCount]:
                 sliceDomain = boundary.domain
                 sliceDomain.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
-                if b >= lenBoundariesOriginally:
-                    # New boundary, so let's complete its own domain first (basically the same code as for curves).
-                    for i in range(slice.dimension):
-                        if abs(boundary.manifold._normal[i]) > Manifold.minSeparation:
-                            break
-                    sliceDomain.boundaries.insert(0, Boundary(Hyperplane(-sliceDomain.boundaries[0].manifold._normal, bounds[1-i][0], 0.0), pointDomain))
-                    sliceDomain.boundaries.append(Boundary(Hyperplane(-sliceDomain.boundaries[-1].manifold._normal, bounds[1-i][1], 0.0), pointDomain))
-                # Process the boundary's first point.
                 process_domain_point(boundary, sliceDomain.boundaries[0].manifold._point)
-                # Process the boundary's last point.
                 if len(sliceDomain.boundaries) > 1:
                     process_domain_point(boundary, sliceDomain.boundaries[-1].manifold._point)
-                b += 1
         
-        if not boundaryAdded:
+        if boundaryAdded:
+            slice.containsInfinity = False
+        else:
             slice.containsInfinity = solid.contains_point(self.any_point())
             self.establish_domain_bounds(slice, bounds)

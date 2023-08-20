@@ -445,8 +445,10 @@ class Spline(Manifold):
         if slice.dimension == 1 and slice.boundaries:
             slice.boundaries.sort(key=lambda b: (b.manifold.point(0.0), b.manifold.normal(0.0)))
             sliceDomain = Solid(0, True) # Domain for 1D points.
-            slice.boundaries.insert(0, Boundary(Hyperplane(-slice.boundaries[0].manifold._normal, bounds[0][0], 0.0), sliceDomain))
-            slice.boundaries.append(Boundary(Hyperplane(-slice.boundaries[-1].manifold._normal, bounds[0][1], 0.0), sliceDomain))
+            if abs(slice.boundaries[0].manifold._point - bounds[0][0]) >= Manifold.minSeparation:
+                slice.boundaries.insert(0, Boundary(Hyperplane(-slice.boundaries[0].manifold._normal, bounds[0][0], 0.0), sliceDomain))
+            if abs(slice.boundaries[-1].manifold._point - bounds[0][1]) >= Manifold.minSeparation:
+                slice.boundaries.append(Boundary(Hyperplane(-slice.boundaries[-1].manifold._normal, bounds[0][1], 0.0), sliceDomain))
             boundaryAdded = True
 
         # For surfaces, add bounding box for domain and intersect it with existing slice boundaries.
@@ -462,7 +464,7 @@ class Spline(Manifold):
                 # See if and where point touches bounding box of slice.
                 for newBoundary in slice.boundaries[boundaryCount:]:
                     vector = domainPoint - newBoundary.manifold._point
-                    if np.dot(newBoundary.manifold._normal, vector) < Manifold.minSeparation:
+                    if abs(np.dot(newBoundary.manifold._normal, vector)) < Manifold.minSeparation:
                         # Add the point onto the new boundary.
                         normal = np.sign(newBoundary.manifold._tangentSpace.T @ boundary.manifold.normal(domainPoint)) * (-1 if slice.containsInfinity else 1.0)
                         newBoundary.domain.boundaries.append(Boundary(Hyperplane(normal, newBoundary.manifold._tangentSpace.T @ vector, 0.0), pointDomain))

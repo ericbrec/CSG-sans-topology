@@ -57,8 +57,24 @@ def solid_edges(solid, subdivide = False):
             leftB += 1
 
 
-def create_segments_from_solid(solid):
+def create_segments_from_solid(solid, includeManifold=False):
     segments = []
+
+    if includeManifold and solid.dimension == 3:
+        for boundary in solid.boundaries:
+            if isinstance(boundary.manifold, Spline):
+                spline = boundary.manifold.spline
+                domain = spline.domain()
+                segment = []
+                for u in np.linspace(domain[0][0], domain[0][1], 5):
+                    for v in np.linspace(domain[1][0], domain[1][1], 10):
+                        segment.append(spline((u, v)))
+                segments.append(segment)
+                segment = []
+                for v in np.linspace(domain[1][0], domain[1][1], 5):
+                    for u in np.linspace(domain[0][0], domain[0][1], 10):
+                        segment.append(spline((u, v)))
+                segments.append(segment)
     
     for edge in solid_edges(solid):
         middle = 0.5 * (edge[0] + edge[1])

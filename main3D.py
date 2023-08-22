@@ -50,8 +50,8 @@ class InteractiveCanvas:
         self.solidB = solidB
         self.solidC = self.PerformBooleanOperation('AND') # First radio button
         
-        self.linesA = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidA), linewidth=1, color="blue")
-        self.linesB = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidB), linewidth=1, color="orange")
+        self.linesA = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidA, True), linewidth=1, color="blue")
+        self.linesB = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidB, True), linewidth=1, color="orange")
         self.linesC = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidC), linewidth=3, color="red")
         
         self.ax.set(xlabel="x", ylabel="y", zlabel="z")

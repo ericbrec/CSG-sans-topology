@@ -111,13 +111,15 @@ def create_hypercube(size, position = None):
             del domainSize[i]
             domainPosition = position.copy()
             del domainPosition[i]
-            domain = create_hypercube(domainSize, domainPosition)
+            domain1 = create_hypercube(domainSize, domainPosition)
+            domain2 = create_hypercube(domainSize, domainPosition)
         else:
-            domain = Solid(0, True)
+            domain1 = Solid(0, True)
+            domain2 = Solid(0, True)
         hyperplane = hyperplane_axis_aligned(dimension, i, size[i] + position[i], False)
-        solid.boundaries.append(Boundary(hyperplane,domain))
+        solid.boundaries.append(Boundary(hyperplane,domain1))
         hyperplane = hyperplane_axis_aligned(dimension, i, size[i] - position[i], True)
-        solid.boundaries.append(Boundary(hyperplane,domain))
+        solid.boundaries.append(Boundary(hyperplane,domain2))
 
     return solid
 

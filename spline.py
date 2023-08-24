@@ -397,10 +397,13 @@ class Spline(Manifold):
         domain.containsInfinity = False
         for i in range(dimension):
             if dimension > 1:
-                domainDomain = Solid(dimension - 1, False)
-                Spline.establish_domain_bounds(domainDomain, np.delete(bounds, i, axis=0))
+                domainDomain1 = Solid(dimension - 1, False)
+                Spline.establish_domain_bounds(domainDomain1, np.delete(bounds, i, axis=0))
+                domainDomain2 = Solid(dimension - 1, False)
+                Spline.establish_domain_bounds(domainDomain2, np.delete(bounds, i, axis=0))
             else:
-                domainDomain = Solid(0, True)
+                domainDomain1 = Solid(0, True)
+                domainDomain2 = Solid(0, True)
             diagonal = np.identity(dimension)
             unitVector = diagonal[i]
             if dimension > 1:
@@ -408,9 +411,9 @@ class Spline(Manifold):
             else:
                 tangentSpace = np.array([0.0])
             hyperplane = Hyperplane(-direction * unitVector, bounds[i][0] * unitVector, tangentSpace)
-            domain.boundaries.append(Boundary(hyperplane, domainDomain))
+            domain.boundaries.append(Boundary(hyperplane, domainDomain1))
             hyperplane = Hyperplane(direction * unitVector, bounds[i][1] * unitVector, tangentSpace)
-            domain.boundaries.append(Boundary(hyperplane, domainDomain))
+            domain.boundaries.append(Boundary(hyperplane, domainDomain2))
 
     def complete_slice(self, slice, solid):
         """
@@ -444,18 +447,19 @@ class Spline(Manifold):
         # For curves, add endpoints of slice.
         if slice.dimension == 1 and slice.boundaries:
             slice.boundaries.sort(key=lambda b: (b.manifold.point(0.0), b.manifold.normal(0.0)))
-            sliceDomain = Solid(0, True) # Domain for 1D points.
             if abs(slice.boundaries[0].manifold._point - bounds[0][0]) >= Manifold.minSeparation:
-                slice.boundaries.insert(0, Boundary(Hyperplane(-slice.boundaries[0].manifold._normal, bounds[0][0], 0.0), sliceDomain))
+                slice.boundaries.insert(0, Boundary(Hyperplane(-slice.boundaries[0].manifold._normal, bounds[0][0], 0.0), Solid(0, True)))
             if abs(slice.boundaries[-1].manifold._point - bounds[0][1]) >= Manifold.minSeparation:
-                slice.boundaries.append(Boundary(Hyperplane(-slice.boundaries[-1].manifold._normal, bounds[0][1], 0.0), sliceDomain))
+                slice.boundaries.append(Boundary(Hyperplane(-slice.boundaries[-1].manifold._normal, bounds[0][1], 0.0), Solid(0, True)))
             boundaryAdded = True
 
         # For surfaces, add bounding box for domain and intersect it with existing slice boundaries.
         if slice.dimension == 2 and slice.boundaries:
-            pointDomain = Solid(0, True) # Create domain for 1D points.
             boundaryCount = len(slice.boundaries) # Keep track of existing slice boundaries
+            direction = 1.0 if slice.containsInfinity else -1.0 # Must capture direction before it is reset by establish_domain_bounds
             self.establish_domain_bounds(slice, bounds) # Add bounding box to slice boundaries
+            untouchedBoundaries = set(slice.boundaries[boundaryCount:])
+            touchedBoundaries = set()
             boundaryAdded = True
 
             # Nested function for adding slice points to new boundaries.
@@ -463,20 +467,62 @@ class Spline(Manifold):
                 point = boundary.manifold.point(domainPoint)
                 # See if and where point touches bounding box of slice.
                 for newBoundary in slice.boundaries[boundaryCount:]:
-                    vector = domainPoint - newBoundary.manifold._point
+                    vector = point - newBoundary.manifold._point
                     if abs(np.dot(newBoundary.manifold._normal, vector)) < Manifold.minSeparation:
                         # Add the point onto the new boundary.
-                        normal = np.sign(newBoundary.manifold._tangentSpace.T @ boundary.manifold.normal(domainPoint)) * (-1 if slice.containsInfinity else 1.0)
-                        newBoundary.domain.boundaries.append(Boundary(Hyperplane(normal, newBoundary.manifold._tangentSpace.T @ vector, 0.0), pointDomain))
+                        normal = direction * np.sign(newBoundary.manifold._tangentSpace.T @ boundary.manifold.normal(domainPoint))
+                        newBoundary.domain.boundaries.append(Boundary(Hyperplane(normal, newBoundary.manifold._tangentSpace.T @ vector, 0.0), Solid(0, True)))
+                        touchedBoundaries.add(newBoundary)
+                        untouchedBoundaries.remove(newBoundary)
                         break
 
             # Go through existing boundaries and check if either of their endpoints lies on the spline's bounds.
             for boundary in slice.boundaries[:boundaryCount]:
-                sliceDomain = boundary.domain
-                sliceDomain.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
-                process_domain_point(boundary, sliceDomain.boundaries[0].manifold._point)
-                if len(sliceDomain.boundaries) > 1:
-                    process_domain_point(boundary, sliceDomain.boundaries[-1].manifold._point)
+                domainBoundaries = boundary.domain.boundaries
+                domainBoundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
+                process_domain_point(boundary, domainBoundaries[0].manifold._point)
+                if len(domainBoundaries) > 1:
+                    process_domain_point(boundary, domainBoundaries[-1].manifold._point)
+            
+            # Complete the touched boundary domains.
+            for newBoundary in touchedBoundaries:
+                domainBoundaries = newBoundary.domain.boundaries
+                assert len(domainBoundaries) > 2
+                domainBoundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
+                # Ensure domain endpoints don't overlap and their normals are consistent.
+                if abs(domainBoundaries[0].manifold._point - domainBoundaries[1].manifold._point) < Manifold.minSeparation:
+                    domainBoundaries.pop(0)
+                else:
+                    domainBoundaries[0].manifold._normal = -domainBoundaries[1].manifold._normal
+                if abs(domainBoundaries[-1].manifold._point - domainBoundaries[-2].manifold._point) < Manifold.minSeparation:
+                    domainBoundaries.pop(-1)
+                else:
+                    domainBoundaries[-1].manifold._normal = -domainBoundaries[-2].manifold._normal
+                # Ensure untouched domain endpoints are consistent with touched endpoints.
+                for boundary in untouchedBoundaries.copy():
+                    if np.dot(newBoundary.manifold._normal, boundary.manifold._normal) < Manifold.minSeparation:
+                        domainBoundaries2 = boundary.domain.boundaries # Already sorted by construction
+                        assert(len(domainBoundaries2)) == 2
+                        index1 = -1 if direction * newBoundary.manifold._tangentSpace.T @ boundary.manifold._normal > 0.0 else 0
+                        index2 = -1 if direction * boundary.manifold._tangentSpace.T @ newBoundary.manifold._normal > 0.0 else 0
+                        domainBoundaries2[index2].manifold._normal = (1 if index1 == index2 else -1) * domainBoundaries[index1].manifold._normal
+                        domainBoundaries2[-1 - index2].manifold._normal = -domainBoundaries2[index2].manifold._normal
+                        untouchedBoundaries.remove(boundary)
+            
+            # Ensure remaining untouched domain endpoints are consistent with the rest of the boundaries.
+            if touchedBoundaries and untouchedBoundaries:
+                assert len(untouchedBoundaries) == 1 # One touched boundary will contact two untouched boundaries, leaving at most one untouched
+                boundary = untouchedBoundaries.pop()
+                for newBoundary in slice.boundaries[boundaryCount:]:
+                    if np.dot(newBoundary.manifold._normal, boundary.manifold._normal) < Manifold.minSeparation:
+                        domainBoundaries = newBoundary.domain.boundaries # Sorted earlier
+                        domainBoundaries2 = boundary.domain.boundaries # Already sorted by construction
+                        assert(len(domainBoundaries2)) == 2
+                        index1 = -1 if direction * newBoundary.manifold._tangentSpace.T @ boundary.manifold._normal > 0.0 else 0
+                        index2 = -1 if direction * boundary.manifold._tangentSpace.T @ newBoundary.manifold._normal > 0.0 else 0
+                        domainBoundaries2[index2].manifold._normal = (1 if index1 == index2 else -1) * domainBoundaries[index1].manifold._normal
+                        domainBoundaries2[-1 - index2].manifold._normal = -domainBoundaries2[index2].manifold._normal
+                        break
         
         if boundaryAdded:
             slice.containsInfinity = False

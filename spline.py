@@ -227,6 +227,13 @@ class Spline(Manifold):
         `solid.Solid.compliment` : Return the compliment of the solid: whatever was inside is outside and vice-versa.
         """
         self.normalDirection *= -1.0
+    
+    @staticmethod
+    def _process_zero(zero):
+        # Process zero returned by bspy.Spline.zeros().
+        if isinstance(zero, tuple):
+            zero = 0.5 * (zero[0] + zero[1])
+        return np.atleast_1d(zero)
 
     def intersect_x_ray(self, point):
         """
@@ -257,7 +264,7 @@ class Spline(Manifold):
         # Generate list of intersections.
         intersections = []
         for zero in zeros:
-            zero = np.atleast_1d(zero)
+            zero = self._process_zero(zero)
             intersections.append(Manifold.RayCrossing(self.spline(zero)[0] - point[0], zero))
 
         return intersections
@@ -318,7 +325,7 @@ class Spline(Manifold):
                 zeros = spline.zeros()
                 # Convert each point into a Manifold.Crossing.
                 for zero in zeros:
-                    zero = np.atleast_1d(zero)
+                    zero = self._process_zero(zero)
                     intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, inverseTangentSpace @ other._tangentSpace.T @ (self.spline(zero) - other._point), 0.0)))
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.
@@ -342,6 +349,7 @@ class Spline(Manifold):
                 zeros = spline.zeros()
                 # Convert each point into a Manifold.Crossing.
                 for zero in zeros:
+                    zero = self._process_zero(zero)
                     intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[:nDep], 0.0), Hyperplane(1.0, zero[nDep:], 0.0)))
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.
@@ -473,7 +481,7 @@ class Spline(Manifold):
                         normal = direction * np.sign(newBoundary.manifold._tangentSpace.T @ boundary.manifold.normal(domainPoint))
                         newBoundary.domain.boundaries.append(Boundary(Hyperplane(normal, newBoundary.manifold._tangentSpace.T @ vector, 0.0), Solid(0, True)))
                         touchedBoundaries.add(newBoundary)
-                        untouchedBoundaries.remove(newBoundary)
+                        untouchedBoundaries.discard(newBoundary)
                         break
 
             # Go through existing boundaries and check if either of their endpoints lies on the spline's bounds.
@@ -507,7 +515,7 @@ class Spline(Manifold):
                         index2 = -1 if direction * boundary.manifold._tangentSpace.T @ newBoundary.manifold._normal > 0.0 else 0
                         domainBoundaries2[index2].manifold._normal = (1 if index1 == index2 else -1) * domainBoundaries[index1].manifold._normal
                         domainBoundaries2[-1 - index2].manifold._normal = -domainBoundaries2[index2].manifold._normal
-                        untouchedBoundaries.remove(boundary)
+                        untouchedBoundaries.discard(boundary)
             
             # Ensure remaining untouched domain endpoints are consistent with the rest of the boundaries.
             if touchedBoundaries and untouchedBoundaries:

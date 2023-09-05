@@ -144,12 +144,13 @@ if __name__ == "__main__":
     paraboloid.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
     paraboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
 
+    spline = Spline(1.0 * spline.spline)
+    spline.flip_normal()
+    cap = utils.hyperplane_axis_aligned(3, 2, 1.0, False)
     flippedParaboloid = Solid(3,False)
-    spline = Spline(-1.0 * spline.spline)
-    cap = utils.hyperplane_axis_aligned(3, 2, 1.0, True)
     flippedParaboloid.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
     flippedParaboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
-    flippedParaboloid.translate(np.array((0.0, -0.2, -0.5)))
+    flippedParaboloid.translate(np.array((0.0, 0.5, 0.55)))
 
     #canvas = InteractiveCanvas(cubeA, paraboloid)
     canvas = InteractiveCanvas(paraboloid, flippedParaboloid)

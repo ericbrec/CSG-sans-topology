@@ -233,7 +233,7 @@ class Manifold:
 
         See Also
         --------
-        `solid.Solid.compliment` : Return the compliment of the solid: whatever was inside is outside and vice-versa.
+        `solid.Solid.complement` : Return the complement of the solid: whatever was inside is outside and vice-versa.
         """
         pass
 

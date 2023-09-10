@@ -224,7 +224,7 @@ class Spline(Manifold):
 
         See Also
         --------
-        `solid.Solid.compliment` : Return the compliment of the solid: whatever was inside is outside and vice-versa.
+        `solid.Solid.complement` : Return the complement of the solid: whatever was inside is outside and vice-versa.
         """
         self.normalDirection *= -1.0
     
@@ -232,7 +232,7 @@ class Spline(Manifold):
     def _process_zero(zero):
         # Process zero returned by bspy.Spline.zeros().
         if isinstance(zero, tuple):
-            zero = 0.5 * (zero[0] + zero[1])
+            zero = 0.5 * (zero[0] + zero[1]) # Punt on overlapping areas for now
         return np.atleast_1d(zero)
 
     def intersect_x_ray(self, point):

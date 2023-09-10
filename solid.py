@@ -101,14 +101,14 @@ class Solid:
         """
         return not self
 
-    def compliment(self):
+    def complement(self):
         """
-        Return the compliment of the solid: whatever was inside is outside and vice-versa.
+        Return the complement of the solid: whatever was inside is outside and vice-versa.
 
         Returns
         -------
         solid : `Solid`
-            The compliment of the solid.
+            The complement of the solid.
 
         See Also
         --------
@@ -124,7 +124,7 @@ class Solid:
         return solid
 
     def __neg__(self):
-        return self.compliment()
+        return self.complement()
 
     def transform(self, matrix, matrixInverseTranspose = None):
         """
@@ -655,7 +655,7 @@ class Solid:
         `Intersect` : Intersect two solids.
         `difference` : Subtract one solid from another. 
         """
-        return self.compliment().intersection(other.compliment()).compliment()
+        return self.complement().intersection(other.complement()).complement()
 
     def __add__(self, other):
         return self.union(other)
@@ -679,7 +679,7 @@ class Solid:
         `intersection` : Intersect two solids.
         `union` : union two solids.
         """
-        return self.intersection(other.compliment())
+        return self.intersection(other.complement())
 
     def __sub__(self, other):
         return self.difference(other)

@@ -524,17 +524,16 @@ class Solid:
 
             # Each intersection is either a crossing (domain manifold) or a coincidence (solid within the domain).
             for intersection in intersections:
+                (left, right) = (intersection.right, intersection.left) if isTwin else (intersection.left, intersection.right)
+
                 if isinstance(intersection, Manifold.Crossing):
-                    domainSlice = boundary.domain.slice(intersection.right if isTwin else intersection.left, cache)
+                    domainSlice = boundary.domain.slice(left, cache)
                     if domainSlice:
-                        slice.boundaries.append(Boundary(intersection.left if isTwin else intersection.right, domainSlice))
+                        slice.boundaries.append(Boundary(right, domainSlice))
 
                 elif isinstance(intersection, Manifold.Coincidence):
                     # First, intersect domain coincidence with the domain boundary.
-                    if isTwin:
-                        coincidence = intersection.right.intersection(boundary.domain)
-                    else:
-                        coincidence = intersection.left.intersection(boundary.domain)
+                    coincidence = left.intersection(boundary.domain)
                     # Next, invert the domain coincidence (which will remove it) if this is a twin or if the normals point in opposite directions.
                     invertCoincidence = (trimTwin and isTwin) or intersection.alignment < 0.0
                     if invertCoincidence:

@@ -38,6 +38,7 @@ class InteractiveCanvas:
         fig = plt.figure(figsize=(6, 6))
         self.ax = fig.add_subplot(projection='3d')
         self.ax.set_title('Drag shape to update solid')
+        self.ax.axis('off')
         self.canvas = self.ax.figure.canvas
 
         axRadioButtons = fig.add_axes([0.85, 0.88, 0.12, 0.12])
@@ -51,7 +52,7 @@ class InteractiveCanvas:
         self.solidC = self.PerformBooleanOperation('AND') # First radio button
         
         self.linesA = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidA, True), linewidth=1, color="blue")
-        self.linesB = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidB, True), linewidth=1, color="orange")
+        self.linesB = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidB, True), linewidth=1, color="green")
         self.linesC = art3d.Line3DCollection(utils.create_segments_from_solid(self.solidC), linewidth=3, color="red")
         
         self.ax.set(xlabel="x", ylabel="y", zlabel="z")
@@ -121,12 +122,12 @@ class InteractiveCanvas:
         self.canvas.blit(self.ax.bbox)
 
 if __name__ == "__main__":
-    cubeA = utils.create_hypercube([2,2,2], [0,-2,-2.5])
+    cubeA = utils.create_hypercube([1.5,1.5,1.5], [-1,-1,-1])
     print(cubeA.volume_integral(lambda x: 1.0), 4.0*4.0*4.0)
     print(cubeA.surface_integral(lambda x, n: n), 4.0*4.0*6.0)
     print(cubeA.winding_number([1,1,0]))
     print(cubeA.winding_number([4,1,0]))
-    cubeB = utils.create_hypercube([1,1,1], [1,1,1])
+    cubeB = utils.create_hypercube([1,1,1], [0.5,0.5,0.5])
     print(cubeB.volume_integral(lambda x: 1.0), 2.0*2.0*2.0)
     print(cubeB.surface_integral(lambda x, n: n), 2.0*2.0*6.0)
 
@@ -152,6 +153,6 @@ if __name__ == "__main__":
     flippedParaboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
     flippedParaboloid.translate(np.array((0.0, 0.5, 0.55)))
 
-    #canvas = InteractiveCanvas(cubeA, paraboloid)
-    canvas = InteractiveCanvas(paraboloid, flippedParaboloid)
+    canvas = InteractiveCanvas(cubeA, cubeB)
+    #canvas = InteractiveCanvas(paraboloid, flippedParaboloid)
     plt.show()

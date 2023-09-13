@@ -77,6 +77,7 @@ class InteractiveCanvas:
 
         fig, self.ax = plt.subplots(figsize=(6, 6))
         self.ax.set_title('Drag shape to update solid')
+        self.ax.axis('off')
         self.canvas = self.ax.figure.canvas
 
         self.axRadioButtons = fig.add_axes([0.85, 0.88, 0.12, 0.12])
@@ -90,7 +91,7 @@ class InteractiveCanvas:
         self.solidC = self.PerformBooleanOperation('OR') # First radio button
 
         self.linesA = LineCollection(utils.create_segments_from_solid(self.solidA), linewidth=1, color="blue")
-        self.linesB = LineCollection(utils.create_segments_from_solid(self.solidB), linewidth=1, color="orange")
+        self.linesB = LineCollection(utils.create_segments_from_solid(self.solidB), linewidth=1, color="green")
         self.linesC = LineCollection(utils.create_segments_from_solid(self.solidC), linewidth=3, color="red")
         
         self.ax.set(xlim = (-4, 4), ylim = (-4, 4))
@@ -113,12 +114,13 @@ if __name__ == "__main__":
     print(triangleA.winding_number(np.array([0,-1])))
     triangleA = utils.create_smooth_solid_from_points(2, [[1,1],[-2,-2],[1,-2]])
 
-    squareA = utils.create_hypercube([2,2], [-1,-1])
+    squareA = utils.create_hypercube([1.5,1.5], [-1,-1])
     print(squareA.volume_integral(lambda x: 1.0), 4.0*4.0)
     print(squareA.surface_integral(lambda x, n: n), 4.0*4.0)
     print(squareA.winding_number(np.array([0.,0.])))
     print(squareA.winding_number(np.array([-0.23870968,1.])))
-    squareB = utils.create_hypercube([1,1], [1.2,-0.005])
+    #squareB = utils.create_hypercube([1,1], [1.2,-0.005])
+    squareB = utils.create_hypercube([1,1], [0.5, 0.5])
     print(squareB.volume_integral(lambda x: 1.0), 2.0*2.0)
     print(squareB.surface_integral(lambda x, n: n), 2.0*4.0)
 
@@ -131,13 +133,13 @@ if __name__ == "__main__":
     starB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0)
     print(starB.volume_integral(lambda x: 1.0), starArea)
     print(starB.surface_integral(lambda x, n: n), starPerimeter)
-    #starB.translate([-2.31895479, -2.69507693])
-    starB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0, True)
-    starB.translate([-1.31895479, -3.69507693])
+    starB.translate([-2.31895479, -2.69507693])
+    #starB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0, True)
+    #starB.translate([-1.31895479, -3.69507693])
 
     #canvas = InteractiveCanvas(triangleA, squareA)
     #canvas = InteractiveCanvas(squareA, squareB)
-    #canvas = InteractiveCanvas(starA, starB)
+    canvas = InteractiveCanvas(starA, starB)
     #canvas = InteractiveCanvas(squareA, starB)
-    canvas = InteractiveCanvas(triangleA, starB)
+    #canvas = InteractiveCanvas(triangleA, starB)
     plt.show()

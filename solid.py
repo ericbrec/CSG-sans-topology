@@ -525,25 +525,25 @@ class Solid:
             # Each intersection is either a crossing (domain manifold) or a coincidence (solid within the domain).
             for intersection in intersections:
                 if isinstance(intersection, Manifold.Crossing):
-                    intersectionSlice = boundary.domain.slice(intersection.right if isTwin else intersection.left, cache)
-                    if intersectionSlice:
-                        slice.boundaries.append(Boundary(intersection.left if isTwin else intersection.right, intersectionSlice))
+                    domainSlice = boundary.domain.slice(intersection.right if isTwin else intersection.left, cache)
+                    if domainSlice:
+                        slice.boundaries.append(Boundary(intersection.left if isTwin else intersection.right, domainSlice))
 
                 elif isinstance(intersection, Manifold.Coincidence):
                     # First, intersect domain coincidence with the domain boundary.
                     if isTwin:
-                        domainCoincidence = intersection.right.intersection(boundary.domain)
+                        coincidence = intersection.right.intersection(boundary.domain)
                     else:
-                        domainCoincidence = intersection.left.intersection(boundary.domain)
+                        coincidence = intersection.left.intersection(boundary.domain)
                     # Next, invert the domain coincidence (which will remove it) if this is a twin or if the normals point in opposite directions.
-                    invertDomainCoincidence = (trimTwin and isTwin) or intersection.alignment < 0.0
-                    if invertDomainCoincidence:
-                        domainCoincidence.containsInfinity = not domainCoincidence.containsInfinity
+                    invertCoincidence = (trimTwin and isTwin) or intersection.alignment < 0.0
+                    if invertCoincidence:
+                        coincidence.containsInfinity = not coincidence.containsInfinity
                     # Next, transform the domain coincidence from the boundary to the given manifold.
                     # Create copies of the manifolds and boundaries, since we are changing them.
-                    for i in range(len(domainCoincidence.boundaries)):
-                        domainManifold = domainCoincidence.boundaries[i].manifold.copy()
-                        if invertDomainCoincidence:
+                    for i in range(len(coincidence.boundaries)):
+                        domainManifold = coincidence.boundaries[i].manifold.copy()
+                        if invertCoincidence:
                             domainManifold.flip_normal()
                         if isTwin:
                             domainManifold.translate(-intersection.translation)
@@ -551,21 +551,21 @@ class Solid:
                         else:
                             domainManifold.transform(intersection.transform, intersection.inverse.T)
                             domainManifold.translate(intersection.translation)
-                        domainCoincidence.boundaries[i] = Boundary(domainManifold, domainCoincidence.boundaries[i].domain)
+                        coincidence.boundaries[i] = Boundary(domainManifold, coincidence.boundaries[i].domain)
                     # Finally, add the domain coincidence to the list of coincidences.
-                    coincidences.append((invertDomainCoincidence, domainCoincidence))
+                    coincidences.append((invertCoincidence, coincidence))
 
         # Ensure the slice includes the manifold's inherent (implicit) boundaries, making it valid and complete.
         manifold.complete_slice(slice, self)
 
         # Now that we have a complete manifold domain, join it with each domain coincidence.
-        for domainCoincidence in coincidences:
-            if domainCoincidence[0]:
-                # If the domain coincidence is inverted (domainCoincidence[0]), intersect it with the slice, thus removing it.
-                slice = slice.intersection(domainCoincidence[1], cache)
+        for coincidence in coincidences:
+            if coincidence[0]:
+                # If the domain coincidence is inverted (coincidence[0]), intersect it with the slice, thus removing it.
+                slice = slice.intersection(coincidence[1], cache)
             else:
                 # Otherwise, union the domain coincidence with the slice, thus adding it.
-                slice = slice.union(domainCoincidence[1])
+                slice = slice.union(coincidence[1])
 
         return slice
 
@@ -614,7 +614,7 @@ class Solid:
         combinedSolid = Solid(self.dimension, self.containsInfinity and other.containsInfinity)
 
         for boundary in self.boundaries:
-            # slice self boundary manifold by other. Trim away duplicate twin.
+            # Slice self boundary manifold by other.
             slice = other.slice(boundary.manifold, cache, True)
             # Intersect slice with the boundary's domain.
             newDomain = boundary.domain.intersection(slice, cache)
@@ -623,12 +623,12 @@ class Solid:
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
 
         for boundary in other.boundaries:
-            # slice other boundary manifold by self. Trim away duplicate twin.
+            # Slice other boundary manifold by self.
             slice = self.slice(boundary.manifold, cache, True)
             # Intersect slice with the boundary's domain.
             newDomain = boundary.domain.intersection(slice, cache)
             if newDomain:
-                # Solid boundary intersects self, so create a new boundary with the intersected domain.
+                # Other boundary intersects self, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
 
         return combinedSolid

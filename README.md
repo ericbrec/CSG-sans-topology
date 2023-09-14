@@ -7,6 +7,6 @@ The code has three base classes: Solid and Boundary found in solid.py, and Manif
 
 In addition, there are two subclasses of Manifold: Hyperplane found in hyperplane.py and Spline found in spline.py. Hyperplane supports hyperplanes of any dimension, including their intersection with other hyperplanes. Spline supports non-uniform B-Spline curves and surfaces, using the bspy library for spline evaluation and intersection with other splines and with hyperplanes.
 
-Finally, there are a variety of example programs that perform operations on solids, using the matplotlib to render the results: solidUtils.py that has some reused utility functions, main2D.py for operations on 2D solids, main2DSlice.py for an animated 2D slice through a 3D constructed solid, main3D.py for operations on 3D solids, and main3DSlice for an animated 3D slice through a 4D constructed solid.
+Finally, there are a variety of example programs that perform operations on solids, using matplotlib to render the results: solidUtils.py that has some reused utility functions, main2D.py for operations on 2D solids, main2DSlice.py for an animated 2D slice through a 3D constructed solid, main3D.py for operations on 3D solids, and main3DSlice for an animated 3D slice through a 4D constructed solid.
 
 All the code is available on GitHub under the MIT license using Python 3.x.

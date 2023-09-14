@@ -54,6 +54,7 @@ class InteractiveCanvas:
         fig = plt.figure(figsize=(6, 6))
         self.ax = fig.add_subplot(projection='3d')
         self.ax.set_title("slice solid by {axis}-axis".format(axis=axis))
+        self.ax.axis('scaled')
         self.canvas = self.ax.figure.canvas
 
         axRadioButtons = fig.add_axes([0.9, 0.88, 0.08, 0.12])

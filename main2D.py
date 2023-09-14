@@ -77,6 +77,7 @@ class InteractiveCanvas:
 
         fig, self.ax = plt.subplots(figsize=(6, 6))
         self.ax.set_title('Drag shape to update solid')
+        self.ax.axis('scaled')
         self.ax.axis('off')
         self.canvas = self.ax.figure.canvas
 
@@ -133,13 +134,13 @@ if __name__ == "__main__":
     starB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0)
     print(starB.volume_integral(lambda x: 1.0), starArea)
     print(starB.surface_integral(lambda x, n: n), starPerimeter)
-    starB.translate([-2.31895479, -2.69507693])
-    #starB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0, True)
-    #starB.translate([-1.31895479, -3.69507693])
+    #starB.translate([-2.31895479, -2.69507693])
+    starB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0, True)
+    starB.translate([-1.31895479, -3.69507693])
 
     #canvas = InteractiveCanvas(triangleA, squareA)
     #canvas = InteractiveCanvas(squareA, squareB)
-    canvas = InteractiveCanvas(starA, starB)
+    #canvas = InteractiveCanvas(starA, starB)
     #canvas = InteractiveCanvas(squareA, starB)
-    #canvas = InteractiveCanvas(triangleA, starB)
+    canvas = InteractiveCanvas(triangleA, starB)
     plt.show()

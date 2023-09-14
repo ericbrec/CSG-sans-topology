@@ -38,6 +38,7 @@ class InteractiveCanvas:
         fig = plt.figure(figsize=(6, 6))
         self.ax = fig.add_subplot(projection='3d')
         self.ax.set_title('Drag shape to update solid')
+        self.ax.axis('scaled')
         self.ax.axis('off')
         self.canvas = self.ax.figure.canvas
 

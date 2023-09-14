@@ -260,43 +260,6 @@ class Hyperplane(Manifold):
         if hasattr(self, '_cofactorNormal'):
             self._cofactorNormal = -self._cofactorNormal
 
-    def intersect_x_ray(self, point):
-        """
-        Intersect a ray along the x-axis with the hyperplane.
-
-        Parameters
-        ----------
-        point : array-like
-            The starting point of the ray.
-
-        Returns
-        -------
-        intersections : `list`
-            A list of intersections between the ray and the hyperplane. 
-            (Hyperplanes will have at most one intersection, but other types of manifolds can have several.)
-            Each intersection is a Manifold.RayCrossing: (distance to intersection, domain point of intersection).
-
-        See Also
-        --------
-        `solid.Solid.winding_number` : Compute the winding number for a point relative to the solid.
-        """
-        assert len(point) == self.range_dimension()
-
-        # Initialize list of intersections. Planar manifolds will have at most one intersection, but curved manifolds could have multiple.
-        intersections = []
-
-        # Ensure hyperplane intersects x-axis
-        if self._normal[0]*self._normal[0] > 1.0 - Hyperplane.maxAlignment:
-            # Getting the xDistance to the manifold is simple geometry.
-            vectorFromManifold = point - self._point
-            xDistanceToManifold = -np.dot(self._normal, vectorFromManifold) / self._normal[0]
-            # Getting the domain point is a bit trickier. Turns out you throw out the x-components and invert the tangent space.
-            domainPoint = np.linalg.inv(self._tangentSpace[1:,:]) @ vectorFromManifold[1:]
-            # Each intersection is of the form [distance to intersection, domain point of intersection].
-            intersections.append(Manifold.RayCrossing(xDistanceToManifold, domainPoint))
-
-        return intersections
-
     def intersect_manifold(self, other):
         """
         Intersect two hyperplanes.

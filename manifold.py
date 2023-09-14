@@ -13,9 +13,6 @@ class Manifold:
     # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
     maxAlignment = 0.99 # 1 - 1/10^2
 
-    # Return type for intersect_x_ray
-    RayCrossing = namedtuple('RayCrossing', ('distance','domainPoint'))
-
     # Return type for intersect_manifold
     Crossing = namedtuple('Crossing', ('left','right'))
     Coincidence = namedtuple('Coincidence', ('left', 'right', 'alignment', 'transform', 'inverse', 'translation'))
@@ -236,28 +233,6 @@ class Manifold:
         `solid.Solid.complement` : Return the complement of the solid: whatever was inside is outside and vice-versa.
         """
         pass
-
-    def intersect_x_ray(self, point):
-        """
-        Intersect a ray along the x-axis with the manifold.
-
-        Parameters
-        ----------
-        point : array-like
-            The starting point of the ray.
-
-        Returns
-        -------
-        intersections : `list`
-            A list of intersections between the ray and the manifold. 
-            Each intersection is a Manifold.RayCrossing: (distance to intersection, domain point of intersection).
-
-        See Also
-        --------
-        `solid.Solid.winding_number` : Compute the winding number for a point relative to the solid.
-        """
-        assert len(point) == self.range_dimension()
-        return []
 
     def intersect_manifold(self, other):
         """

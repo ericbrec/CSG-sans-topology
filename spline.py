@@ -235,40 +235,6 @@ class Spline(Manifold):
             zero = 0.5 * (zero[0] + zero[1]) # Punt on overlapping areas for now
         return np.atleast_1d(zero)
 
-    def intersect_x_ray(self, point):
-        """
-        Intersect a ray along the x-axis with the spline.
-
-        Parameters
-        ----------
-        point : array-like
-            The starting point of the ray.
-
-        Returns
-        -------
-        intersections : `list`
-            A list of intersections between the ray and the spline. 
-            Each intersection is a Manifold.RayCrossing: (distance to intersection, domain point of intersection).
-
-        See Also
-        --------
-        `solid.Solid.winding_number` : Compute the winding number for a point relative to the solid.
-        """
-        assert len(point) == self.range_dimension()
-        # Construct a lower range spline whose zeros are the ray intersection points.
-        coefs = np.delete(self.spline.coefs, 0, axis=0).T
-        coefs -= point[1:]
-        spline = BspySpline(self.spline.nInd, self.spline.nDep - 1, self.spline.order, self.spline.nCoef, self.spline.knots, coefs.T)
-        zeros = spline.zeros()
-
-        # Generate list of intersections.
-        intersections = []
-        for zero in zeros:
-            zero = self._process_zero(zero)
-            intersections.append(Manifold.RayCrossing(self.spline(zero)[0] - point[0], zero))
-
-        return intersections
-
     def intersect_manifold(self, other):
         """
         Intersect a spline or hyperplane.

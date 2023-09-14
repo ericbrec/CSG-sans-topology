@@ -368,15 +368,13 @@ class Solid:
         See Also
         --------
         `contains_point` : Test if a point lies within the solid.
-        `manifold.Manifold.intersect_x_ray` : Intersect a ray along the x-axis with the manifold.
 
         Notes
         -----
         If `onBoundaryNormal` is not `None`, `windingNumber` is undefined and should be ignored.
 
-        `winding_number` uses three different implementations:
+        `winding_number` uses two different implementations:
         * A simple fast implementation if the solid is a number line (dimension <= 1). This is the default for dimension <= 1.
-        * Dan Sunday's fast ray-casting algorithm: Sunday, Dan (2001), "Inclusion of a point in a Polygon." This is the default for dimension > 1.
         * A surface integral with integrand: `(x - point) / norm(x - point)**dimension`. This is just for fun, though it's more robust for boundaries with gaps. 
         """
         windingNumber = 0.0
@@ -395,22 +393,6 @@ class Solid:
                     break
                 else:
                     windingNumber += np.sign(separation) / 2.0
-        elif True:
-            # Intersect a ray from point along the x-axis through self's boundaries.
-            # All dot products with the ray are just the first component, since the ray is along the x-axis.
-            for boundary in self.boundaries:
-                intersections = boundary.manifold.intersect_x_ray(point)
-                for intersection in intersections:
-                    # First, check the distance is positive.
-                    if intersection.distance > -Manifold.minSeparation:
-                        # Only include the boundary if the ray intersection is inside its domain.
-                        if boundary.domain.contains_point(intersection.domainPoint):
-                            # Check if intersection lies on the boundary.
-                            if intersection[0] < Manifold.minSeparation:
-                                onBoundaryNormal = boundary.manifold.normal(intersection.domainPoint)
-                            else:
-                                # Accumulate winding number based on sign of dot(ray,normal) == normal[0].
-                                windingNumber += np.sign(boundary.manifold.normal(intersection.domainPoint)[0])
         else:
             # Compute the winding number via a surface integral, normalizing by the hypersphere surface area. 
             nSphereArea = 2.0

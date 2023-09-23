@@ -260,9 +260,9 @@ class Spline(Manifold):
             * left : `Solid` in the manifold's domain within which the manifold and the other are coincident.
             * right : `Solid` in the other's domain within which the manifold and the other are coincident.
             * alignment : scalar value holding the normal alignment between the manifold and the other (the dot product of their unit normals).
-            * transform : `numpy.array` holding the 2D transform from the boundary's domain to the other's domain.
-            * inverse : `numpy.array` holding the 2D inverse transform from the other's domain to the boundary's domain.
-            * translation : `numpy.array` holding the 1D translation from the manifold's domain to the other's domain.
+            * transform : `numpy.array` holding the transform matrix from the manifold's domain to the other's domain.
+            * inverse : `numpy.array` holding the inverse transform matrix from the other's domain to the boundary's domain.
+            * translation : `numpy.array` holding the translation vector from the manifold's domain to the other's domain.
             * Together transform, inverse, and translation form the mapping from the manifold's domain to the other's domain and vice-versa.
 
         See Also
@@ -280,29 +280,46 @@ class Spline(Manifold):
         """
         assert self.range_dimension() == other.range_dimension()
         intersections = []
-        nDep = self.spline.nInd
+        nDep = self.spline.nInd # The dimension of the intersection's range
         if isinstance(other, Hyperplane):
-            # Compute the inverse of the tangent space to map Spline-Hyperplane intersection points to the domain of the Hyperplane.
-            inverseTangentSpace = np.linalg.inv(other._tangentSpace.T @ other._tangentSpace)
+            # Compute the projection onto the hyperplane to map Spline-Hyperplane intersection points to the domain of the Hyperplane.
+            projection = np.linalg.inv(other._tangentSpace.T @ other._tangentSpace) @ other._tangentSpace.T
             # Construct a new spline that represents the intersection.
             spline = self.spline.dot(other._normal) - np.atleast_1d(np.dot(other._normal, other._point))
             if nDep == 1:
-                # Find the intersection points.
+                # Find the intersection points and intervals.
                 zeros = spline.zeros()
-                # Convert each point into a Manifold.Crossing.
+                # Convert each intersection point into a Manifold.Crossing and each intersection interval into a Manifold.Coincidence.
                 for zero in zeros:
-                    zero = self._process_zero(zero)
-                    intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, inverseTangentSpace @ other._tangentSpace.T @ (self.spline(zero) - other._point), 0.0)))
+                    if isinstance(zero, tuple):
+                        # Intersection is an interval, so create a Manifold.Coincidence.
+                        left = Solid(nDep, False)
+                        left.boundaries.append(Boundary(Hyperplane(-1.0, zero[0], 0.0), Solid(0, True)))
+                        left.boundaries.append(Boundary(Hyperplane(1.0, zero[1], 0.0), Solid(0, True)))
+                        right = Solid(nDep, False)
+                        planeBounds = (projection @ (self.spline(zero[0]) - other._point), projection @ (self.spline(zero[1]) - other._point))
+                        right.boundaries.append(Boundary(Hyperplane(-1.0, planeBounds[0], 0.0), Solid(0, True)))
+                        right.boundaries.append(Boundary(Hyperplane(1.0, planeBounds[1], 0.0), Solid(0, True)))
+                        alignment = np.dot(self.normal(zero[0]), other._normal)
+                        width = zero[1] - zero[0]
+                        transform = (planeBounds[1] - planeBounds[0]) / width
+                        translation = (planeBounds[0] * zero[1] - planeBounds[1] * zero[0]) / width
+                        intersections.append(Manifold.Coincidence(left, right, alignment, transform, 1.0 / transform, translation))
+                    else:
+                        # Intersection is a point, so create a Manifold.Crossing.
+                        intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, projection @ (self.spline(zero) - other._point), 0.0)))
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.
                 contours = spline.contours()
                 # Convert each contour into a Manifold.Crossing.
                 for contour in contours:
+                    # The left portion is the contour returned for the spline-plane intersection. 
                     left = contour
+                    # The right portion is the contour projected onto the plane's domain, which we compute with samples and a least squares fit.
                     points = []
                     for t in np.linspace(0.0, 1.0, contour.nCoef[0]):
                         zero = contour((t,))
-                        points.append((t, *(inverseTangentSpace @ other._tangentSpace.T @ (self.spline(zero) - other._point))))
+                        points.append((t, *(projection @ (self.spline(zero) - other._point))))
                     right = BspySpline.least_squares(contour.nInd, nDep, contour.order, points, contour.knots, 0, contour.metadata)
                     intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
             else:
@@ -311,12 +328,26 @@ class Spline(Manifold):
             # Construct a new spline that represents the intersection.
             spline = self.spline - other.spline
             if nDep == 1:
-                # Find the intersection points.
+                # Find the intersection points and intervals.
                 zeros = spline.zeros()
-                # Convert each point into a Manifold.Crossing.
+                # Convert each intersection point into a Manifold.Crossing and each intersection interval into a Manifold.Coincidence.
                 for zero in zeros:
-                    zero = self._process_zero(zero)
-                    intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[:nDep], 0.0), Hyperplane(1.0, zero[nDep:], 0.0)))
+                    if isinstance(zero, tuple):
+                        # Intersection is an interval, so create a Manifold.Coincidence.
+                        left = Solid(nDep, False)
+                        left.boundaries.append(Boundary(Hyperplane(-1.0, zero[0][0], 0.0), Solid(0, True)))
+                        left.boundaries.append(Boundary(Hyperplane(1.0, zero[1][0], 0.0), Solid(0, True)))
+                        right = Solid(nDep, False)
+                        right.boundaries.append(Boundary(Hyperplane(-1.0, zero[0][1], 0.0), Solid(0, True)))
+                        right.boundaries.append(Boundary(Hyperplane(1.0, zero[1][1], 0.0), Solid(0, True)))
+                        alignment = np.dot(self.normal(zero[0][0]), other.normal(zero[0][1]))
+                        width = zero[1][0] - zero[0][0]
+                        transform = (zero[1][1] - zero[0][1]) / width
+                        translation = (zero[0][1] * zero[1][0] - zero[1][1] * zero[0][0]) / width
+                        intersections.append(Manifold.Coincidence(left, right, alignment, transform, 1.0 / transform, translation))
+                    else:
+                        # Intersection is a point, so create a Manifold.Crossing.
+                        intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[:nDep], 0.0), Hyperplane(1.0, zero[nDep:], 0.0)))
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.
                 contours = spline.contours()

@@ -155,15 +155,14 @@ def create_faceted_solid_from_points(dimension, points, containsInfinity = False
         normal = normal / np.linalg.norm(normal)
         hyperplane = hyperplane_2D(normal,np.dot(normal,point))
         domain = Solid(dimension-1, False)
-        domainDomain = Solid(dimension-2, True) # Domain for 1D points.
         previousPointDomain = hyperplane_domain_from_point(hyperplane, previousPoint)
         pointDomain = hyperplane_domain_from_point(hyperplane, point)
         if previousPointDomain < pointDomain:
-            domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -previousPointDomain), domainDomain))
-            domain.boundaries.append(Boundary(hyperplane_1D(1.0, pointDomain), domainDomain))
+            domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -previousPointDomain), Solid(dimension-2, True)))
+            domain.boundaries.append(Boundary(hyperplane_1D(1.0, pointDomain), Solid(dimension-2, True)))
         else:
-            domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -pointDomain), domainDomain))
-            domain.boundaries.append(Boundary(hyperplane_1D(1.0, previousPointDomain), domainDomain))
+            domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -pointDomain), Solid(dimension-2, True)))
+            domain.boundaries.append(Boundary(hyperplane_1D(1.0, previousPointDomain), Solid(dimension-2, True)))
         solid.boundaries.append(Boundary(hyperplane, domain))
         previousPoint = point
 
@@ -195,9 +194,8 @@ def create_smooth_solid_from_points(dimension, points, containsInfinity = False)
 
     spline = Spline(BspySpline.least_squares(dimension - 1, dimension, (4,) * (dimension - 1), dataPoints))
     domain = Solid(dimension-1, False)
-    domainDomain = Solid(dimension-2, True) # Domain for 1D points.
-    domain.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), domainDomain))
-    domain.boundaries.append(Boundary(hyperplane_1D(1.0, t), domainDomain))
+    domain.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), Solid(dimension-2, True)))
+    domain.boundaries.append(Boundary(hyperplane_1D(1.0, t), Solid(dimension-2, True)))
     solid.boundaries.append(Boundary(spline, domain))
 
     return solid

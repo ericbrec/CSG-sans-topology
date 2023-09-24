@@ -113,7 +113,8 @@ if __name__ == "__main__":
     print(triangleA.winding_number(np.array([-2,-1])))
     print(triangleA.winding_number(np.array([-1,-1])))
     print(triangleA.winding_number(np.array([0,-1])))
-    triangleA = utils.create_smooth_solid_from_points(2, [[1,1],[-2,-2],[1,-2]])
+
+    triangleSplineA = utils.create_smooth_solid_from_points(2, [[1,1],[-2,-2],[1,-2]])
 
     squareA = utils.create_hypercube([1.5,1.5], [-1,-1])
     print(squareA.volume_integral(lambda x: 1.0), 4.0*4.0)
@@ -134,13 +135,14 @@ if __name__ == "__main__":
     starB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0)
     print(starB.volume_integral(lambda x: 1.0), starArea)
     print(starB.surface_integral(lambda x, n: n), starPerimeter)
-    #starB.translate([-2.31895479, -2.69507693])
-    starB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0, True)
-    starB.translate([-1.31895479, -3.69507693])
+    starB.translate([-2.31895479, -2.69507693])
+
+    starSplineB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0, True)
+    starSplineB.translate([-1.31895479, -3.69507693])
 
     #canvas = InteractiveCanvas(triangleA, squareA)
     #canvas = InteractiveCanvas(squareA, squareB)
     #canvas = InteractiveCanvas(starA, starB)
     #canvas = InteractiveCanvas(squareA, starB)
-    canvas = InteractiveCanvas(triangleA, starB)
+    canvas = InteractiveCanvas(triangleSplineA, starSplineB)
     plt.show()

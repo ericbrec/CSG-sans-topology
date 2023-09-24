@@ -297,7 +297,7 @@ class Spline(Manifold):
                         left.boundaries.append(Boundary(Hyperplane(-1.0, zero[0], 0.0), Solid(0, True)))
                         left.boundaries.append(Boundary(Hyperplane(1.0, zero[1], 0.0), Solid(0, True)))
                         right = Solid(nDep, False)
-                        planeBounds = (projection @ (self.spline(zero[0]) - other._point), projection @ (self.spline(zero[1]) - other._point))
+                        planeBounds = (projection @ (self.spline((zero[0],)) - other._point), projection @ (self.spline((zero[1],)) - other._point))
                         right.boundaries.append(Boundary(Hyperplane(-1.0, planeBounds[0], 0.0), Solid(0, True)))
                         right.boundaries.append(Boundary(Hyperplane(1.0, planeBounds[1], 0.0), Solid(0, True)))
                         alignment = np.dot(self.normal(zero[0]), other._normal)
@@ -307,7 +307,7 @@ class Spline(Manifold):
                         intersections.append(Manifold.Coincidence(left, right, alignment, transform, 1.0 / transform, translation))
                     else:
                         # Intersection is a point, so create a Manifold.Crossing.
-                        intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, projection @ (self.spline(zero) - other._point), 0.0)))
+                        intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, projection @ (self.spline((zero,)) - other._point), 0.0)))
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.
                 contours = spline.contours()

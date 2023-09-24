@@ -131,7 +131,6 @@ if __name__ == "__main__":
     cubeB = utils.create_hypercube([1,1,1], [0.5,0.5,0.5])
     print(cubeB.volume_integral(lambda x: 1.0), 2.0*2.0*2.0)
     print(cubeB.surface_integral(lambda x, n: n), 2.0*2.0*6.0)
-
     
     order = 3
     knots = [0.0] * order + [1.0] * order
@@ -154,6 +153,6 @@ if __name__ == "__main__":
     flippedParaboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
     flippedParaboloid.translate(np.array((0.0, 0.5, 0.55)))
 
-    canvas = InteractiveCanvas(cubeA, cubeB)
-    #canvas = InteractiveCanvas(paraboloid, flippedParaboloid)
+    #canvas = InteractiveCanvas(cubeA, cubeB)
+    canvas = InteractiveCanvas(paraboloid, flippedParaboloid)
     plt.show()

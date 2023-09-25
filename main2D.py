@@ -167,5 +167,6 @@ if __name__ == "__main__":
     #canvas = InteractiveCanvas(starA, starB)
     #canvas = InteractiveCanvas(squareA, starB)
     #canvas = InteractiveCanvas(triangleSplineA, starSplineB)
-    canvas = InteractiveCanvas(glob1, squareB)
+    canvas = InteractiveCanvas(glob2, triangleSplineA)
+    #canvas = InteractiveCanvas(glob1, squareB)
     plt.show()

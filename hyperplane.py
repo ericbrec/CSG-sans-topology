@@ -195,7 +195,7 @@ class Hyperplane(Manifold):
         Parameters
         ----------
         matrix : `numpy.array`
-            A square 2D array transformation.
+            A square matrix transformation.
 
         matrixInverseTranspose : `numpy.array`, optional
             The inverse transpose of matrix (computed if not provided).
@@ -293,7 +293,7 @@ class Hyperplane(Manifold):
         See Also
         --------
         `solid.Solid.slice` : slice the solid by a manifold.
-        `numpy.linalg.svd` : Compute the singular value decomposition of a 2D array.
+        `numpy.linalg.svd` : Compute the singular value decomposition of a matrix array.
 
         Notes
         -----

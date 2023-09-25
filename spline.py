@@ -178,7 +178,7 @@ class Spline(Manifold):
         Parameters
         ----------
         matrix : `numpy.array`
-            A square 2D array transformation.
+            A square matrix transformation.
 
         matrixInverseTranspose : `numpy.array`, optional
             The inverse transpose of matrix (computed if not provided).
@@ -300,7 +300,7 @@ class Spline(Manifold):
                         planeBounds = (projection @ (self.spline((zero[0],)) - other._point), projection @ (self.spline((zero[1],)) - other._point))
                         right.boundaries.append(Boundary(Hyperplane(-1.0, planeBounds[0], 0.0), Solid(0, True)))
                         right.boundaries.append(Boundary(Hyperplane(1.0, planeBounds[1], 0.0), Solid(0, True)))
-                        alignment = np.dot(self.normal(zero[0]), other._normal)
+                        alignment = np.dot(self.normal((zero[0],)), other._normal)
                         width = zero[1] - zero[0]
                         transform = (planeBounds[1] - planeBounds[0]) / width
                         translation = (planeBounds[0] * zero[1] - planeBounds[1] * zero[0]) / width
@@ -361,14 +361,15 @@ class Spline(Manifold):
         else:
             return NotImplemented
 
-        # Ensure the normals point outwards for both Manifolds in each intersection.
+        # Ensure the normals point outwards for both Manifolds in each crossing intersection.
         # Note that evaluating left and right at 0.0 is always valid because either they are points or curves with [0.0, 1.0] domains.
         domainPoint = np.atleast_1d(0.0)
         for intersection in intersections:
-            if np.dot(self.tangent_space(intersection.left.point(domainPoint)) @ intersection.left.normal(domainPoint), other.normal(intersection.right.point(domainPoint))) < 0.0:
-                intersection.left.flip_normal()
-            if np.dot(other.tangent_space(intersection.right.point(domainPoint)) @ intersection.right.normal(domainPoint), self.normal(intersection.left.point(domainPoint))) < 0.0:
-                intersection.right.flip_normal()
+            if isinstance(intersection, Manifold.Crossing):
+                if np.dot(self.tangent_space(intersection.left.point(domainPoint)) @ intersection.left.normal(domainPoint), other.normal(intersection.right.point(domainPoint))) < 0.0:
+                    intersection.left.flip_normal()
+                if np.dot(other.tangent_space(intersection.right.point(domainPoint)) @ intersection.right.normal(domainPoint), self.normal(intersection.left.point(domainPoint))) < 0.0:
+                    intersection.right.flip_normal()
 
         return intersections
     

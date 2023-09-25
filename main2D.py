@@ -86,14 +86,14 @@ class InteractiveCanvas:
         self.canvas = self.ax.figure.canvas
 
         self.axRadioButtons = fig.add_axes([0.85, 0.88, 0.12, 0.12])
-        self.radioButtons = widgets.RadioButtons(self.axRadioButtons, ["OR", "AND", "DIFF"])
+        self.radioButtons = widgets.RadioButtons(self.axRadioButtons, ["AND", "OR", "DIFF"])
         self.radioButtons.on_clicked(self.on_radio_press)
 
         self.origin = [0.0]*solidB.dimension 
 
         self.solidA = solidA
         self.solidB = solidB
-        self.solidC = self.PerformBooleanOperation('OR') # First radio button
+        self.solidC = self.PerformBooleanOperation('AND') # First radio button
 
         self.linesA = LineCollection(utils.create_segments_from_solid(self.solidA), linewidth=1, color="blue")
         self.linesB = LineCollection(utils.create_segments_from_solid(self.solidB), linewidth=1, color="green")
@@ -152,6 +152,7 @@ if __name__ == "__main__":
     domain.boundaries.append(Boundary(Hyperplane(-1.0, 0.0, 0.0), Solid(0, True)))
     domain.boundaries.append(Boundary(Hyperplane(1.0, 12.0, 0.0), Solid(0, True)))
     glob1.boundaries.append(Boundary(spline, domain))
+    glob1.translate([0.5, -0.2])
 
     glob2 = Solid(2, False)
     spline = Spline(BspySpline(1, 2, (4,), (12,), ((0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 4.0, 6.0, 8.0, 8.0, 8.0, 12.0, 12.0, 12.0, 12.0),), \
@@ -163,8 +164,8 @@ if __name__ == "__main__":
 
     #canvas = InteractiveCanvas(triangleA, squareA)
     #canvas = InteractiveCanvas(squareA, squareB)
-    #canvas = InteractiveCanvas(starA, starB)
+    canvas = InteractiveCanvas(starA, starB)
     #canvas = InteractiveCanvas(squareA, starB)
     #canvas = InteractiveCanvas(triangleSplineA, starSplineB)
-    canvas = InteractiveCanvas(triangleSplineA, glob1)
+    #canvas = InteractiveCanvas(glob1, squareB)
     plt.show()

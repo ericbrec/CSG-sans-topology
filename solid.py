@@ -133,7 +133,7 @@ class Solid:
         Parameters
         ----------
         matrix : `numpy.array`
-            A square 2D array transformation.
+            A square matrix transformation.
 
         matrixInverseTranspose : `numpy.array`, optional
             The inverse transpose of matrix (computed if not provided).

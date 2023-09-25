@@ -152,7 +152,7 @@ if __name__ == "__main__":
     domain.boundaries.append(Boundary(Hyperplane(-1.0, 0.0, 0.0), Solid(0, True)))
     domain.boundaries.append(Boundary(Hyperplane(1.0, 12.0, 0.0), Solid(0, True)))
     glob1.boundaries.append(Boundary(spline, domain))
-    glob1.translate([0.5, -0.2])
+    glob1.translate([0.5, 0.5])
 
     glob2 = Solid(2, False)
     spline = Spline(BspySpline(1, 2, (4,), (12,), ((0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 4.0, 6.0, 8.0, 8.0, 8.0, 12.0, 12.0, 12.0, 12.0),), \
@@ -164,8 +164,8 @@ if __name__ == "__main__":
 
     #canvas = InteractiveCanvas(triangleA, squareA)
     #canvas = InteractiveCanvas(squareA, squareB)
-    canvas = InteractiveCanvas(starA, starB)
+    #canvas = InteractiveCanvas(starA, starB)
     #canvas = InteractiveCanvas(squareA, starB)
     #canvas = InteractiveCanvas(triangleSplineA, starSplineB)
-    #canvas = InteractiveCanvas(glob1, squareB)
+    canvas = InteractiveCanvas(glob1, squareB)
     plt.show()

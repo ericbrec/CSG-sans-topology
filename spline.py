@@ -298,13 +298,15 @@ class Spline(Manifold):
                         left.boundaries.append(Boundary(Hyperplane(1.0, zero[1], 0.0), Solid(0, True)))
                         right = Solid(nDep, False)
                         planeBounds = (projection @ (self.spline((zero[0],)) - other._point), projection @ (self.spline((zero[1],)) - other._point))
+                        if planeBounds[0] > planeBounds[1]:
+                            planeBounds = (planeBounds[1], planeBounds[0])
                         right.boundaries.append(Boundary(Hyperplane(-1.0, planeBounds[0], 0.0), Solid(0, True)))
                         right.boundaries.append(Boundary(Hyperplane(1.0, planeBounds[1], 0.0), Solid(0, True)))
                         alignment = np.dot(self.normal((zero[0],)), other._normal)
                         width = zero[1] - zero[0]
                         transform = (planeBounds[1] - planeBounds[0]) / width
                         translation = (planeBounds[0] * zero[1] - planeBounds[1] * zero[0]) / width
-                        intersections.append(Manifold.Coincidence(left, right, alignment, transform, 1.0 / transform, translation))
+                        intersections.append(Manifold.Coincidence(left, right, alignment, np.atleast_2d(transform), np.atleast_2d(1.0 / transform), np.atleast_1d(translation)))
                     else:
                         # Intersection is a point, so create a Manifold.Crossing.
                         intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, projection @ (self.spline((zero,)) - other._point), 0.0)))
@@ -344,7 +346,7 @@ class Spline(Manifold):
                         width = zero[1][0] - zero[0][0]
                         transform = (zero[1][1] - zero[0][1]) / width
                         translation = (zero[0][1] * zero[1][0] - zero[1][1] * zero[0][0]) / width
-                        intersections.append(Manifold.Coincidence(left, right, alignment, transform, 1.0 / transform, translation))
+                        intersections.append(Manifold.Coincidence(left, right, alignment, np.atleast_2d(transform), np.atleast_2d(1.0 / transform), np.atleast_1d(translation)))
                     else:
                         # Intersection is a point, so create a Manifold.Crossing.
                         intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[:nDep], 0.0), Hyperplane(1.0, zero[nDep:], 0.0)))

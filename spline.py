@@ -281,11 +281,15 @@ class Spline(Manifold):
         assert self.range_dimension() == other.range_dimension()
         intersections = []
         nDep = self.spline.nInd # The dimension of the intersection's range
+
+        # Spline-Hyperplane intersection.
         if isinstance(other, Hyperplane):
             # Compute the projection onto the hyperplane to map Spline-Hyperplane intersection points to the domain of the Hyperplane.
             projection = np.linalg.inv(other._tangentSpace.T @ other._tangentSpace) @ other._tangentSpace.T
             # Construct a new spline that represents the intersection.
             spline = self.spline.dot(other._normal) - np.atleast_1d(np.dot(other._normal, other._point))
+
+            # Curve-Line intersection.
             if nDep == 1:
                 # Find the intersection points and intervals.
                 zeros = spline.zeros()
@@ -293,16 +297,27 @@ class Spline(Manifold):
                 for zero in zeros:
                     if isinstance(zero, tuple):
                         # Intersection is an interval, so create a Manifold.Coincidence.
+                        planeBounds = (projection @ (self.spline((zero[0],)) - other._point), projection @ (self.spline((zero[1],)) - other._point))
+
+                        # First, check for crossings at the boundaries of the coincidence, since splines can have discontinuous tangents.
+                        # We do this first because later we may change the order of the plane bounds.
+                        (bounds,) = self.spline.domain()
+                        epsilon = 0.1 * Manifold.minSeparation
+                        if zero[0] - epsilon > bounds[0]:
+                            intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[0] - epsilon, 0.0), Hyperplane(1.0, planeBounds[0], 0.0)))
+                        if zero[1] + epsilon < bounds[1]:
+                            intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[1] + epsilon, 0.0), Hyperplane(1.0, planeBounds[1], 0.0)))
+
+                        # Now, create the coincidence.
                         left = Solid(nDep, False)
                         left.boundaries.append(Boundary(Hyperplane(-1.0, zero[0], 0.0), Solid(0, True)))
                         left.boundaries.append(Boundary(Hyperplane(1.0, zero[1], 0.0), Solid(0, True)))
                         right = Solid(nDep, False)
-                        planeBounds = (projection @ (self.spline((zero[0],)) - other._point), projection @ (self.spline((zero[1],)) - other._point))
                         if planeBounds[0] > planeBounds[1]:
                             planeBounds = (planeBounds[1], planeBounds[0])
                         right.boundaries.append(Boundary(Hyperplane(-1.0, planeBounds[0], 0.0), Solid(0, True)))
                         right.boundaries.append(Boundary(Hyperplane(1.0, planeBounds[1], 0.0), Solid(0, True)))
-                        alignment = np.dot(self.normal((zero[0],)), other._normal)
+                        alignment = np.dot(self.normal((zero[0],)), other._normal) # Use the first zero, since B-splines are closed on the left
                         width = zero[1] - zero[0]
                         transform = (planeBounds[1] - planeBounds[0]) / width
                         translation = (planeBounds[0] * zero[1] - planeBounds[1] * zero[0]) / width
@@ -310,6 +325,8 @@ class Spline(Manifold):
                     else:
                         # Intersection is a point, so create a Manifold.Crossing.
                         intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, projection @ (self.spline((zero,)) - other._point), 0.0)))
+
+            # Surface-Plane intersection.
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.
                 contours = spline.contours()
@@ -326,9 +343,13 @@ class Spline(Manifold):
                     intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
             else:
                 return NotImplemented
+        
+        # Spline-Spline intersection.
         elif isinstance(other, Spline):
             # Construct a new spline that represents the intersection.
             spline = self.spline - other.spline
+
+            # Curve-Curve intersection.
             if nDep == 1:
                 # Find the intersection points and intervals.
                 zeros = spline.zeros()
@@ -336,13 +357,29 @@ class Spline(Manifold):
                 for zero in zeros:
                     if isinstance(zero, tuple):
                         # Intersection is an interval, so create a Manifold.Coincidence.
+
+                        # First, check for crossings at the boundaries of the coincidence, since splines can have discontinuous tangents.
+                        # We do this first to match the approach for Curve-Line intersections.
+                        (boundsSelf,) = self.spline.domain()
+                        (boundsOther,) = other.spline.domain()
+                        epsilon = 0.1 * Manifold.minSeparation
+                        if zero[0][0] - epsilon > boundsSelf[0]:
+                            intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[0][0] - epsilon, 0.0), Hyperplane(1.0, zero[0][1], 0.0)))
+                        elif zero[0][1] - epsilon > boundsOther[0]:
+                            intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[0][0], 0.0), Hyperplane(1.0, zero[0][1] - epsilon, 0.0)))
+                        if zero[1][0] + epsilon < boundsSelf[1]:
+                            intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[1][0] + epsilon, 0.0), Hyperplane(1.0, zero[1][1], 0.0)))
+                        elif zero[1][1] + epsilon < boundsOther[1]:
+                            intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[1][0], 0.0), Hyperplane(1.0, zero[1][1] + epsilon, 0.0)))
+
+                        # Now, create the coincidence.
                         left = Solid(nDep, False)
                         left.boundaries.append(Boundary(Hyperplane(-1.0, zero[0][0], 0.0), Solid(0, True)))
                         left.boundaries.append(Boundary(Hyperplane(1.0, zero[1][0], 0.0), Solid(0, True)))
                         right = Solid(nDep, False)
                         right.boundaries.append(Boundary(Hyperplane(-1.0, zero[0][1], 0.0), Solid(0, True)))
                         right.boundaries.append(Boundary(Hyperplane(1.0, zero[1][1], 0.0), Solid(0, True)))
-                        alignment = np.dot(self.normal(zero[0][0]), other.normal(zero[0][1]))
+                        alignment = np.dot(self.normal(zero[0][0]), other.normal(zero[0][1])) # Use the first zeros, since B-splines are closed on the left
                         width = zero[1][0] - zero[0][0]
                         transform = (zero[1][1] - zero[0][1]) / width
                         translation = (zero[0][1] * zero[1][0] - zero[1][1] * zero[0][0]) / width
@@ -350,6 +387,8 @@ class Spline(Manifold):
                     else:
                         # Intersection is a point, so create a Manifold.Crossing.
                         intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[:nDep], 0.0), Hyperplane(1.0, zero[nDep:], 0.0)))
+            
+            # Surface-Surface intersection.
             elif nDep == 2:
                 # Find the intersection contours, which are returned as splines.
                 contours = spline.contours()

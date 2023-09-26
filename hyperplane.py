@@ -381,7 +381,7 @@ class Hyperplane(Manifold):
                 # These hyperplanes are coincident. Return the domains in which they coincide (entire domain for hyperplanes) and the normal alignment.
                 domainCoincidence = Solid(dimension-1, True)
                 if dimension > 1:
-                    # For higher dimensions, also return the mapping from the self domain to the other domain.
+                    # For non-zero domains, also return the mapping from the self domain to the other domain.
                     tangentSpaceTranspose = np.transpose(other._tangentSpace)
                     map = np.linalg.inv(tangentSpaceTranspose @ other._tangentSpace) @ tangentSpaceTranspose
                     transform =  map @ self._tangentSpace

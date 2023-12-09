@@ -347,7 +347,7 @@ class Spline(Manifold):
         # Spline-Spline intersection.
         elif isinstance(other, Spline):
             # Construct a new spline that represents the intersection.
-            spline = self.spline - other.spline
+            spline = self.spline.subtract(other.spline)
 
             # Curve-Curve intersection.
             if nDep == 1:

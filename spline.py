@@ -335,11 +335,12 @@ class Spline(Manifold):
                     # The left portion is the contour returned for the spline-plane intersection. 
                     left = contour
                     # The right portion is the contour projected onto the plane's domain, which we compute with samples and a least squares fit.
+                    tValues = np.linspace(0.0, 1.0, contour.nCoef[0] + 5) # Over-sample a bit to reduce the condition number and avoid singular matrix
                     points = []
-                    for t in np.linspace(0.0, 1.0, contour.nCoef[0]):
+                    for t in tValues:
                         zero = contour((t,))
-                        points.append((t, *(projection @ (self.spline(zero) - other._point))))
-                    right = BspySpline.least_squares(contour.nInd, nDep, contour.order, points, contour.knots, 0, contour.metadata)
+                        points.append(projection @ (self.spline(zero) - other._point))
+                    right = BspySpline.least_squares(tValues, np.array(points).T, contour.order, contour.knots)
                     intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
             else:
                 return NotImplemented
@@ -394,8 +395,8 @@ class Spline(Manifold):
                 contours = spline.contours()
                 # Convert each contour into a Manifold.Crossing.
                 for contour in contours:
-                    left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.accuracy, contour.metadata)
-                    right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.accuracy, contour.metadata)
+                    left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
+                    right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
                     intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
             else:
                 return NotImplemented

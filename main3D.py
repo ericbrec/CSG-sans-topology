@@ -81,7 +81,7 @@ class InteractiveCanvas:
         if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
-        point = proj3d.transform(*self.solidB.any_point(), self.ax.M)
+        point = proj3d.proj_transform(*self.solidB.any_point(), self.ax.M)
         if abs(event.xdata - point[0]) + abs(event.ydata - point[1]) < 0.05:
             self.ax.disable_mouse_rotation()
             self.origin = self.GetPointFromEvent(event)

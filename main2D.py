@@ -141,8 +141,8 @@ if __name__ == "__main__":
     print(starB.surface_integral(lambda x, n: n), starPerimeter)
     starB.translate([-2.31895479, -2.69507693])
 
-    starSplineB = utils.create_star(1.0, [2.0, 2.0], 90.0*6.28/360.0, True)
-    starSplineB.translate([-1.31895479, -3.69507693])
+    starSplineB = utils.create_star(1.0, [0.0, 0.0], 90.0*6.28/360.0, True)
+    starSplineB.translate([0, -0.75])
 
     glob1 = Solid(2, False)
     spline = Spline(BspySpline(1, 2, (4,), (15,), ((0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 5.0, 7.0, 9.0, 9.0, 9.0, 12.0, 12.0, 12.0, 12.0),), \
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     #canvas = InteractiveCanvas(squareA, squareB)
     #canvas = InteractiveCanvas(starA, starB)
     #canvas = InteractiveCanvas(squareA, starB)
-    #canvas = InteractiveCanvas(triangleSplineA, starSplineB)
+    canvas = InteractiveCanvas(triangleSplineA, starSplineB)
     #canvas = InteractiveCanvas(glob2, triangleSplineA)
-    canvas = InteractiveCanvas(glob1, squareB)
+    #canvas = InteractiveCanvas(glob1, squareB)
     plt.show()

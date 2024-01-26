@@ -177,22 +177,18 @@ def create_smooth_solid_from_points(dimension, points, containsInfinity = False)
     solid = Solid(dimension, containsInfinity)
 
     t = 0.0
-    previousPoint = np.array(points[0])
-    dataPoints = [(t, *previousPoint)]
-    for point in points[1:]:
-        point = np.array(point)
+    uValues = [t]
+    dataPoints = np.array(points, np.float64)
+    previousPoint = dataPoints[0]
+    for point in dataPoints[1:]:
         t += np.linalg.norm(point - previousPoint)
-        dataPoints.append((t, *point))
+        uValues.append(t)
         previousPoint = point
-    point = np.array(points[0])
-    t += np.linalg.norm(point - previousPoint)
-    dataPoints.append((t, *point))
-    tangent = np.array(points[1], np.float64) - np.array(points[-1], np.float64)
-    tangent /= np.linalg.norm(tangent)
-    dataPoints[0] = [*dataPoints[0], *tangent]
-    dataPoints[-1] = [*dataPoints[-1], *tangent]
+    t += np.linalg.norm(dataPoints[0] - previousPoint)
+    uValues.append(t)
+    dataPoints = np.append(dataPoints, (dataPoints[0],), axis=0)
 
-    spline = Spline(BspySpline.least_squares(dimension - 1, dimension, (4,) * (dimension - 1), dataPoints))
+    spline = Spline(BspySpline.least_squares(uValues, dataPoints.T, (4,) * (dimension - 1), tolerance = 0.1))
     domain = Solid(dimension-1, False)
     domain.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), Solid(dimension-2, True)))
     domain.boundaries.append(Boundary(hyperplane_1D(1.0, t), Solid(dimension-2, True)))

@@ -26,13 +26,7 @@ def solid_edges(solid, subdivide = False):
             for domainEdge in solid_edges(boundary.domain, subdivide or not isinstance(boundary.manifold, Hyperplane)):
                 yield (boundary.manifold.point(domainEdge[0]), boundary.manifold.point(domainEdge[1]), boundary.manifold.normal(domainEdge[0]))
     else:
-        def sort_key(boundary):
-            if boundary.domain.dimension > 0:
-                return 0.0
-            else:
-                return (boundary.manifold.point(0.0), -boundary.manifold.normal(0.0))
-
-        solid.boundaries.sort(key=sort_key)
+        solid.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), -boundary.manifold.normal(0.0)))
         leftB = 0
         rightB = 0
         while leftB < len(solid.boundaries):

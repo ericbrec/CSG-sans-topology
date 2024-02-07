@@ -191,12 +191,13 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
         glLoadIdentity()
         glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0)
         
-        glBegin(GL_TRIANGLES)
+        vertices = np.array(((0.25, 0.25), (0.5, 0.25), (0.25, 0.75),
+                             (0.5, 0.25), (0.75, 0.25), (0.75, 0.75)), np.float32)
         glColor3f(1.0, 0.0, 0.0)
-        glVertex3f(0.25, 0.25, 0.0)
-        glVertex3f(0.5, 0.25, 0.0)
-        glVertex3f(0.25, 0.75, 0.0)
-        glEnd()
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glVertexPointer(2, GL_FLOAT, 0, vertices)
+        glDrawArrays(GL_TRIANGLES, 0, len(vertices))
+        glDisableClientState(GL_VERTEX_ARRAY)
         glFlush()
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0)

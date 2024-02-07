@@ -115,7 +115,7 @@ def triangulate(solid):
         gluTessEndContour(tess)
     gluTessEndPolygon(tess)
     gluDeleteTess(tess)
-    return vertices
+    return np.array(vertices, np.float32)
 
 class SolidOpenGLFrame(SplineOpenGLFrame):
 
@@ -133,6 +133,7 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
             float uInterval, vInterval;
         } inData;
         in vec3 worldPosition;
+        in vec3 splineColor;
         in vec3 normal;
         in vec2 parameters;
         in vec2 pixelPer;
@@ -143,18 +144,20 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
         uniform int uOptions;
         uniform sampler2D uTextureMap;
 
-        out vec3 color;
+        out vec4 color;
      
         void main()
         {
-            float specular = pow(abs(dot(normal, normalize(uLightDirection + worldPosition.xyz / length(worldPosition)))), 25.0);
-            vec3 reflection = normalize(reflect(worldPosition.xyz, normal));
-        	vec2 tex = vec2(0.5 * (1.0 - atan(reflection.x, reflection.z) / 3.1416), 0.5 * (1.0 - reflection.y));
-            color = (uOptions & (1 << 2)) > 0 ? uFillColor.rgb : vec3(0.0, 0.0, 0.0);
-            color = (0.3 + 0.5 * abs(dot(normal, uLightDirection)) + 0.2 * specular) * texture(uTextureMap, tex).rgb;
-
-        	tex = vec2((parameters.x - inData.uFirst) / inData.uSpan, (parameters.y - inData.vFirst) / inData.vSpan);
-            color = (0.3 + 0.5 * abs(dot(normal, uLightDirection)) + 0.2 * specular) * texture(uTextureMap, tex).rgb;
+        	vec2 tex = vec2((parameters.x - inData.uFirst) / inData.uSpan, (parameters.y - inData.vFirst) / inData.vSpan);
+            float specular = pow(abs(dot(normal, normalize(uLightDirection + worldPosition / length(worldPosition)))), 25.0);
+            bool line = (uOptions & (1 << 2)) > 0 && (pixelPer.x * (parameters.x - inData.uFirst) < 1.5 || pixelPer.x * (inData.uFirst + inData.uSpan - parameters.x) < 1.5);
+            line = line || ((uOptions & (1 << 2)) > 0 && (pixelPer.y * (parameters.y - inData.vFirst) < 1.5 || pixelPer.y * (inData.vFirst + inData.vSpan - parameters.y) < 1.5));
+            line = line || ((uOptions & (1 << 3)) > 0 && pixelPer.x * (parameters.x - inData.u) < 1.5);
+            line = line || ((uOptions & (1 << 3)) > 0 && pixelPer.y * (parameters.y - inData.v) < 1.5);
+            color = line ? uLineColor : ((uOptions & (1 << 1)) > 0 ? vec4(splineColor, uFillColor.a) : vec4(0.0, 0.0, 0.0, 0.0));
+            color.rgb = (0.3 + 0.5 * abs(dot(normal, uLightDirection)) + 0.2 * specular) * color.rgb;
+            if (color.a * texture(uTextureMap, tex).r == 0.0)
+                discard;
         }
     """
 
@@ -180,7 +183,7 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
             raise ValueError("Framebuffer incomplete")
 
         glBindFramebuffer(GL_FRAMEBUFFER, self.frameBuffer);
-        glClearColor(0.3, 0.3, 0.0, 1.0)
+        glClearColor(0.0, 0.0, 0.0, 1.0)
         glDisable(GL_DEPTH_TEST)
         glViewport(0,0,512,512)
         glClear(GL_COLOR_BUFFER_BIT)
@@ -189,7 +192,7 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
         glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0)
         
         glBegin(GL_TRIANGLES)
-        glColor3f(0.75, 0.8, 0.0)
+        glColor3f(1.0, 0.0, 0.0)
         glVertex3f(0.25, 0.25, 0.0)
         glVertex3f(0.5, 0.25, 0.0)
         glVertex3f(0.25, 0.75, 0.0)

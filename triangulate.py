@@ -1,8 +1,10 @@
 from collections import namedtuple
 import numpy as np
+from OpenGL.GL import *
 from OpenGL.GLU import *
 from manifold import Manifold
 from spline import Spline
+from bspy import DrawableSpline, bspyApp, SplineOpenGLFrame
 
 def triangulate(solid):
     assert solid.dimension == 2
@@ -114,3 +116,133 @@ def triangulate(solid):
     gluTessEndPolygon(tess)
     gluDeleteTess(tess)
     return vertices
+
+class SolidOpenGLFrame(SplineOpenGLFrame):
+
+    surfaceFragmentShaderCode = """
+        #version 410 core
+     
+        flat in SplineInfo
+        {
+            int uOrder, vOrder;
+            int uN, vN;
+            int uKnot, vKnot;
+            float uFirst, vFirst;
+            float uSpan, vSpan;
+            float u, v;
+            float uInterval, vInterval;
+        } inData;
+        in vec3 worldPosition;
+        in vec3 normal;
+        in vec2 parameters;
+        in vec2 pixelPer;
+
+        uniform vec4 uFillColor;
+        uniform vec4 uLineColor;
+        uniform vec3 uLightDirection;
+        uniform int uOptions;
+        uniform sampler2D uTextureMap;
+
+        out vec3 color;
+     
+        void main()
+        {
+            float specular = pow(abs(dot(normal, normalize(uLightDirection + worldPosition.xyz / length(worldPosition)))), 25.0);
+            vec3 reflection = normalize(reflect(worldPosition.xyz, normal));
+        	vec2 tex = vec2(0.5 * (1.0 - atan(reflection.x, reflection.z) / 3.1416), 0.5 * (1.0 - reflection.y));
+            color = (uOptions & (1 << 2)) > 0 ? uFillColor.rgb : vec3(0.0, 0.0, 0.0);
+            color = (0.3 + 0.5 * abs(dot(normal, uLightDirection)) + 0.2 * specular) * texture(uTextureMap, tex).rgb;
+
+        	tex = vec2((parameters.x - inData.uFirst) / inData.uSpan, (parameters.y - inData.vFirst) / inData.vSpan);
+            color = (0.3 + 0.5 * abs(dot(normal, uLightDirection)) + 0.2 * specular) * texture(uTextureMap, tex).rgb;
+        }
+    """
+
+    def CreateGLResources(self):
+        self.frameBuffer = glGenFramebuffers(1)
+        glBindFramebuffer(GL_FRAMEBUFFER, self.frameBuffer)
+
+        self.textureBuffer = glGenTextures(1)
+        glActiveTexture(GL_TEXTURE1)
+        glBindTexture(GL_TEXTURE_2D, self.textureBuffer)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 512, 512, 0, GL_RED, GL_UNSIGNED_BYTE, None)
+        glActiveTexture(GL_TEXTURE0)
+
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, self.textureBuffer, 0)
+        glDrawBuffers(1, (GL_COLOR_ATTACHMENT0,))
+
+        if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
+            raise ValueError("Framebuffer incomplete")
+
+        glBindFramebuffer(GL_FRAMEBUFFER, self.frameBuffer);
+        glClearColor(0.3, 0.3, 0.0, 1.0)
+        glDisable(GL_DEPTH_TEST)
+        glViewport(0,0,512,512)
+        glClear(GL_COLOR_BUFFER_BIT)
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0)
+        
+        glBegin(GL_TRIANGLES)
+        glColor3f(0.75, 0.8, 0.0)
+        glVertex3f(0.25, 0.25, 0.0)
+        glVertex3f(0.5, 0.25, 0.0)
+        glVertex3f(0.25, 0.75, 0.0)
+        glEnd()
+        glFlush()
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+        #glClearColor(self.backgroundColor[0], self.backgroundColor[1], self.backgroundColor[2], self.backgroundColor[3])
+        #glEnable( GL_DEPTH_TEST )
+        #glMatrixMode(GL_PROJECTION)
+        #glLoadMatrix(self.projection)
+        #glMatrixMode(GL_MODELVIEW)
+
+        SplineOpenGLFrame.CreateGLResources(self)
+
+        glUseProgram(self.surface3Program.surfaceProgram)
+        self.uSurfaceTextureMap = glGetUniformLocation(self.surface3Program.surfaceProgram, 'uTextureMap')
+        glUniform1i(self.uSurfaceTextureMap, 1) # GL_TEXTURE1 is the texture map
+        self.surface3Program.surfaceProgram.check_validate() # Now that textures are assigned, we can validate the program
+        glUseProgram(0)
+        
+    def redraw(self):
+        """
+        Handle `OpenGLFrame` redraw action. Updates view and draws spline list.
+        """
+        if not self.glInitialized:
+            return
+        
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT )
+        glLoadIdentity()
+        SplineOpenGLFrame.redraw(self)
+
+def CreateSplineFromMesh(xRange, zRange, yFunction):
+    order = (3, 3)
+    coefficients = np.zeros((3, xRange[2], zRange[2]), np.float32)
+    knots = (np.zeros(xRange[2] + order[0], np.float32), np.zeros(zRange[2] + order[1], np.float32))
+    knots[0][0] = xRange[0]
+    knots[0][1:xRange[2]+1] = np.linspace(xRange[0], xRange[1], xRange[2], dtype=np.float32)[:]
+    knots[0][xRange[2]+1:] = xRange[1]
+    knots[1][0] = zRange[0]
+    knots[1][1:zRange[2]+1] = np.linspace(zRange[0], zRange[1], zRange[2], dtype=np.float32)[:]
+    knots[1][zRange[2]+1:] = zRange[1]
+    for i in range(xRange[2]):
+        for j in range(zRange[2]):
+            coefficients[0, i, j] = knots[0][i]
+            coefficients[1, i, j] = yFunction(knots[0][i], knots[1][j])
+            coefficients[2, i, j] = knots[1][j]
+    
+    return DrawableSpline(2, 3, order, (xRange[2], zRange[2]), knots, coefficients)
+
+if __name__=='__main__':
+    app = bspyApp(SplineOpenGLFrame=SolidOpenGLFrame)
+    app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: np.sin(4*np.sqrt(x*x + y*y))))
+    app.draw(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x + y*y - 1))
+    app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x - y*y))
+    app.mainloop()

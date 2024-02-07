@@ -3,8 +3,10 @@ import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from manifold import Manifold
+from hyperplane import Hyperplane
 from spline import Spline
 from bspy import DrawableSpline, bspyApp, SplineOpenGLFrame
+import solidUtils as utils
 
 def triangulate(solid):
     assert solid.dimension == 2
@@ -182,31 +184,7 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
         if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
             raise ValueError("Framebuffer incomplete")
 
-        glBindFramebuffer(GL_FRAMEBUFFER, self.frameBuffer);
-        glClearColor(0.0, 0.0, 0.0, 1.0)
-        glDisable(GL_DEPTH_TEST)
-        glViewport(0,0,512,512)
-        glClear(GL_COLOR_BUFFER_BIT)
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0)
-        
-        vertices = np.array(((0.25, 0.25), (0.5, 0.25), (0.25, 0.75),
-                             (0.5, 0.25), (0.75, 0.25), (0.75, 0.75)), np.float32)
-        glColor3f(1.0, 0.0, 0.0)
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glVertexPointer(2, GL_FLOAT, 0, vertices)
-        glDrawArrays(GL_TRIANGLES, 0, len(vertices))
-        glDisableClientState(GL_VERTEX_ARRAY)
-        glFlush()
-
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
-        #glClearColor(self.backgroundColor[0], self.backgroundColor[1], self.backgroundColor[2], self.backgroundColor[3])
-        #glEnable( GL_DEPTH_TEST )
-        #glMatrixMode(GL_PROJECTION)
-        #glLoadMatrix(self.projection)
-        #glMatrixMode(GL_MODELVIEW)
-
         SplineOpenGLFrame.CreateGLResources(self)
 
         glUseProgram(self.surface3Program.surfaceProgram)
@@ -214,17 +192,68 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
         glUniform1i(self.uSurfaceTextureMap, 1) # GL_TEXTURE1 is the texture map
         self.surface3Program.surfaceProgram.check_validate() # Now that textures are assigned, we can validate the program
         glUseProgram(0)
-        
-    def redraw(self):
-        """
-        Handle `OpenGLFrame` redraw action. Updates view and draws spline list.
-        """
-        if not self.glInitialized:
+
+class SolidApp(bspyApp):
+    def __init__(self, *args, SplineOpenGLFrame=SolidOpenGLFrame, **kw):
+        bspyApp.__init__(self, *args, SplineOpenGLFrame=SplineOpenGLFrame, **kw)
+
+    def _DrawSplines(self, frame, transform):
+        for spline in self.splineDrawList:
+            if spline.nInd == 2:
+                glBindFramebuffer(GL_FRAMEBUFFER, frame.frameBuffer)
+                glDisable(GL_DEPTH_TEST)
+                glViewport(0,0,512,512)
+                if "trim" in spline.metadata:
+                    glClearColor(0.0, 0.0, 0.0, 1.0)
+                    glClear(GL_COLOR_BUFFER_BIT)
+                    glMatrixMode(GL_PROJECTION)
+                    glLoadIdentity()
+                    bounds = spline.domain()
+                    glOrtho(bounds[0, 0], bounds[0, 1], bounds[1, 0], bounds[1, 1], -1.0, 1.0)
+                    glMatrixMode(GL_MODELVIEW)
+                    glLoadIdentity()
+                    glColor3f(0.0, 0.0, 0.0)
+                    glEnableClientState(GL_VERTEX_ARRAY)
+                    vertices = spline.metadata["trim"]
+                    glColor3f(1.0, 0.0, 0.0)
+                    glBegin(GL_TRIANGLES)
+                    for vertex in vertices:
+                        glVertex2fv(vertex)
+                    glEnd()
+                else:
+                    glClearColor(1.0, 0.0, 0.0, 1.0)
+                    glClear(GL_COLOR_BUFFER_BIT)
+                glFlush()
+
+                glBindFramebuffer(GL_FRAMEBUFFER, 0)
+                glEnable(GL_DEPTH_TEST)
+                glClearColor(frame.backgroundColor[0], frame.backgroundColor[1], frame.backgroundColor[2], frame.backgroundColor[3])
+                glMatrixMode(GL_PROJECTION)
+                glLoadMatrixf(frame.projection)
+                glMatrixMode(GL_MODELVIEW)
+                glLoadIdentity()
+
+            spline._Draw(frame, transform)
+
+    def draw_solid(self, solid, name="Solid"):
+        if solid.dimension != 3:
             return
-        
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT )
-        glLoadIdentity()
-        SplineOpenGLFrame.redraw(self)
+        for i, surface in enumerate(solid.boundaries):
+            vertices = triangulate(surface.domain)
+            if isinstance(surface.manifold, Hyperplane):
+                uvMin = vertices.min(axis=0)
+                uvMax = vertices.max(axis=0)
+                xyzMinMin = surface.manifold.point(uvMin)
+                xyzMinMax = surface.manifold.point((uvMin[0], uvMax[1]))
+                xyzMaxMin = surface.manifold.point((uvMax[0], uvMin[1]))
+                xyzMaxMax = surface.manifold.point(uvMax)
+                spline = DrawableSpline(2, 3, (2, 2), (2, 2), 
+                    np.array((uvMin, uvMin, uvMax, uvMax), np.float32).T,
+                    np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)
+            elif isinstance(surface.manifold, Spline):
+                spline = DrawableSpline.make_drawable(surface.manifold.spline)
+            spline.metadata["trim"] = vertices
+            self.draw(spline, f"{name} boundary {i+1}")
 
 def CreateSplineFromMesh(xRange, zRange, yFunction):
     order = (3, 3)
@@ -245,8 +274,10 @@ def CreateSplineFromMesh(xRange, zRange, yFunction):
     return DrawableSpline(2, 3, order, (xRange[2], zRange[2]), knots, coefficients)
 
 if __name__=='__main__':
-    app = bspyApp(SplineOpenGLFrame=SolidOpenGLFrame)
+    app = SolidApp()
     app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: np.sin(4*np.sqrt(x*x + y*y))))
-    app.draw(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x + y*y - 1))
+    app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x + y*y - 1))
     app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x - y*y))
+    cubeA = utils.create_hypercube([1.5,1.5,1.5], [-1,-1,-1])
+    app.draw_solid(cubeA, "cubeA")
     app.mainloop()

@@ -210,8 +210,6 @@ class SolidApp(bspyApp):
                     glLoadIdentity()
                     bounds = spline.domain()
                     glOrtho(bounds[0, 0], bounds[0, 1], bounds[1, 0], bounds[1, 1], -1.0, 1.0)
-                    glMatrixMode(GL_MODELVIEW)
-                    glLoadIdentity()
                     glColor3f(0.0, 0.0, 0.0)
                     glEnableClientState(GL_VERTEX_ARRAY)
                     vertices = spline.metadata["trim"]
@@ -231,7 +229,6 @@ class SolidApp(bspyApp):
                 glMatrixMode(GL_PROJECTION)
                 glLoadMatrixf(frame.projection)
                 glMatrixMode(GL_MODELVIEW)
-                glLoadIdentity()
 
             spline._Draw(frame, transform)
 

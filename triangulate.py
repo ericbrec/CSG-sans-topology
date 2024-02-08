@@ -232,11 +232,15 @@ class SolidApp(bspyApp):
 
             spline._Draw(frame, transform)
 
-    def draw_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None):
+    def draw_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True):
         if solid.dimension != 3:
             return
+        Appearance = namedtuple("Appearance", ("fillColor", "lineColor", "options"))
         for i, surface in enumerate(solid.boundaries):
             vertices = triangulate(surface.domain)
+            if not inherit or not hasattr(surface.manifold, "appearance"):
+                surface.manifold.appearance = Appearance(fillColor, lineColor, options)
+            appearance = surface.manifold.appearance
             if isinstance(surface.manifold, Hyperplane):
                 uvMin = vertices.min(axis=0)
                 uvMax = vertices.max(axis=0)
@@ -247,25 +251,19 @@ class SolidApp(bspyApp):
                 spline = DrawableSpline(2, 3, (2, 2), (2, 2), 
                     np.array((uvMin, uvMin, uvMax, uvMax), np.float32).T,
                     np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)
-                if fillColor is not None:
-                    spline.metadata["fillColor"] = fillColor
-                if lineColor is not None:
-                    spline.metadata["lineColor"] = lineColor
-                if options is not None:
-                    spline.metadata["options"] = options
             elif isinstance(surface.manifold, Spline):
-                if fillColor is not None:
-                    surface.manifold.spline.metadata["fillColor"] = fillColor
-                if lineColor is not None:
-                    surface.manifold.spline.metadata["lineColor"] = lineColor
-                if options is not None:
-                    surface.manifold.spline.metadata["options"] = options
                 spline = DrawableSpline.make_drawable(surface.manifold.spline)
                 spline.metadata = {}
                 spline.metadata["fillColor"] = surface.manifold.spline.metadata["fillColor"]
                 spline.metadata["lineColor"] = surface.manifold.spline.metadata["lineColor"]
                 spline.metadata["options"] = surface.manifold.spline.metadata["options"]
                 spline.metadata["animate"] = surface.manifold.spline.metadata["animate"]
+            if appearance.fillColor is not None:
+                spline.metadata["fillColor"] = appearance.fillColor
+            if appearance.lineColor is not None:
+                spline.metadata["lineColor"] = appearance.lineColor
+            if appearance.options is not None:
+                spline.metadata["options"] = appearance.options
             spline.metadata["trim"] = vertices
             self.draw(spline, f"{name} boundary {i+1}")
 

@@ -194,7 +194,7 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
         self.surface3Program.surfaceProgram.check_validate() # Now that textures are assigned, we can validate the program
         glUseProgram(0)
 
-class SolidApp(bspyApp):
+class solidApp(bspyApp):
     def __init__(self, *args, SplineOpenGLFrame=SolidOpenGLFrame, **kw):
         bspyApp.__init__(self, *args, SplineOpenGLFrame=SplineOpenGLFrame, **kw)
 
@@ -286,7 +286,7 @@ def CreateSplineFromMesh(xRange, zRange, yFunction):
     return DrawableSpline(2, 3, order, (xRange[2], zRange[2]), knots, coefficients)
 
 if __name__=='__main__':
-    app = SolidApp()
+    app = solidApp()
     app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: np.sin(4*np.sqrt(x*x + y*y))))
     app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x + y*y - 1))
     app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x - y*y))

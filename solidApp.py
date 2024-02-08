@@ -267,29 +267,8 @@ class solidApp(bspyApp):
             spline.metadata["trim"] = vertices
             self.draw(spline, f"{name} boundary {i+1}")
 
-def CreateSplineFromMesh(xRange, zRange, yFunction):
-    order = (3, 3)
-    coefficients = np.zeros((3, xRange[2], zRange[2]), np.float32)
-    knots = (np.zeros(xRange[2] + order[0], np.float32), np.zeros(zRange[2] + order[1], np.float32))
-    knots[0][0] = xRange[0]
-    knots[0][1:xRange[2]+1] = np.linspace(xRange[0], xRange[1], xRange[2], dtype=np.float32)[:]
-    knots[0][xRange[2]+1:] = xRange[1]
-    knots[1][0] = zRange[0]
-    knots[1][1:zRange[2]+1] = np.linspace(zRange[0], zRange[1], zRange[2], dtype=np.float32)[:]
-    knots[1][zRange[2]+1:] = zRange[1]
-    for i in range(xRange[2]):
-        for j in range(zRange[2]):
-            coefficients[0, i, j] = knots[0][i]
-            coefficients[1, i, j] = yFunction(knots[0][i], knots[1][j])
-            coefficients[2, i, j] = knots[1][j]
-    
-    return DrawableSpline(2, 3, order, (xRange[2], zRange[2]), knots, coefficients)
-
 if __name__=='__main__':
     app = solidApp()
-    app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: np.sin(4*np.sqrt(x*x + y*y))))
-    app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x + y*y - 1))
-    app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x - y*y))
 
     order = 3
     knots = [0.0] * order + [1.0] * order

@@ -232,7 +232,7 @@ class SolidApp(bspyApp):
 
             spline._Draw(frame, transform)
 
-    def draw_solid(self, solid, name="Solid"):
+    def draw_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None):
         if solid.dimension != 3:
             return
         for i, surface in enumerate(solid.boundaries):
@@ -247,8 +247,25 @@ class SolidApp(bspyApp):
                 spline = DrawableSpline(2, 3, (2, 2), (2, 2), 
                     np.array((uvMin, uvMin, uvMax, uvMax), np.float32).T,
                     np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)
+                if fillColor is not None:
+                    spline.metadata["fillColor"] = fillColor
+                if lineColor is not None:
+                    spline.metadata["lineColor"] = lineColor
+                if options is not None:
+                    spline.metadata["options"] = options
             elif isinstance(surface.manifold, Spline):
+                if fillColor is not None:
+                    surface.manifold.spline.metadata["fillColor"] = fillColor
+                if lineColor is not None:
+                    surface.manifold.spline.metadata["lineColor"] = lineColor
+                if options is not None:
+                    surface.manifold.spline.metadata["options"] = options
                 spline = DrawableSpline.make_drawable(surface.manifold.spline)
+                spline.metadata = {}
+                spline.metadata["fillColor"] = surface.manifold.spline.metadata["fillColor"]
+                spline.metadata["lineColor"] = surface.manifold.spline.metadata["lineColor"]
+                spline.metadata["options"] = surface.manifold.spline.metadata["options"]
+                spline.metadata["animate"] = surface.manifold.spline.metadata["animate"]
             spline.metadata["trim"] = vertices
             self.draw(spline, f"{name} boundary {i+1}")
 
@@ -288,7 +305,7 @@ if __name__=='__main__':
     paraboloid = Solid(3, False)
     paraboloid.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
     paraboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
-    app.draw_solid(paraboloid, "paraboloid")
+    app.draw_solid(paraboloid, "paraboloid", np.array((0, 0, 1, 1),np.float32))
 
     spline = Spline(spline.spline.copy())
     spline.flip_normal()
@@ -297,8 +314,8 @@ if __name__=='__main__':
     paraboloid2.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
     paraboloid2.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
     paraboloid2.translate(np.array((0.0, 0.5, 0.55)))
-    app.draw_solid(paraboloid2, "paraboloid2")
+    app.draw_solid(paraboloid2, "paraboloid2", np.array((0, 1, 0, 1),np.float32))
 
-    paraboloid3 = paraboloid - paraboloid2
-    app.draw_solid(paraboloid3, "p - p2")
+    paraboloid3 = paraboloid.intersection(paraboloid2)
+    app.draw_solid(paraboloid3, "p * p2")
     app.mainloop()

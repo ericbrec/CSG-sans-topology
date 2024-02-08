@@ -2,10 +2,11 @@ from collections import namedtuple
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
+from solid import Solid, Boundary
 from manifold import Manifold
 from hyperplane import Hyperplane
 from spline import Spline
-from bspy import DrawableSpline, bspyApp, SplineOpenGLFrame
+from bspy import Spline as BspySpline, DrawableSpline, bspyApp, SplineOpenGLFrame
 import solidUtils as utils
 
 def triangulate(solid):
@@ -16,7 +17,7 @@ def triangulate(solid):
         def __init__(self, curve, t, clockwise, isStart, otherEnd=None):
             self.curve = curve
             self.t = t
-            self.xy = curve.manifold.point(t)
+            self.xy = curve.manifold.point((t,))
             self.clockwise = clockwise
             self.isStart = isStart
             self.otherEnd = otherEnd
@@ -29,9 +30,9 @@ def triangulate(solid):
         boundaryCount = len(curve.domain.boundaries)
         while leftB < boundaryCount:
             if curve.domain.boundaries[leftB].manifold.normal(0.0) < 0.0:
-                leftPoint = curve.domain.boundaries[leftB].manifold.point(0.0)
+                leftPoint = curve.domain.boundaries[leftB].manifold.point(0.0)[0]
                 while rightB < boundaryCount:
-                    rightPoint = curve.domain.boundaries[rightB].manifold.point(0.0)
+                    rightPoint = curve.domain.boundaries[rightB].manifold.point(0.0)[0]
                     if leftPoint - Manifold.minSeparation < rightPoint and curve.domain.boundaries[rightB].manifold.normal(0.0) > 0.0:
                         t = curve.manifold.tangent_space(leftPoint)[:,0]
                         n = curve.manifold.normal(leftPoint)
@@ -108,7 +109,7 @@ def triangulate(solid):
             endpoints.remove(next.otherEnd)
             subdivisions = int(abs(next.otherEnd.t - next.t) / 0.1) if isinstance(start.curve.manifold, Spline) else 2
             for t in np.linspace(next.t, next.otherEnd.t, subdivisions):
-                xy = next.curve.manifold.point(t)
+                xy = next.curve.manifold.point((t,))
                 vertex = (*xy, 0.0)
                 gluTessVertex(tess, vertex, vertex)
             next = next.otherEnd.connection
@@ -211,7 +212,6 @@ class SolidApp(bspyApp):
                     bounds = spline.domain()
                     glOrtho(bounds[0, 0], bounds[0, 1], bounds[1, 0], bounds[1, 1], -1.0, 1.0)
                     glColor3f(0.0, 0.0, 0.0)
-                    glEnableClientState(GL_VERTEX_ARRAY)
                     vertices = spline.metadata["trim"]
                     glColor3f(1.0, 0.0, 0.0)
                     glBegin(GL_TRIANGLES)
@@ -275,6 +275,30 @@ if __name__=='__main__':
     app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: np.sin(4*np.sqrt(x*x + y*y))))
     app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x + y*y - 1))
     app.list(CreateSplineFromMesh((-1, 1, 10), (-1, 1, 8), lambda x, y: x*x - y*y))
-    cubeA = utils.create_hypercube([1.5,1.5,1.5], [-1,-1,-1])
-    app.draw_solid(cubeA, "cubeA")
+
+    order = 3
+    knots = [0.0] * order + [1.0] * order
+    nCoef = len(knots) - order
+    spline = Spline(BspySpline(2, 3, (order, order), (nCoef, nCoef), (knots, knots), \
+        (((-1.0, -1.0, -1.0), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)), \
+        ((1.0, 0.0, 1.0), (0.0, -5.0, 0.0), (1.0, 0.0, 1.0)), \
+        ((-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0)))))
+    spline.flip_normal()
+    cap = utils.hyperplane_axis_aligned(3, 1, 0.7, False)
+    paraboloid = Solid(3, False)
+    paraboloid.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
+    paraboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
+    app.draw_solid(paraboloid, "paraboloid")
+
+    spline = Spline(spline.spline.copy())
+    spline.flip_normal()
+    cap = utils.hyperplane_axis_aligned(3, 1, 0.7, False)
+    paraboloid2 = Solid(3,False)
+    paraboloid2.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
+    paraboloid2.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
+    paraboloid2.translate(np.array((0.0, 0.5, 0.55)))
+    app.draw_solid(paraboloid2, "paraboloid2")
+
+    paraboloid3 = paraboloid - paraboloid2
+    app.draw_solid(paraboloid3, "p - p2")
     app.mainloop()

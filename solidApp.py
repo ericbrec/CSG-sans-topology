@@ -107,7 +107,7 @@ def triangulate(solid):
         while next is not None:
             endpoints.remove(next)
             endpoints.remove(next.otherEnd)
-            subdivisions = int(abs(next.otherEnd.t - next.t) / 0.1) if isinstance(start.curve.manifold, Spline) else 2
+            subdivisions = max(int(abs(next.otherEnd.t - next.t) / 0.1), 10) if isinstance(next.curve.manifold, Spline) else 2
             for t in np.linspace(next.t, next.otherEnd.t, subdivisions):
                 xy = next.curve.manifold.point((t,))
                 vertex = (*xy, 0.0)
@@ -270,7 +270,7 @@ class solidApp(bspyApp):
 if __name__=='__main__':
     app = solidApp()
 
-    if True:
+    if False:
         square = utils.create_hypercube([1,1], [0,0])
         star = utils.create_star(2.0, [0.0, 0.0], 90.0*6.28/360.0)
         extrudedSquare = utils.extrude_solid(square,[[-2,2,-4],[2,-2,4]])
@@ -286,15 +286,13 @@ if __name__=='__main__':
             (((-1.0, -1.0, -1.0), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)), \
             ((1.0, 0.0, 1.0), (0.0, -5.0, 0.0), (1.0, 0.0, 1.0)), \
             ((-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0)))))
-        spline.flip_normal()
         cap = utils.hyperplane_axis_aligned(3, 1, 0.7, False)
         paraboloid = Solid(3, False)
         paraboloid.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
         paraboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
-        app.draw_solid(paraboloid, "paraboloid", np.array((0, 0, 1, 1),np.float32))
+        app.draw_solid(paraboloid, "paraboloid", np.array((.4, .6, 1, 1),np.float32))
 
         spline = Spline(spline.spline.copy())
-        spline.flip_normal()
         cap = utils.hyperplane_axis_aligned(3, 1, 0.7, False)
         paraboloid2 = Solid(3,False)
         paraboloid2.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
@@ -302,6 +300,6 @@ if __name__=='__main__':
         paraboloid2.translate(np.array((0.0, 0.5, 0.55)))
         app.draw_solid(paraboloid2, "paraboloid2", np.array((0, 1, 0, 1),np.float32))
 
-        paraboloid3 = paraboloid * paraboloid2
-        app.draw_solid(paraboloid3, "p * p2")
+        paraboloid3 = paraboloid + paraboloid2
+        app.draw_solid(paraboloid3, "p + p2")
         app.mainloop()

@@ -232,7 +232,7 @@ class solidApp(bspyApp):
 
             spline._Draw(frame, transform)
 
-    def draw_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True):
+    def list_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True, draw=False):
         if solid.dimension != 3:
             return
         Appearance = namedtuple("Appearance", ("fillColor", "lineColor", "options"))
@@ -265,7 +265,13 @@ class solidApp(bspyApp):
             if appearance.options is not None:
                 spline.metadata["options"] = appearance.options
             spline.metadata["trim"] = vertices
-            self.draw(spline, f"{name} boundary {i+1}")
+            if draw:
+                self.draw(spline, f"{name} boundary {i+1}")
+            else:
+                self.list(spline, f"{name} boundary {i+1}")
+
+    def draw_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True):
+        self.list_solid(solid, name, fillColor, lineColor, options, inherit, draw=True)
 
 if __name__=='__main__':
     app = solidApp()
@@ -290,7 +296,7 @@ if __name__=='__main__':
         paraboloid = Solid(3, False)
         paraboloid.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
         paraboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
-        app.draw_solid(paraboloid, "paraboloid", np.array((.4, .6, 1, 1),np.float32))
+        app.list_solid(paraboloid, "paraboloid", np.array((.4, .6, 1, 1),np.float32))
 
         spline = Spline(spline.spline.copy())
         cap = utils.hyperplane_axis_aligned(3, 1, 0.7, False)
@@ -298,7 +304,7 @@ if __name__=='__main__':
         paraboloid2.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
         paraboloid2.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
         paraboloid2.translate(np.array((0.0, 0.5, 0.55)))
-        app.draw_solid(paraboloid2, "paraboloid2", np.array((0, 1, 0, 1),np.float32))
+        app.list_solid(paraboloid2, "paraboloid2", np.array((0, 1, 0, 1),np.float32))
 
         paraboloid3 = paraboloid + paraboloid2
         app.draw_solid(paraboloid3, "p + p2")

@@ -518,7 +518,7 @@ class Spline(Manifold):
             for boundary in slice.boundaries[boundaryCount:]: # Mark bounding box boundaries as untouched
                 boundary.touched = False
 
-            # Nested function for adding slice points to new bounding box boundaries.
+            # Define function for adding slice points to new bounding box boundaries.
             def process_domain_point(boundary, domainPoint):
                 point = boundary.manifold.point(domainPoint)
                 # See if and where point touches bounding box of slice.
@@ -540,8 +540,10 @@ class Spline(Manifold):
                     process_domain_point(boundary, domainBoundaries[-1].manifold._point)
             
             # For touched boundaries, remove domain bounds that aren't needed.
+            boundaryWasTouched = False
             for newBoundary in slice.boundaries[boundaryCount:]:
                 if newBoundary.touched:
+                    boundaryWasTouched = True
                     domainBoundaries = newBoundary.domain.boundaries
                     assert len(domainBoundaries) > 2
                     domainBoundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
@@ -553,27 +555,32 @@ class Spline(Manifold):
                         domainBoundaries[-2].manifold._normal > 0.0:
                         del domainBoundaries[-1]
             
-            # Touch untouched boundaries that are connected to touched boundary endpoints.
-            boundaryMap = ((2, 3, 0), (2, 3, -1), (0, 1, 0), (0, 1, -1)) # Map of which bounding box boundaries touch each other
-            while True:
-                noTouches = True
-                for map, newBoundary, bound in zip(boundaryMap, slice.boundaries[boundaryCount:], bounds.flatten()):
-                    if not newBoundary.touched:
-                        leftBoundary = slice.boundaries[boundaryCount + map[0]]
-                        rightBoundary = slice.boundaries[boundaryCount + map[1]]
-                        if leftBoundary.touched and abs(leftBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
-                            newBoundary.touched = True
-                            noTouches = False
-                        elif rightBoundary.touched and abs(rightBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
-                            newBoundary.touched = True
-                            noTouches = False
-                if noTouches:
-                    break
-            
-            # Remove untouched boundaries.
-            i = boundaryCount
-            while i < len(slice.boundaries):
-                if not slice.boundaries[i].touched:
-                    del slice.boundaries[i]
-                else:
-                    i += 1
+            if boundaryWasTouched:
+                # Touch untouched boundaries that are connected to touched boundary endpoints.
+                boundaryMap = ((2, 3, 0), (2, 3, -1), (0, 1, 0), (0, 1, -1)) # Map of which bounding box boundaries touch each other
+                while True:
+                    noTouches = True
+                    for map, newBoundary, bound in zip(boundaryMap, slice.boundaries[boundaryCount:], bounds.flatten()):
+                        if not newBoundary.touched:
+                            leftBoundary = slice.boundaries[boundaryCount + map[0]]
+                            rightBoundary = slice.boundaries[boundaryCount + map[1]]
+                            if leftBoundary.touched and abs(leftBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
+                                newBoundary.touched = True
+                                noTouches = False
+                            elif rightBoundary.touched and abs(rightBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
+                                newBoundary.touched = True
+                                noTouches = False
+                    if noTouches:
+                        break
+                
+                # Remove untouched boundaries.
+                i = boundaryCount
+                while i < len(slice.boundaries):
+                    if not slice.boundaries[i].touched:
+                        del slice.boundaries[i]
+                    else:
+                        i += 1
+            else:
+                # No slice boundaries touched the bounding box, so remove bounding box if it's not contained in the solid.
+                if not solid.contains_point(self.point(bounds[:,0])):
+                    slice.boundaries = slice.boundaries[:boundaryCount]

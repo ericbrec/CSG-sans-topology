@@ -41,7 +41,10 @@ class Hyperplane(Manifold):
         -------
         hyperplane : `Hyperplane`
         """
-        return Hyperplane(self._normal, self._point, self._tangentSpace)
+        hyperplane = Hyperplane(self._normal, self._point, self._tangentSpace)
+        if hasattr(self, "material"):
+            hyperplane.material = self.material
+        return hyperplane
 
     def range_dimension(self):
         """

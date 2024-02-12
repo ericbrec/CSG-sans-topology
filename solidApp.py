@@ -235,12 +235,12 @@ class solidApp(bspyApp):
     def list_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True, draw=False):
         if solid.dimension != 3:
             return
-        Appearance = namedtuple("Appearance", ("fillColor", "lineColor", "options"))
+        Material = namedtuple("Material", ("fillColor", "lineColor", "options"))
         for i, surface in enumerate(solid.boundaries):
             vertices = triangulate(surface.domain)
-            if not inherit or not hasattr(surface.manifold, "appearance"):
-                surface.manifold.appearance = Appearance(fillColor, lineColor, options)
-            appearance = surface.manifold.appearance
+            if not inherit or not hasattr(surface.manifold, "material"):
+                surface.manifold.material = Material(fillColor, lineColor, options)
+            material = surface.manifold.material
             if isinstance(surface.manifold, Hyperplane):
                 uvMin = vertices.min(axis=0)
                 uvMax = vertices.max(axis=0)
@@ -258,12 +258,12 @@ class solidApp(bspyApp):
                 spline.metadata["lineColor"] = surface.manifold.spline.metadata["lineColor"]
                 spline.metadata["options"] = surface.manifold.spline.metadata["options"]
                 spline.metadata["animate"] = surface.manifold.spline.metadata["animate"]
-            if appearance.fillColor is not None:
-                spline.metadata["fillColor"] = appearance.fillColor
-            if appearance.lineColor is not None:
-                spline.metadata["lineColor"] = appearance.lineColor
-            if appearance.options is not None:
-                spline.metadata["options"] = appearance.options
+            if material.fillColor is not None:
+                spline.metadata["fillColor"] = material.fillColor
+            if material.lineColor is not None:
+                spline.metadata["lineColor"] = material.lineColor
+            if material.options is not None:
+                spline.metadata["options"] = material.options
             spline.metadata["trim"] = vertices
             if draw:
                 self.draw(spline, f"{name} boundary {i+1}")

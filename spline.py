@@ -36,6 +36,8 @@ class Spline(Manifold):
         """
         spline = Spline(self.spline.copy())
         spline.normalDirection = self.normalDirection
+        if hasattr(self, "material"):
+            spline.material = self.material
         return spline
 
     def range_dimension(self):

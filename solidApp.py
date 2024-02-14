@@ -107,7 +107,7 @@ def triangulate(solid):
         while next is not None:
             endpoints.remove(next)
             endpoints.remove(next.otherEnd)
-            subdivisions = max(int(abs(next.otherEnd.t - next.t) / 0.1), 10) if isinstance(next.curve.manifold, Spline) else 2
+            subdivisions = max(int(abs(next.otherEnd.t - next.t) / 0.1), 20) if isinstance(next.curve.manifold, Spline) else 2
             for t in np.linspace(next.t, next.otherEnd.t, subdivisions):
                 xy = next.curve.manifold.point((t,))
                 vertex = (*xy, 0.0)
@@ -197,6 +197,7 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
 class solidApp(bspyApp):
     def __init__(self, *args, SplineOpenGLFrame=SolidOpenGLFrame, **kw):
         bspyApp.__init__(self, *args, SplineOpenGLFrame=SplineOpenGLFrame, **kw)
+        self.frame.SetBackgroundColor(1.0, 1.0, 1.0)
 
     def _DrawSplines(self, frame, transform):
         for spline in self.splineDrawList:
@@ -225,6 +226,7 @@ class solidApp(bspyApp):
 
                 glBindFramebuffer(GL_FRAMEBUFFER, 0)
                 glEnable(GL_DEPTH_TEST)
+                glViewport(0, 0, frame.width, frame.height)
                 glClearColor(frame.backgroundColor[0], frame.backgroundColor[1], frame.backgroundColor[2], frame.backgroundColor[3])
                 glMatrixMode(GL_PROJECTION)
                 glLoadMatrixf(frame.projection)
@@ -283,6 +285,20 @@ if __name__=='__main__':
         extrudedStar = utils.extrude_solid(star,[[-2,-2,-4],[2,2,4]])
         combined = extrudedStar.union(extrudedSquare)
         app.draw_solid(combined)
+        app.mainloop()
+    elif True:
+        sphere = utils.create_hypercube([1.0,1.0,1.0], [0, 0,0])
+        #sphere = Solid(3, False)
+        #sphere.boundaries.append(Boundary(Spline(BspySpline.sphere(1.0, 0.001)), utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
+        #sphere.boundaries.append(Boundary(Spline(BspySpline.cone(2.0, 0.01, 3.0, 0.001) + (0.0, 0.0, -1.5)), utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
+        app.draw_solid(sphere, "sphere", np.array((.4, .6, 1, 1),np.float32))
+        endCurve = [[1, 0], [0, 0], [0, 1]] @ BspySpline(1, 1, (3,), (5,), (np.array((-3.0, -3.0, -3.0, -0.6, 0.6, 3.0, 3.0, 3.0)),), np.array((0, 3.0/8.0, 0, -4.0/8.0, 0))).graph()
+        spline = Spline(BspySpline.ruled_surface(endCurve + (0.0, -2.0, 0.0), endCurve + (0.0, 2.0, 0.0)))
+        halfSpace = Solid(3, False)
+        halfSpace.boundaries.append(Boundary(spline, utils.create_hypercube([3.0, 0.5], [0.0, 0.5])))
+        app.draw_solid(halfSpace, "halfSpace", np.array((0, 1, 0, 1),np.float32))
+        difference = sphere - halfSpace
+        app.draw_solid(difference, "difference")
         app.mainloop()
     else:
         order = 3

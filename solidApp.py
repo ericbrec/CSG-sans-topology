@@ -197,7 +197,6 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
 class solidApp(bspyApp):
     def __init__(self, *args, SplineOpenGLFrame=SolidOpenGLFrame, **kw):
         bspyApp.__init__(self, *args, SplineOpenGLFrame=SplineOpenGLFrame, **kw)
-        self.frame.SetBackgroundColor(1.0, 1.0, 1.0)
 
     def _DrawSplines(self, frame, transform):
         for spline in self.splineDrawList:
@@ -278,7 +277,7 @@ class solidApp(bspyApp):
 if __name__=='__main__':
     app = solidApp()
 
-    if False:
+    if True:
         square = utils.create_hypercube([1,1], [0,0])
         star = utils.create_star(2.0, [0.0, 0.0], 90.0*6.28/360.0)
         extrudedSquare = utils.extrude_solid(square,[[-2,2,-4],[2,-2,4]])
@@ -286,7 +285,8 @@ if __name__=='__main__':
         combined = extrudedStar.union(extrudedSquare)
         app.draw_solid(combined)
         app.mainloop()
-    elif True:
+    elif False:
+        app.frame.SetBackgroundColor(1.0, 1.0, 1.0)
         sphere = utils.create_hypercube([1.0,1.0,1.0], [0, 0,0])
         #sphere = Solid(3, False)
         #sphere.boundaries.append(Boundary(Spline(BspySpline.sphere(1.0, 0.001)), utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))

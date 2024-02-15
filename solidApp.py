@@ -254,11 +254,9 @@ class solidApp(bspyApp):
                     np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)
             elif isinstance(surface.manifold, Spline):
                 spline = DrawableSpline.make_drawable(surface.manifold.spline)
-                spline.metadata = {}
-                spline.metadata["fillColor"] = surface.manifold.spline.metadata["fillColor"]
-                spline.metadata["lineColor"] = surface.manifold.spline.metadata["lineColor"]
-                spline.metadata["options"] = surface.manifold.spline.metadata["options"]
-                spline.metadata["animate"] = surface.manifold.spline.metadata["animate"]
+                spline.metadata = dict(spline.metadata)
+            if "Name" not in spline.metadata:
+                spline.metadata["Name"] = f"{name} boundary {i+1}"
             if material.fillColor is not None:
                 spline.metadata["fillColor"] = material.fillColor
             if material.lineColor is not None:
@@ -267,9 +265,9 @@ class solidApp(bspyApp):
                 spline.metadata["options"] = material.options
             spline.metadata["trim"] = vertices
             if draw:
-                self.draw(spline, f"{name} boundary {i+1}")
+                self.draw(spline)
             else:
-                self.list(spline, f"{name} boundary {i+1}")
+                self.list(spline)
 
     def draw_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True):
         self.list_solid(solid, name, fillColor, lineColor, options, inherit, draw=True)

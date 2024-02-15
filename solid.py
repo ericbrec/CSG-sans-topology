@@ -144,8 +144,8 @@ class Solid:
         """
         assert np.shape(matrix) == (self.dimension, self.dimension)
 
-        if transformInverseTranspose is None:
-            transformInverseTranspose = np.transpose(np.linalg.inv(matrix))
+        if matrixInverseTranspose is None:
+            matrixInverseTranspose = np.transpose(np.linalg.inv(matrix))
 
         for boundary in self.boundaries:
             boundary.manifold.transform(matrix, matrixInverseTranspose)

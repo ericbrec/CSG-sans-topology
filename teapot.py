@@ -370,12 +370,12 @@ if __name__ == "__main__":
             Spline(BspySpline(2, 3, (4,4), (4,4), (knots, knots), coefficients, metadata=dict(Name=f"2: {patch[0]}"))),
             utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
 
-    theta = 45.0 * np.pi / 180
+    theta = 180.0 * np.pi / 180
     teapot2.transform(np.array(((np.cos(theta), 0.0, np.sin(theta)),
-		(0.0, 1.0, 0.0), (-np.sin(theta), 0.0, np.cos(theta))), np.float32))
-    teapot2.translate((1.0, 0.0, 1.5))   
-    #app.draw_solid(teapot1, np.array((.4, .6, 1, 1),np.float32))
-    #app.draw_solid(teapot2, np.array((0, 1, 0, 1),np.float32))
-    teapot3 = teapot1 + teapot2
+		(0.0, 1.0, 0.0), (-np.sin(theta), 0.0, np.cos(theta)))))
+    teapot2.translate((5.25, 0.0, 0.15))   
+    app.list_solid(teapot1, fillColor=np.array((.4, .6, 1, 1),np.float32))
+    app.list_solid(teapot2, fillColor=np.array((0, 1, 0, 1),np.float32))
+    teapot3 = teapot1 - teapot2
     app.draw_solid(teapot3)
     app.mainloop()

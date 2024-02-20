@@ -3,7 +3,7 @@ import solidUtils as utils
 from solid import Solid, Boundary
 from spline import Spline
 from bspy import Spline as BspySpline
-from solidApp import solidApp
+from solidViewer import SolidViewer
 
 teapotPatches = (
 	("Upper rim 1", 1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15,  16),
@@ -350,7 +350,7 @@ teapotVertices = (
 )
 
 if __name__ == "__main__":
-    app = solidApp()
+    viewer = SolidViewer()
 
     teapot1 = Solid(3, False)
     teapot2 = Solid(3, False)
@@ -374,8 +374,8 @@ if __name__ == "__main__":
     teapot2.transform(np.array(((np.cos(theta), 0.0, np.sin(theta)),
 		(0.0, 1.0, 0.0), (-np.sin(theta), 0.0, np.cos(theta)))))
     teapot2.translate((5.25, 0.0, 0.15))   
-    app.list_solid(teapot1, fillColor=np.array((.4, .6, 1, 1),np.float32))
-    app.list_solid(teapot2, fillColor=np.array((0, 1, 0, 1),np.float32))
+    viewer.list_solid(teapot1, fillColor=np.array((.4, .6, 1, 1),np.float32))
+    viewer.list_solid(teapot2, fillColor=np.array((0, 1, 0, 1),np.float32))
     teapot3 = teapot1 - teapot2
-    app.draw_solid(teapot3)
-    app.mainloop()
+    viewer.draw_solid(teapot3)
+    viewer.mainloop()

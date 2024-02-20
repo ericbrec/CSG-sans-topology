@@ -6,7 +6,7 @@ from solid import Solid, Boundary
 from manifold import Manifold
 from hyperplane import Hyperplane
 from spline import Spline
-from bspy import Spline as BspySpline, DrawableSpline, bspyApp, SplineOpenGLFrame
+from bspy import Spline as BspySpline, Viewer, SplineOpenGLFrame
 import solidUtils as utils
 
 def triangulate(solid):
@@ -194,44 +194,41 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
         self.surface3Program.surfaceProgram.check_validate() # Now that textures are assigned, we can validate the program
         glUseProgram(0)
 
-class solidApp(bspyApp):
+    def _DrawSurface(self, spline, drawCoefficients):
+        glBindFramebuffer(GL_FRAMEBUFFER, self.frameBuffer)
+        glDisable(GL_DEPTH_TEST)
+        glViewport(0,0,512,512)
+        if "trim" in spline.metadata:
+            glClearColor(0.0, 0.0, 0.0, 1.0)
+            glClear(GL_COLOR_BUFFER_BIT)
+            glMatrixMode(GL_PROJECTION)
+            glLoadIdentity()
+            bounds = spline.domain()
+            glOrtho(bounds[0, 0], bounds[0, 1], bounds[1, 0], bounds[1, 1], -1.0, 1.0)
+            glColor3f(0.0, 0.0, 0.0)
+            vertices = spline.metadata["trim"]
+            glColor3f(1.0, 0.0, 0.0)
+            glBegin(GL_TRIANGLES)
+            for vertex in vertices:
+                glVertex2fv(vertex)
+            glEnd()
+        else:
+            glClearColor(1.0, 0.0, 0.0, 1.0)
+            glClear(GL_COLOR_BUFFER_BIT)
+        glFlush()
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+        glEnable(GL_DEPTH_TEST)
+        glViewport(0, 0, self.width, self.height)
+        glClearColor(self.backgroundColor[0], self.backgroundColor[1], self.backgroundColor[2], self.backgroundColor[3])
+        glMatrixMode(GL_PROJECTION)
+        glLoadMatrixf(self.projection)
+        glMatrixMode(GL_MODELVIEW)
+        SplineOpenGLFrame._DrawSurface(self, spline, drawCoefficients)
+
+class SolidViewer(Viewer):
     def __init__(self, *args, SplineOpenGLFrame=SolidOpenGLFrame, **kw):
-        bspyApp.__init__(self, *args, SplineOpenGLFrame=SplineOpenGLFrame, **kw)
-
-    def _DrawSplines(self, frame, transform):
-        for spline in self.splineDrawList:
-            if spline.nInd == 2:
-                glBindFramebuffer(GL_FRAMEBUFFER, frame.frameBuffer)
-                glDisable(GL_DEPTH_TEST)
-                glViewport(0,0,512,512)
-                if "trim" in spline.metadata:
-                    glClearColor(0.0, 0.0, 0.0, 1.0)
-                    glClear(GL_COLOR_BUFFER_BIT)
-                    glMatrixMode(GL_PROJECTION)
-                    glLoadIdentity()
-                    bounds = spline.domain()
-                    glOrtho(bounds[0, 0], bounds[0, 1], bounds[1, 0], bounds[1, 1], -1.0, 1.0)
-                    glColor3f(0.0, 0.0, 0.0)
-                    vertices = spline.metadata["trim"]
-                    glColor3f(1.0, 0.0, 0.0)
-                    glBegin(GL_TRIANGLES)
-                    for vertex in vertices:
-                        glVertex2fv(vertex)
-                    glEnd()
-                else:
-                    glClearColor(1.0, 0.0, 0.0, 1.0)
-                    glClear(GL_COLOR_BUFFER_BIT)
-                glFlush()
-
-                glBindFramebuffer(GL_FRAMEBUFFER, 0)
-                glEnable(GL_DEPTH_TEST)
-                glViewport(0, 0, frame.width, frame.height)
-                glClearColor(frame.backgroundColor[0], frame.backgroundColor[1], frame.backgroundColor[2], frame.backgroundColor[3])
-                glMatrixMode(GL_PROJECTION)
-                glLoadMatrixf(frame.projection)
-                glMatrixMode(GL_MODELVIEW)
-
-            spline._Draw(frame, transform)
+        Viewer.__init__(self, *args, SplineOpenGLFrame=SplineOpenGLFrame, **kw)
 
     def list_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True, draw=False):
         if solid.dimension != 3:
@@ -249,12 +246,12 @@ class solidApp(bspyApp):
                 xyzMinMax = surface.manifold.point((uvMin[0], uvMax[1]))
                 xyzMaxMin = surface.manifold.point((uvMax[0], uvMin[1]))
                 xyzMaxMax = surface.manifold.point(uvMax)
-                spline = DrawableSpline(2, 3, (2, 2), (2, 2), 
+                spline = BspySpline(2, 3, (2, 2), (2, 2), 
                     np.array((uvMin, uvMin, uvMax, uvMax), np.float32).T,
                     np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)
             elif isinstance(surface.manifold, Spline):
-                spline = DrawableSpline.make_drawable(surface.manifold.spline)
-                spline.metadata = dict(spline.metadata)
+                spline = surface.manifold.spline
+            self.frame.make_drawable(spline)
             if "Name" not in spline.metadata:
                 spline.metadata["Name"] = f"{name} boundary {i+1}"
             if material.fillColor is not None:

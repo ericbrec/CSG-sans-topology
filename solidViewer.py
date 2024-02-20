@@ -194,7 +194,9 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
         self.surface3Program.surfaceProgram.check_validate() # Now that textures are assigned, we can validate the program
         glUseProgram(0)
 
-    def _DrawSurface(self, spline, drawCoefficients):
+    def __DrawSurface(self, spline, drawCoefficients):
+        """Draws a trimmed surface, but because it doesn't do any CPU work between drawing 
+        the trim stencil and the surface, it's a little slower that _DrawSpline below."""
         glBindFramebuffer(GL_FRAMEBUFFER, self.frameBuffer)
         glDisable(GL_DEPTH_TEST)
         glViewport(0,0,512,512)
@@ -229,6 +231,41 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
 class SolidViewer(Viewer):
     def __init__(self, *args, SplineOpenGLFrame=SolidOpenGLFrame, **kw):
         Viewer.__init__(self, *args, SplineOpenGLFrame=SplineOpenGLFrame, **kw)
+
+    def _DrawSplines(self, frame, transform):
+        for spline in self.splineDrawList:
+            if spline.nInd == 2:
+                glBindFramebuffer(GL_FRAMEBUFFER, frame.frameBuffer)
+                glDisable(GL_DEPTH_TEST)
+                glViewport(0,0,512,512)
+                if "trim" in spline.metadata:
+                    glClearColor(0.0, 0.0, 0.0, 1.0)
+                    glClear(GL_COLOR_BUFFER_BIT)
+                    glMatrixMode(GL_PROJECTION)
+                    glLoadIdentity()
+                    bounds = spline.domain()
+                    glOrtho(bounds[0, 0], bounds[0, 1], bounds[1, 0], bounds[1, 1], -1.0, 1.0)
+                    glColor3f(0.0, 0.0, 0.0)
+                    vertices = spline.metadata["trim"]
+                    glColor3f(1.0, 0.0, 0.0)
+                    glBegin(GL_TRIANGLES)
+                    for vertex in vertices:
+                        glVertex2fv(vertex)
+                    glEnd()
+                else:
+                    glClearColor(1.0, 0.0, 0.0, 1.0)
+                    glClear(GL_COLOR_BUFFER_BIT)
+                glFlush()
+
+                glBindFramebuffer(GL_FRAMEBUFFER, 0)
+                glEnable(GL_DEPTH_TEST)
+                glViewport(0, 0, frame.width, frame.height)
+                glClearColor(frame.backgroundColor[0], frame.backgroundColor[1], frame.backgroundColor[2], frame.backgroundColor[3])
+                glMatrixMode(GL_PROJECTION)
+                glLoadMatrixf(frame.projection)
+                glMatrixMode(GL_MODELVIEW)
+
+            frame.DrawSpline(spline, transform)
 
     def list_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True, draw=False):
         if solid.dimension != 3:

@@ -34,7 +34,7 @@ class Spline(Manifold):
         -------
         spline : `Spline`
         """
-        spline = Spline(self.spline.copy(), self.spline.metadata)
+        spline = Spline(self.spline.copy(self.spline.metadata))
         spline.normalDirection = self.normalDirection
         if hasattr(self, "material"):
             spline.material = self.material

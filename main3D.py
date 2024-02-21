@@ -39,7 +39,7 @@ if __name__ == "__main__":
         difference = sphere - halfSpace
         viewer.draw_solid(difference, "difference")
         viewer.mainloop()
-    if True:
+    if False:
         order = 3
         knots = [0.0] * order + [1.0] * order
         nCoef = len(knots) - order

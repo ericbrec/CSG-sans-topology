@@ -267,41 +267,47 @@ class SolidViewer(Viewer):
 
             frame.DrawSpline(spline, transform)
 
-    def list_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True, draw=False):
-        if solid.dimension != 3:
+    def list_boundary(self, boundary, name="Boundary", fillColor=None, lineColor=None, options=None, inherit=True, draw=False):
+        if boundary.manifold.range_dimension() != 3:
             return
         Material = namedtuple("Material", ("fillColor", "lineColor", "options"))
+        vertices = triangulate(boundary.domain)
+        if not inherit or not hasattr(boundary.manifold, "material"):
+            boundary.manifold.material = Material(fillColor, lineColor, options)
+        material = boundary.manifold.material
+        if isinstance(boundary.manifold, Hyperplane):
+            uvMin = vertices.min(axis=0)
+            uvMax = vertices.max(axis=0)
+            xyzMinMin = boundary.manifold.point(uvMin)
+            xyzMinMax = boundary.manifold.point((uvMin[0], uvMax[1]))
+            xyzMaxMin = boundary.manifold.point((uvMax[0], uvMin[1]))
+            xyzMaxMax = boundary.manifold.point(uvMax)
+            spline = BspySpline(2, 3, (2, 2), (2, 2), 
+                np.array((uvMin, uvMin, uvMax, uvMax), np.float32).T,
+                np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)
+        elif isinstance(boundary.manifold, Spline):
+            spline = boundary.manifold.spline
+        self.frame.make_drawable(spline)
+        if "Name" not in spline.metadata:
+            spline.metadata["Name"] = name
+        if material.fillColor is not None:
+            spline.metadata["fillColor"] = material.fillColor
+        if material.lineColor is not None:
+            spline.metadata["lineColor"] = material.lineColor
+        if material.options is not None:
+            spline.metadata["options"] = material.options
+        spline.metadata["trim"] = vertices
+        if draw:
+            self.draw(spline)
+        else:
+            self.list(spline)
+
+    def draw_boundary(self, boundary, name="Boundary", fillColor=None, lineColor=None, options=None, inherit=True):
+        self.list_boundary(boundary, name, fillColor, lineColor, options, inherit, draw=True)
+
+    def list_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True, draw=False):
         for i, surface in enumerate(solid.boundaries):
-            vertices = triangulate(surface.domain)
-            if not inherit or not hasattr(surface.manifold, "material"):
-                surface.manifold.material = Material(fillColor, lineColor, options)
-            material = surface.manifold.material
-            if isinstance(surface.manifold, Hyperplane):
-                uvMin = vertices.min(axis=0)
-                uvMax = vertices.max(axis=0)
-                xyzMinMin = surface.manifold.point(uvMin)
-                xyzMinMax = surface.manifold.point((uvMin[0], uvMax[1]))
-                xyzMaxMin = surface.manifold.point((uvMax[0], uvMin[1]))
-                xyzMaxMax = surface.manifold.point(uvMax)
-                spline = BspySpline(2, 3, (2, 2), (2, 2), 
-                    np.array((uvMin, uvMin, uvMax, uvMax), np.float32).T,
-                    np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)
-            elif isinstance(surface.manifold, Spline):
-                spline = surface.manifold.spline
-            self.frame.make_drawable(spline)
-            if "Name" not in spline.metadata:
-                spline.metadata["Name"] = f"{name} boundary {i+1}"
-            if material.fillColor is not None:
-                spline.metadata["fillColor"] = material.fillColor
-            if material.lineColor is not None:
-                spline.metadata["lineColor"] = material.lineColor
-            if material.options is not None:
-                spline.metadata["options"] = material.options
-            spline.metadata["trim"] = vertices
-            if draw:
-                self.draw(spline)
-            else:
-                self.list(spline)
+            self.list_boundary(surface, f"{name} boundary {i+1}", fillColor, lineColor, options, inherit, draw)
 
     def draw_solid(self, solid, name="Solid", fillColor=None, lineColor=None, options=None, inherit=True):
         self.list_solid(solid, name, fillColor, lineColor, options, inherit, draw=True)

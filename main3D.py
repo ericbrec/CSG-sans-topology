@@ -17,7 +17,7 @@ if __name__ == "__main__":
     
     viewer = SolidViewer()
 
-    if True:
+    if False:
         square = utils.create_hypercube([1,1], [0,0])
         star = utils.create_star(2.0, [0.0, 0.0], 90.0*6.28/360.0)
         extrudedSquare = utils.extrude_solid(square,[[-2,2,-4],[2,-2,4]])
@@ -39,7 +39,7 @@ if __name__ == "__main__":
         difference = sphere - halfSpace
         viewer.draw_solid(difference, "difference")
         viewer.mainloop()
-    if False:
+    if True:
         order = 3
         knots = [0.0] * order + [1.0] * order
         nCoef = len(knots) - order

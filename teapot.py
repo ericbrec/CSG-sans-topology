@@ -380,17 +380,23 @@ if __name__ == "__main__":
     teapot2.translate((0.6, -2.3, 2.7))   
     viewer.list_solid(teapot2, fillColor=np.array((0, 1, 0, 1),np.float32))
 
+    """"
     #targetManifoldName = "2: Lid 1"
     targetManifoldName = "2: Upper section 4"
     for boundary in teapot2.boundaries:
         if targetManifoldName == boundary.manifold.spline.metadata["Name"]:
-            manifold = boundary.manifold.copy()
             break
-    #manifold.flip_normal()
-    #slicedBoundary = Boundary(manifold, teapot1.slice(manifold))
-    #viewer.draw_boundary(slicedBoundary)
+    manifold = boundary.manifold.copy()
+    manifold.flip_normal()
+    slice = teapot1.slice(manifold)
+    slicedBoundary = Boundary(manifold, slice)
+    viewer.draw_boundary(slicedBoundary, "Sliced upper section 4")
+    trimmedSlice = boundary.domain.intersection(slice)
+    trimmedSlicedBoundary = Boundary(manifold.copy(), trimmedSlice)
+    viewer.draw_boundary(trimmedSlicedBoundary, "Trimmed sliced upper section 4")
+    """
 
-    teapot3 = teapot1 - teapot2
+    teapot3 = teapot1 * teapot2
     viewer.draw_solid(teapot3)
     
     viewer.mainloop()

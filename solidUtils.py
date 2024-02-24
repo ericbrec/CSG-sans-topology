@@ -279,3 +279,11 @@ def extrude_solid(solid, path):
     extrusion.boundaries.append(Boundary(extrudedHyperplane, solid))
 
     return extrusion
+
+def find_boundary(solid, name):
+    for boundary in solid.boundaries:
+        if isinstance(boundary.manifold, Spline) and \
+            "Name" in boundary.manifold.spline.metadata and \
+            boundary.manifold.spline.metadata["Name"] == name:
+            return boundary
+    return None

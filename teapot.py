@@ -361,7 +361,7 @@ if __name__ == "__main__":
             for j in range(4):
                 vertex = patch[4*i + j + 1] - 1
                 coefficients[0,i,j] = teapotVertices[vertex][0]
-                coefficients[1,i,j] = 1.3 * teapotVertices[vertex][2]
+                coefficients[1,i,j] = teapotVertices[vertex][2]
                 coefficients[2,i,j] = teapotVertices[vertex][1]
         teapot1.boundaries.append(Boundary(
             Spline(BspySpline(2, 3, (4,4), (4,4), (knots, knots), coefficients, metadata=dict(Name=f"1: {patch[0]}"))),
@@ -376,24 +376,21 @@ if __name__ == "__main__":
     theta = 120.0 * np.pi / 180
     teapot2.transform(np.array(((np.cos(theta), 0.0, np.sin(theta)),
 		(0.0, 1.0, 0.0), (-np.sin(theta), 0.0, np.cos(theta)))))
-    #teapot2.translate((5.25, 0.0, 0.15))   
-    teapot2.translate((0.6, -2.3, 2.7))   
+    #teapot2.translate((5.25, 0.0, 0.15)) # Touching spouts   
+    #teapot2.translate((0.6, -2.3, 2.7)) # Narrow intersection
+    teapot2.translate((0.6, -2.0, 2.0)) # Wide intersection
     viewer.list_solid(teapot2, fillColor=np.array((0, 1, 0, 1),np.float32))
 
     """"
-    #targetManifoldName = "2: Lid 1"
-    targetManifoldName = "2: Upper section 4"
-    for boundary in teapot2.boundaries:
-        if targetManifoldName == boundary.manifold.spline.metadata["Name"]:
-            break
+    targetManifoldName = "1: Upper section 4"
+    boundary = utils.find_boundary(teapot1, targetManifoldName)
     manifold = boundary.manifold.copy()
-    manifold.flip_normal()
-    slice = teapot1.slice(manifold)
+    slice = teapot2.slice(manifold, {})
     slicedBoundary = Boundary(manifold, slice)
-    viewer.draw_boundary(slicedBoundary, "Sliced upper section 4")
+    viewer.draw_boundary(slicedBoundary, f"Sliced {targetManifoldName}")
     trimmedSlice = boundary.domain.intersection(slice)
     trimmedSlicedBoundary = Boundary(manifold.copy(), trimmedSlice)
-    viewer.draw_boundary(trimmedSlicedBoundary, "Trimmed sliced upper section 4")
+    viewer.draw_boundary(trimmedSlicedBoundary, f"Trimmed sliced {targetManifoldName}")
     """
 
     teapot3 = teapot1 * teapot2

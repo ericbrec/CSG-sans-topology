@@ -393,6 +393,7 @@ class Spline(Manifold):
             
             # Surface-Surface intersection.
             elif nDep == 2:
+                print(f"intersect_manifold({self.spline.metadata['Name']}, {other.spline.metadata['Name']})")
                 # Find the intersection contours, which are returned as splines.
                 contours = spline.contours()
                 # Convert each contour into a Manifold.Crossing.

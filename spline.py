@@ -407,8 +407,8 @@ class Spline(Manifold):
             return NotImplemented
 
         # Ensure the normals point outwards for both Manifolds in each crossing intersection.
-        # Note that evaluating left and right at 0.0 is always valid because either they are points or curves with [0.0, 1.0] domains.
-        domainPoint = np.atleast_1d(0.0)
+        # Note that evaluating left and right at 0.5 is always valid because either they are points or curves with [0.0, 1.0] domains.
+        domainPoint = np.atleast_1d(0.5)
         for intersection in intersections:
             if isinstance(intersection, Manifold.Crossing):
                 if np.dot(self.tangent_space(intersection.left.point(domainPoint)) @ intersection.left.normal(domainPoint), other.normal(intersection.right.point(domainPoint))) < 0.0:
@@ -498,6 +498,8 @@ class Spline(Manifold):
 
         # If manifold (self) has no intersections with solid, just check containment.
         if not slice.boundaries:
+            if slice.dimension == 2:
+                print(f"check containment: {self.spline.metadata['Name']}")
             if solid.contains_point(self.any_point()):
                 self.establish_domain_bounds(slice, bounds)
             return

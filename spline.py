@@ -99,10 +99,8 @@ class Spline(Manifold):
         The any_point method for solids and boundaries do not call this method, because the point returned 
         may not be within the solid or boundary.
         """
-        domainPoint = []
-        for knots, nCoef in zip(self.spline.knots, self.spline.nCoef):
-            domainPoint.append(knots[nCoef])
-        return self.spline(domainPoint)
+        domain = self.spline.domain().T
+        return self.spline(0.5 * (domain[0] + domain[1]))
 
     def tangent_space(self, domainPoint):
         """
@@ -400,6 +398,7 @@ class Spline(Manifold):
                 for contour in contours:
                     left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
                     right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
+                    print(right)
                     intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
             else:
                 return NotImplemented

@@ -398,7 +398,6 @@ class Spline(Manifold):
                 for contour in contours:
                     left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
                     right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
-                    print(right)
                     intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
             else:
                 return NotImplemented

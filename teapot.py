@@ -381,19 +381,31 @@ if __name__ == "__main__":
     teapot2.translate((0.6, -2.0, 2.0)) # Wide intersection
     viewer.list_solid(teapot2, fillColor=np.array((0, 1, 0, 1),np.float32))
 
-    """"
-    targetManifoldName = "1: Upper section 4"
-    boundary = utils.find_boundary(teapot1, targetManifoldName)
-    manifold = boundary.manifold.copy()
-    slice = teapot2.slice(manifold, {})
-    slicedBoundary = Boundary(manifold, slice)
-    viewer.draw_boundary(slicedBoundary, f"Sliced {targetManifoldName}")
-    trimmedSlice = boundary.domain.intersection(slice)
-    trimmedSlicedBoundary = Boundary(manifold.copy(), trimmedSlice)
-    viewer.draw_boundary(trimmedSlicedBoundary, f"Trimmed sliced {targetManifoldName}")
-    """
+    if False:
+        name1 = "1: Bottom 1"
+        boundary1 = utils.find_boundary(teapot1, name1)
+        name2 = "2: Upper section 4"
+        boundary2 = utils.find_boundary(teapot2, name2)
+        boundary2.manifold.intersect_manifold(boundary1.manifold)
 
-    teapot3 = teapot1 * teapot2
-    viewer.draw_solid(teapot3)
-    
+        manifold = boundary1.manifold.copy()
+        slice = teapot2.slice(manifold, {})
+        slicedBoundary = Boundary(manifold, slice)
+        viewer.draw_boundary(slicedBoundary, f"Sliced {name1}")
+        trimmedSlice = boundary1.domain.intersection(slice)
+        trimmedSlicedBoundary = Boundary(manifold.copy(), trimmedSlice)
+        viewer.draw_boundary(trimmedSlicedBoundary, f"Trimmed sliced {name1}")
+
+        manifold = boundary2.manifold.copy()
+        slice = teapot1.slice(manifold, {})
+        slicedBoundary = Boundary(manifold, slice)
+        viewer.draw_boundary(slicedBoundary, f"Sliced {name2}")
+        trimmedSlice = boundary2.domain.intersection(slice)
+        trimmedSlicedBoundary = Boundary(manifold.copy(), trimmedSlice)
+        viewer.draw_boundary(trimmedSlicedBoundary, f"Trimmed sliced {name2}")
+
+    if False:
+        teapot3 = teapot1 * teapot2
+        viewer.draw_solid(teapot3)
+        
     viewer.mainloop()

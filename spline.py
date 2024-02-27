@@ -393,12 +393,29 @@ class Spline(Manifold):
             elif nDep == 2:
                 print(f"intersect_manifold({self.spline.metadata['Name']}, {other.spline.metadata['Name']})")
                 # Find the intersection contours, which are returned as splines.
-                contours = spline.contours()
+                swap = False
+                try:
+                    # First try the intersection as is.
+                    contours = spline.contours()
+                except ValueError:
+                    # If that fails, swap the manifolds. Worth a shot since intersections are touchy.
+                    swap = True
+
                 # Convert each contour into a Manifold.Crossing.
-                for contour in contours:
-                    left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
-                    right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
-                    intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
+                if swap:
+                    spline = other.spline.subtract(self.spline)
+                    print(f"intersect_manifold({other.spline.metadata['Name']}, {self.spline.metadata['Name']})")
+                    contours = spline.contours()
+                    for contour in contours:
+                        # Swap left and right, compared to not swapped.
+                        left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
+                        right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
+                        intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
+                else:
+                    for contour in contours:
+                        left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
+                        right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
+                        intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
             else:
                 return NotImplemented
         else:

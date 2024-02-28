@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from solid import Solid, Boundary
 from manifold import Manifold
@@ -391,7 +392,7 @@ class Spline(Manifold):
             
             # Surface-Surface intersection.
             elif nDep == 2:
-                print(f"intersect_manifold({self.spline.metadata['Name']}, {other.spline.metadata['Name']})")
+                logging.info(f"intersect_manifold({self.spline.metadata['Name']}, {other.spline.metadata['Name']})")
                 # Find the intersection contours, which are returned as splines.
                 swap = False
                 try:
@@ -404,7 +405,7 @@ class Spline(Manifold):
                 # Convert each contour into a Manifold.Crossing.
                 if swap:
                     spline = other.spline.subtract(self.spline)
-                    print(f"intersect_manifold({other.spline.metadata['Name']}, {self.spline.metadata['Name']})")
+                    logging.info(f"intersect_manifold({other.spline.metadata['Name']}, {self.spline.metadata['Name']})")
                     contours = spline.contours()
                     for contour in contours:
                         # Swap left and right, compared to not swapped.
@@ -514,7 +515,7 @@ class Spline(Manifold):
         # If manifold (self) has no intersections with solid, just check containment.
         if not slice.boundaries:
             if slice.dimension == 2:
-                print(f"check containment: {self.spline.metadata['Name']}")
+                logging.info(f"check containment: {self.spline.metadata['Name']}")
             if solid.contains_point(self.any_point()):
                 self.establish_domain_bounds(slice, bounds)
             return

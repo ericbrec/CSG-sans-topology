@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import solidUtils as utils
 from solid import Solid, Boundary
@@ -350,6 +351,8 @@ teapotVertices = (
 )
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(module)s:%(lineno)d:%(message)s', datefmt='%H:%M:%S')
+
     viewer = SolidViewer()
 
     teapot1 = Solid(3, False)
@@ -372,12 +375,11 @@ if __name__ == "__main__":
 
     viewer.list_solid(teapot1, fillColor=np.array((1, 1, 0, 1),np.float32))
 
-    #theta = 180.0 * np.pi / 180
-    theta = 120.0 * np.pi / 180
+    #theta = 180.0 * np.pi / 180 # Touching spouts
+    theta = 120.0 * np.pi / 180 # Wide intersection
     teapot2.transform(np.array(((np.cos(theta), 0.0, np.sin(theta)),
 		(0.0, 1.0, 0.0), (-np.sin(theta), 0.0, np.cos(theta)))))
-    #teapot2.translate((5.25, 0.0, 0.15)) # Touching spouts   
-    #teapot2.translate((0.6, -2.3, 2.7)) # Narrow intersection
+    #teapot2.translate((5.25, 0.0, 0.15)) # Touching spouts
     teapot2.translate((0.6, -2.0, 2.0)) # Wide intersection
     viewer.list_solid(teapot2, fillColor=np.array((0, 1, 0, 1),np.float32))
 

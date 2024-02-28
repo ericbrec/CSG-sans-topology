@@ -386,10 +386,17 @@ if __name__ == "__main__":
         boundary1 = utils.find_boundary(teapot1, name1)
         name2 = "2: Upper section 4"
         boundary2 = utils.find_boundary(teapot2, name2)
-        boundary2.manifold.intersect_manifold(boundary1.manifold)
+
+        cache = {}
+        intersections, isTwin = boundary2.manifold.cached_intersect_manifold(boundary1.manifold, cache)
+
+        for u in np.linspace(0.0, 1.0, 21):
+            leftPoint = boundary2.manifold.spline(intersections[0].left.spline(u))
+            rightPoint = boundary1.manifold.spline(intersections[0].right.spline(u))
+            print(leftPoint - rightPoint, np.linalg.norm(leftPoint - rightPoint))
 
         manifold = boundary1.manifold.copy()
-        slice = teapot2.slice(manifold, {})
+        slice = teapot2.slice(manifold, cache)
         slicedBoundary = Boundary(manifold, slice)
         viewer.draw_boundary(slicedBoundary, f"Sliced {name1}")
         trimmedSlice = boundary1.domain.intersection(slice)
@@ -397,14 +404,14 @@ if __name__ == "__main__":
         viewer.draw_boundary(trimmedSlicedBoundary, f"Trimmed sliced {name1}")
 
         manifold = boundary2.manifold.copy()
-        slice = teapot1.slice(manifold, {})
+        slice = teapot1.slice(manifold, cache)
         slicedBoundary = Boundary(manifold, slice)
         viewer.draw_boundary(slicedBoundary, f"Sliced {name2}")
         trimmedSlice = boundary2.domain.intersection(slice)
         trimmedSlicedBoundary = Boundary(manifold.copy(), trimmedSlice)
         viewer.draw_boundary(trimmedSlicedBoundary, f"Trimmed sliced {name2}")
 
-    if False:
+    if True:
         teapot3 = teapot1 * teapot2
         viewer.draw_solid(teapot3)
         

@@ -231,6 +231,7 @@ class SolidOpenGLFrame(SplineOpenGLFrame):
 class SolidViewer(Viewer):
     def __init__(self, *args, SplineOpenGLFrame=SolidOpenGLFrame, **kw):
         Viewer.__init__(self, *args, SplineOpenGLFrame=SplineOpenGLFrame, **kw)
+        self.set_background_color(1.0, 1.0, 1.0)
 
     def _DrawSplines(self, frame, transform):
         for spline in self.splineDrawList:

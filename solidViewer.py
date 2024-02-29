@@ -246,7 +246,6 @@ class SolidViewer(Viewer):
                     glLoadIdentity()
                     bounds = spline.domain()
                     glOrtho(bounds[0, 0], bounds[0, 1], bounds[1, 0], bounds[1, 1], -1.0, 1.0)
-                    glColor3f(0.0, 0.0, 0.0)
                     vertices = spline.metadata["trim"]
                     glColor3f(1.0, 0.0, 0.0)
                     glBegin(GL_TRIANGLES)

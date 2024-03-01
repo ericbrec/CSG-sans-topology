@@ -2,8 +2,8 @@ import numpy as np
 from solid import Solid, Boundary
 from manifold import Manifold
 from hyperplane import Hyperplane
-from spline import Spline
-from bspy import Spline as BspySpline
+from bSpline import BSpline
+from bspy import Spline
 
 def solid_edges(solid, subdivide = False):
     """
@@ -56,7 +56,7 @@ def create_segments_from_solid(solid, includeManifold=False):
 
     if includeManifold and solid.dimension == 3:
         for boundary in solid.boundaries:
-            if isinstance(boundary.manifold, Spline):
+            if isinstance(boundary.manifold, BSpline):
                 spline = boundary.manifold.spline
                 domain = spline.domain()
                 segment = []
@@ -182,7 +182,7 @@ def create_smooth_solid_from_points(dimension, points, containsInfinity = False)
     uValues.append(t)
     dataPoints = np.append(dataPoints, (dataPoints[0],), axis=0)
 
-    spline = Spline(BspySpline.least_squares(uValues, dataPoints.T, (4,) * (dimension - 1), tolerance = 0.1))
+    spline = BSpline(Spline.least_squares(uValues, dataPoints.T, (4,) * (dimension - 1), tolerance = 0.1))
     domain = Solid(dimension-1, False)
     domain.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), Solid(dimension-2, True)))
     domain.boundaries.append(Boundary(hyperplane_1D(1.0, t), Solid(dimension-2, True)))
@@ -282,7 +282,7 @@ def extrude_solid(solid, path):
 
 def find_boundary(solid, name):
     for boundary in solid.boundaries:
-        if isinstance(boundary.manifold, Spline) and \
+        if isinstance(boundary.manifold, BSpline) and \
             "Name" in boundary.manifold.spline.metadata and \
             boundary.manifold.spline.metadata["Name"] == name:
             return boundary

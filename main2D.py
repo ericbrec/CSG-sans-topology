@@ -1,8 +1,8 @@
 import numpy as np
 from solid import Solid, Boundary
 from hyperplane import Hyperplane
-from spline import Spline
-from bspy import Spline as BspySpline
+from bSpline import BSpline
+from bspy import Spline
 import solidUtils as utils
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     starSplineB.translate([0, -0.75])
 
     glob1 = Solid(2, False)
-    spline = Spline(BspySpline(1, 2, (4,), (15,), ((0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 5.0, 7.0, 9.0, 9.0, 9.0, 12.0, 12.0, 12.0, 12.0),), \
+    spline = BSpline(Spline(1, 2, (4,), (15,), ((0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 5.0, 7.0, 9.0, 9.0, 9.0, 12.0, 12.0, 12.0, 12.0),), \
         ((0.0, 1.0 / 3, 2.0 / 3, 1.0, 1.0, 1.0, 1.0, -1.0, 6.0, -5.0, 1.0, -1.5, -4.0, -1.0, 0.0), (1.0, 1.0, 1.0, 1.0, 2.5 / 3, 2.0 / 3, 0.5, 0.0, -1.0, -4.0, -1.0, 0.0, 1.0, 4.0, 1.0))))
     spline.flip_normal()
     domain = Solid(1, False)
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     glob1.translate([0.5, 0.5])
 
     glob2 = Solid(2, False)
-    spline = Spline(BspySpline(1, 2, (4,), (12,), ((0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 4.0, 6.0, 8.0, 8.0, 8.0, 12.0, 12.0, 12.0, 12.0),), \
+    spline = BSpline(Spline(1, 2, (4,), (12,), ((0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 4.0, 6.0, 8.0, 8.0, 8.0, 12.0, 12.0, 12.0, 12.0),), \
         ((0.0, 4.0, 5.0, 1.0, -1.0, 6.0, -5.0, 1.0, -1.5, -5.0, -4.0, 0.0), (-3.8, -4.0, 1.0, 0.5, 0.0, -1.0, -4.0, -1.0, 0.0, 1.0, -4.0, -3.8))))
     domain = Solid(1, False)
     domain.boundaries.append(Boundary(Hyperplane(-1.0, 0.0, 0.0), Solid(0, True)))

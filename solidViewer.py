@@ -5,8 +5,8 @@ from OpenGL.GLU import *
 from solid import Solid, Boundary
 from manifold import Manifold
 from hyperplane import Hyperplane
-from spline import Spline
-from bspy import Spline as BspySpline, Viewer, SplineOpenGLFrame
+from bSpline import BSpline
+from bspy import Spline, Viewer, SplineOpenGLFrame
 import solidUtils as utils
 
 def triangulate(solid):
@@ -107,7 +107,7 @@ def triangulate(solid):
         while next is not None:
             endpoints.remove(next)
             endpoints.remove(next.otherEnd)
-            subdivisions = max(int(abs(next.otherEnd.t - next.t) / 0.1), 20) if isinstance(next.curve.manifold, Spline) else 2
+            subdivisions = max(int(abs(next.otherEnd.t - next.t) / 0.1), 20) if isinstance(next.curve.manifold, BSpline) else 2
             for t in np.linspace(next.t, next.otherEnd.t, subdivisions):
                 xy = next.curve.manifold.point((t,))
                 vertex = (*xy, 0.0)
@@ -282,10 +282,10 @@ class SolidViewer(Viewer):
             xyzMinMax = boundary.manifold.point((uvMin[0], uvMax[1]))
             xyzMaxMin = boundary.manifold.point((uvMax[0], uvMin[1]))
             xyzMaxMax = boundary.manifold.point(uvMax)
-            spline = BspySpline(2, 3, (2, 2), (2, 2), 
+            spline = Spline(2, 3, (2, 2), (2, 2), 
                 np.array((uvMin, uvMin, uvMax, uvMax), np.float32).T,
                 np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)
-        elif isinstance(boundary.manifold, Spline):
+        elif isinstance(boundary.manifold, BSpline):
             spline = boundary.manifold.spline
         self.frame.make_drawable(spline)
         if "Name" not in spline.metadata:

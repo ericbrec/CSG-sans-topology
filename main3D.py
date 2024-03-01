@@ -1,8 +1,8 @@
 import numpy as np
 import solidUtils as utils
 from solid import Solid, Boundary
-from spline import Spline
-from bspy import Spline as BspySpline
+from bSpline import BSpline
+from bspy import Spline
 from solidViewer import SolidViewer
 
 if __name__ == "__main__":
@@ -28,22 +28,22 @@ if __name__ == "__main__":
         viewer.frame.SetBackgroundColor(1.0, 1.0, 1.0)
         sphere = utils.create_hypercube([1.0,1.0,1.0], [0, 0,0])
         #sphere = Solid(3, False)
-        #sphere.boundaries.append(Boundary(Spline(BspySpline.sphere(1.0, 0.001)), utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
-        #sphere.boundaries.append(Boundary(Spline(BspySpline.cone(2.0, 0.01, 3.0, 0.001) + (0.0, 0.0, -1.5)), utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
+        #sphere.boundaries.append(Boundary(BSpline(Spline.sphere(1.0, 0.001)), utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
+        #sphere.boundaries.append(Boundary(BSpline(Spline.cone(2.0, 0.01, 3.0, 0.001) + (0.0, 0.0, -1.5)), utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
         viewer.draw_solid(sphere, "sphere", np.array((.4, .6, 1, 1),np.float32))
-        endCurve = [[1, 0], [0, 0], [0, 1]] @ BspySpline(1, 1, (3,), (5,), (np.array((-3.0, -3.0, -3.0, -0.6, 0.6, 3.0, 3.0, 3.0)),), np.array((0, 3.0/8.0, 0, -4.0/8.0, 0))).graph()
-        spline = Spline(BspySpline.ruled_surface(endCurve + (0.0, -2.0, 0.0), endCurve + (0.0, 2.0, 0.0)))
+        endCurve = [[1, 0], [0, 0], [0, 1]] @ Spline(1, 1, (3,), (5,), (np.array((-3.0, -3.0, -3.0, -0.6, 0.6, 3.0, 3.0, 3.0)),), np.array((0, 3.0/8.0, 0, -4.0/8.0, 0))).graph()
+        spline = BSpline(Spline.ruled_surface(endCurve + (0.0, -2.0, 0.0), endCurve + (0.0, 2.0, 0.0)))
         halfSpace = Solid(3, False)
         halfSpace.boundaries.append(Boundary(spline, utils.create_hypercube([3.0, 0.5], [0.0, 0.5])))
         viewer.draw_solid(halfSpace, "halfSpace", np.array((0, 1, 0, 1),np.float32))
         difference = sphere - halfSpace
         viewer.draw_solid(difference, "difference")
         viewer.mainloop()
-    if False:
+    if True:
         order = 3
         knots = [0.0] * order + [1.0] * order
         nCoef = len(knots) - order
-        spline = Spline(BspySpline(2, 3, (order, order), (nCoef, nCoef), (knots, knots), \
+        spline = BSpline(Spline(2, 3, (order, order), (nCoef, nCoef), (knots, knots), \
             (((-1.0, -1.0, -1.0), (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)), \
             ((1.0, 0.0, 1.0), (0.0, -5.0, 0.0), (1.0, 0.0, 1.0)), \
             ((-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0), (-1.0, 0.0, 1.0)))))
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         paraboloid.boundaries.append(Boundary(cap, utils.create_hypercube([1.0, 1.0], [0.0, 0.0])))
         viewer.list_solid(paraboloid, "paraboloid", np.array((.4, .6, 1, 1),np.float32))
 
-        spline = Spline(spline.spline.copy())
+        spline = BSpline(spline.spline.copy())
         cap = utils.hyperplane_axis_aligned(3, 1, 0.7, False)
         paraboloid2 = Solid(3,False)
         paraboloid2.boundaries.append(Boundary(spline, utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))

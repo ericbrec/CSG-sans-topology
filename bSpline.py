@@ -3,9 +3,9 @@ import numpy as np
 from solid import Solid, Boundary
 from manifold import Manifold
 from hyperplane import Hyperplane
-from bspy import Spline as BspySpline
+from bspy import Spline
 
-class Spline(Manifold):
+class BSpline(Manifold):
     """
     A spline is a `Manifold` defined by b-spline basis and set of coefficients, whose dependent 
     variables outnumber its independent variables by one.
@@ -35,7 +35,7 @@ class Spline(Manifold):
         -------
         spline : `Spline`
         """
-        spline = Spline(self.spline.copy(self.spline.metadata))
+        spline = BSpline(self.spline.copy(self.spline.metadata))
         spline.normalDirection = self.normalDirection
         if hasattr(self, "material"):
             spline.material = self.material
@@ -341,13 +341,13 @@ class Spline(Manifold):
                     for t in tValues:
                         zero = contour((t,))
                         points.append(projection @ (self.spline(zero) - other._point))
-                    right = BspySpline.least_squares(tValues, np.array(points).T, contour.order, contour.knots)
-                    intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
+                    right = Spline.least_squares(tValues, np.array(points).T, contour.order, contour.knots)
+                    intersections.append(Manifold.Crossing(BSpline(left), BSpline(right)))
             else:
                 return NotImplemented
         
         # Spline-Spline intersection.
-        elif isinstance(other, Spline):
+        elif isinstance(other, BSpline):
             # Construct a new spline that represents the intersection.
             spline = self.spline.subtract(other.spline)
 
@@ -409,14 +409,14 @@ class Spline(Manifold):
                     contours = spline.contours()
                     for contour in contours:
                         # Swap left and right, compared to not swapped.
-                        left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
-                        right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
-                        intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
+                        left = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
+                        right = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
+                        intersections.append(Manifold.Crossing(BSpline(left), BSpline(right)))
                 else:
                     for contour in contours:
-                        left = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
-                        right = BspySpline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
-                        intersections.append(Manifold.Crossing(Spline(left), Spline(right)))
+                        left = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
+                        right = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
+                        intersections.append(Manifold.Crossing(BSpline(left), BSpline(right)))
             else:
                 return NotImplemented
         else:
@@ -464,9 +464,9 @@ class Spline(Manifold):
         for i in range(dimension):
             if dimension > 1:
                 domainDomain1 = Solid(dimension - 1, False)
-                Spline.establish_domain_bounds(domainDomain1, np.delete(bounds, i, axis=0))
+                BSpline.establish_domain_bounds(domainDomain1, np.delete(bounds, i, axis=0))
                 domainDomain2 = Solid(dimension - 1, False)
-                Spline.establish_domain_bounds(domainDomain2, np.delete(bounds, i, axis=0))
+                BSpline.establish_domain_bounds(domainDomain2, np.delete(bounds, i, axis=0))
             else:
                 domainDomain1 = Solid(0, True)
                 domainDomain2 = Solid(0, True)

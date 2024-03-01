@@ -7,7 +7,7 @@ from bspy import Spline
 
 class BSpline(Manifold):
     """
-    A spline is a `Manifold` defined by b-spline basis and set of coefficients, whose dependent 
+    A BSpline is a `Manifold` defined by b-spline basis and set of coefficients, whose dependent 
     variables outnumber its independent variables by one.
 
     Parameters

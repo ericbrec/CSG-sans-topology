@@ -5,8 +5,8 @@ The example code also deliberately uses rough tolerances (surfaces separated by 
 
 The code has three base classes: Solid and Boundary found in solid.py, and Manifold found in manifold.py. Manifold is an abstract class that defines basic methods for manifolds. Boundary is a simple container for a Manifold and a domain Solid. Solid is the class that holds the substance of the algorithm.
 
-In addition, there are two subclasses of Manifold: Hyperplane found in hyperplane.py and Spline found in spline.py. Hyperplane supports hyperplanes of any dimension, including their intersection with other hyperplanes. Spline supports non-uniform B-Spline curves and surfaces, using the bspy library for spline evaluation and intersection with other splines and with hyperplanes.
+In addition, there are two subclasses of Manifold: Hyperplane found in hyperplane.py and BSpline found in bSpline.py. Hyperplane supports hyperplanes of any dimension, including their intersection with other hyperplanes. BSpline supports non-uniform B-Spline curves and surfaces, using the BSpy library for spline evaluation and intersection with other splines and with hyperplanes.
 
-Finally, there are a variety of example programs that perform operations on solids, using matplotlib to render the results: solidUtils.py that has some reused utility functions, main2D.py for operations on 2D solids, main2DSlice.py for an animated 2D slice through a 3D constructed solid, main3D.py for operations on 3D solids, and main3DSlice for an animated 3D slice through a 4D constructed solid.
+Finally, there are a variety of example programs that perform operations on solids: solidUtils.py has some reused utility functions, solidViewer.py defines a BSpy Viewer for solids, main2D.py performs 2D solid operations, main2DSlice.py animates a 2D slice through a 3D solid, main3D.py performs 3D solid operations, main3DSlice.py animates a 3D slice through a 4D solid, and teapot.py performs solid operations on two Utah teapots (original patches).
 
 All the code is available on GitHub under the MIT license using Python 3.x.

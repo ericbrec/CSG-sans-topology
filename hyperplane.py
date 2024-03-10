@@ -22,6 +22,10 @@ class Hyperplane(Manifold):
     The number of coordinates in the normal defines the dimension of the range of the hyperplane. The point must have the same dimension. The tangent space must be shaped: (dimension, dimension-1). 
     Thus the dimension of the domain is one less than that of the range.
     """
+
+    # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
+    maxAlignment = 0.99 # 1 - 1/10^2
+
     def __init__(self, normal, point, tangentSpace):
         self._normal = np.atleast_1d(np.array(normal))
         self._point = np.atleast_1d(np.array(point))
@@ -318,7 +322,7 @@ class Hyperplane(Manifold):
 
         For coincident regions, we need the domains, normal alignment, and mapping from the hyperplane's domain to the other's domain. (The mapping is irrelevant and excluded for dimensions less than 2.)
         We can tell if the two hyperplanes are coincident if their normal alignment (dot product of their unit normals) is nearly 1 
-        in absolute value (`alignment**2 < Manifold.maxAlignment`) and their points are barely separated:
+        in absolute value (`alignment**2 < Hyperplane.maxAlignment`) and their points are barely separated:
         `-2 * Manifold.minSeparation < dot(hyperplane._normal, hyperplane._point - other._point) < Manifold.minSeparation`. (We give more room 
         to the outside than the inside to avoid compounding issues from minute gaps.)
 

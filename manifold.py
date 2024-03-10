@@ -10,9 +10,6 @@ class Manifold:
     # If two points are within 0.01 of each each other, they are coincident
     minSeparation = 0.01
 
-    # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
-    maxAlignment = 0.99 # 1 - 1/10^2
-
     # Return type for intersect_manifold
     Crossing = namedtuple('Crossing', ('left','right'))
     Coincidence = namedtuple('Coincidence', ('left', 'right', 'alignment', 'transform', 'inverse', 'translation'))

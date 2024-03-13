@@ -66,9 +66,9 @@ class BSpline(Manifold):
         """
         return self.normalDirection * self.spline.normal(domainPoint)
 
-    def point(self, domainPoint):
+    def evaluate(self, domainPoint):
         """
-        Return the point.
+        Return the value of the manifold (a point on the manifold).
 
         Parameters
         ----------
@@ -245,12 +245,12 @@ class BSpline(Manifold):
             Each intersection records either a crossing or a coincident region.
             Coincident regions are currently not implemented for splines.
 
-            For a crossing, intersection is a Manifold.Crossing: (left, right)
+            For a crossing, intersection is a `Manifold.Crossing`: (left, right)
             * left : `Manifold` in the manifold's domain where the manifold and the other cross.
             * right : `Manifold` in the other's domain where the manifold and the other cross.
             * Both intersection manifolds have the same domain and range (the crossing between the manifold and the other).
 
-            For a coincident region, intersection is Manifold.Coincidence: (left, right, alignment, transform, inverse, translation)
+            For a coincident region, intersection is a `Manifold.Coincidence`: (left, right, alignment, transform, inverse, translation)
             * left : `Solid` in the manifold's domain within which the manifold and the other are coincident.
             * right : `Solid` in the other's domain within which the manifold and the other are coincident.
             * alignment : scalar value holding the normal alignment between the manifold and the other (the dot product of their unit normals).
@@ -420,9 +420,9 @@ class BSpline(Manifold):
         domainPoint = np.atleast_1d(0.5)
         for intersection in intersections:
             if isinstance(intersection, Manifold.Crossing):
-                if np.dot(self.tangent_space(intersection.left.point(domainPoint)) @ intersection.left.normal(domainPoint), other.normal(intersection.right.point(domainPoint))) < 0.0:
+                if np.dot(self.tangent_space(intersection.left.evaluate(domainPoint)) @ intersection.left.normal(domainPoint), other.normal(intersection.right.evaluate(domainPoint))) < 0.0:
                     intersection.left.flip_normal()
-                if np.dot(other.tangent_space(intersection.right.point(domainPoint)) @ intersection.right.normal(domainPoint), self.normal(intersection.left.point(domainPoint))) < 0.0:
+                if np.dot(other.tangent_space(intersection.right.evaluate(domainPoint)) @ intersection.right.normal(domainPoint), self.normal(intersection.left.evaluate(domainPoint))) < 0.0:
                     intersection.right.flip_normal()
 
         return intersections
@@ -515,7 +515,7 @@ class BSpline(Manifold):
 
         # For curves, add domain bounds as needed.
         if slice.dimension == 1:
-            slice.boundaries.sort(key=lambda b: (b.manifold.point(0.0), b.manifold.normal(0.0)))
+            slice.boundaries.sort(key=lambda b: (b.manifold.evaluate(0.0), b.manifold.normal(0.0)))
             if abs(slice.boundaries[0].manifold._point - bounds[0][0]) >= Manifold.minSeparation and \
                 slice.boundaries[0].manifold._normal > 0.0:
                 slice.boundaries.insert(0, Boundary(Hyperplane(-slice.boundaries[0].manifold._normal, bounds[0][0], 0.0), Solid(0, True)))
@@ -532,7 +532,7 @@ class BSpline(Manifold):
 
             # Define function for adding slice points to new bounding box boundaries.
             def process_domain_point(boundary, domainPoint):
-                point = boundary.manifold.point(domainPoint)
+                point = boundary.manifold.evaluate(domainPoint)
                 # See if and where point touches bounding box of slice.
                 for newBoundary in slice.boundaries[boundaryCount:]:
                     vector = point - newBoundary.manifold._point
@@ -546,7 +546,7 @@ class BSpline(Manifold):
             # Go through existing boundaries and check if either of their endpoints lies on the spline's bounds.
             for boundary in slice.boundaries[:boundaryCount]:
                 domainBoundaries = boundary.domain.boundaries
-                domainBoundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
+                domainBoundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), boundary.manifold.normal(0.0)))
                 process_domain_point(boundary, domainBoundaries[0].manifold._point)
                 if len(domainBoundaries) > 1:
                     process_domain_point(boundary, domainBoundaries[-1].manifold._point)
@@ -558,7 +558,7 @@ class BSpline(Manifold):
                     boundaryWasTouched = True
                     domainBoundaries = newBoundary.domain.boundaries
                     assert len(domainBoundaries) > 2
-                    domainBoundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), boundary.manifold.normal(0.0)))
+                    domainBoundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), boundary.manifold.normal(0.0)))
                     # Ensure domain endpoints don't overlap and their normals are consistent.
                     if abs(domainBoundaries[0].manifold._point - domainBoundaries[1].manifold._point) < Manifold.minSeparation or \
                         domainBoundaries[1].manifold._normal < 0.0:
@@ -594,5 +594,5 @@ class BSpline(Manifold):
                         i += 1
             else:
                 # No slice boundaries touched the bounding box, so remove bounding box if it's not contained in the solid.
-                if not solid.contains_point(self.point(bounds[:,0])):
+                if not solid.contains_point(self.evaluate(bounds[:,0])):
                     slice.boundaries = slice.boundaries[:boundaryCount]

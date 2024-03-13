@@ -24,16 +24,16 @@ def solid_edges(solid, subdivide = False):
     if solid.dimension > 1:
         for boundary in solid.boundaries:
             for domainEdge in solid_edges(boundary.domain, subdivide or not isinstance(boundary.manifold, Hyperplane)):
-                yield (boundary.manifold.point(domainEdge[0]), boundary.manifold.point(domainEdge[1]), boundary.manifold.normal(domainEdge[0]))
+                yield (boundary.manifold.evaluate(domainEdge[0]), boundary.manifold.evaluate(domainEdge[1]), boundary.manifold.normal(domainEdge[0]))
     else:
-        solid.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), -boundary.manifold.normal(0.0)))
+        solid.boundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), -boundary.manifold.normal(0.0)))
         leftB = 0
         rightB = 0
         while leftB < len(solid.boundaries):
             if solid.boundaries[leftB].manifold.normal(0.0) < 0.0:
-                leftPoint = solid.boundaries[leftB].manifold.point(0.0)
+                leftPoint = solid.boundaries[leftB].manifold.evaluate(0.0)
                 while rightB < len(solid.boundaries):
-                    rightPoint = solid.boundaries[rightB].manifold.point(0.0)
+                    rightPoint = solid.boundaries[rightB].manifold.evaluate(0.0)
                     if leftPoint - Manifold.minSeparation < rightPoint and solid.boundaries[rightB].manifold.normal(0.0) > 0.0:
                         if subdivide:
                             dt = 0.1

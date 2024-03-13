@@ -17,22 +17,22 @@ def triangulate(solid):
         def __init__(self, curve, t, clockwise, isStart, otherEnd=None):
             self.curve = curve
             self.t = t
-            self.xy = curve.manifold.point((t,))
+            self.xy = curve.manifold.evaluate((t,))
             self.clockwise = clockwise
             self.isStart = isStart
             self.otherEnd = otherEnd
             self.connection = None
     endpoints = []
     for curve in solid.boundaries:
-        curve.domain.boundaries.sort(key=lambda boundary: (boundary.manifold.point(0.0), -boundary.manifold.normal(0.0)))
+        curve.domain.boundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), -boundary.manifold.normal(0.0)))
         leftB = 0
         rightB = 0
         boundaryCount = len(curve.domain.boundaries)
         while leftB < boundaryCount:
             if curve.domain.boundaries[leftB].manifold.normal(0.0) < 0.0:
-                leftPoint = curve.domain.boundaries[leftB].manifold.point(0.0)[0]
+                leftPoint = curve.domain.boundaries[leftB].manifold.evaluate(0.0)[0]
                 while rightB < boundaryCount:
-                    rightPoint = curve.domain.boundaries[rightB].manifold.point(0.0)[0]
+                    rightPoint = curve.domain.boundaries[rightB].manifold.evaluate(0.0)[0]
                     if leftPoint - Manifold.minSeparation < rightPoint and curve.domain.boundaries[rightB].manifold.normal(0.0) > 0.0:
                         t = curve.manifold.tangent_space(leftPoint)[:,0]
                         n = curve.manifold.normal(leftPoint)
@@ -109,7 +109,7 @@ def triangulate(solid):
             endpoints.remove(next.otherEnd)
             subdivisions = max(int(abs(next.otherEnd.t - next.t) / 0.1), 20) if isinstance(next.curve.manifold, BSpline) else 2
             for t in np.linspace(next.t, next.otherEnd.t, subdivisions):
-                xy = next.curve.manifold.point((t,))
+                xy = next.curve.manifold.evaluate((t,))
                 vertex = (*xy, 0.0)
                 gluTessVertex(tess, vertex, vertex)
             next = next.otherEnd.connection
@@ -278,10 +278,10 @@ class SolidViewer(Viewer):
         if isinstance(boundary.manifold, Hyperplane):
             uvMin = vertices.min(axis=0)
             uvMax = vertices.max(axis=0)
-            xyzMinMin = boundary.manifold.point(uvMin)
-            xyzMinMax = boundary.manifold.point((uvMin[0], uvMax[1]))
-            xyzMaxMin = boundary.manifold.point((uvMax[0], uvMin[1]))
-            xyzMaxMax = boundary.manifold.point(uvMax)
+            xyzMinMin = boundary.manifold.evaluate(uvMin)
+            xyzMinMax = boundary.manifold.evaluate((uvMin[0], uvMax[1]))
+            xyzMaxMin = boundary.manifold.evaluate((uvMax[0], uvMin[1]))
+            xyzMaxMax = boundary.manifold.evaluate(uvMax)
             spline = Spline(2, 3, (2, 2), (2, 2), 
                 np.array((uvMin, uvMin, uvMax, uvMax), np.float32).T,
                 np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)

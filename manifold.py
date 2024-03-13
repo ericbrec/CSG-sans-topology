@@ -62,9 +62,9 @@ class Manifold:
         """
         return None
 
-    def point(self, domainPoint):
+    def evaluate(self, domainPoint):
         """
-        Return the point.
+        Return the value of the manifold (a point on the manifold).
 
         Parameters
         ----------
@@ -233,12 +233,12 @@ class Manifold:
 
     def intersect_manifold(self, other):
         """
-        Intersect two manifolds.
+        Intersect two manifolds (self and other).
 
         Parameters
         ----------
         other : `Manifold`
-            The `Manifold` intersecting the manifold.
+            The `Manifold` intersecting self.
 
         Returns
         -------
@@ -246,12 +246,12 @@ class Manifold:
             A list of intersections between the two manifolds. 
             Each intersection records either a crossing or a coincident region.
 
-            For a crossing, intersection is a Manifold.Crossing: (left, right)
+            For a crossing, intersection is a `Manifold.Crossing`: (left, right)
             * left : `Manifold` in the manifold's domain where the manifold and the other cross.
             * right : `Manifold` in the other's domain where the manifold and the other cross.
             * Both intersection manifolds have the same domain and range (the crossing between the manifold and the other).
 
-            For a coincident region, intersection is Manifold.Coincidence: (left, right, alignment, transform, inverse, translation)
+            For a coincident region, intersection is a `Manifold.Coincidence`: (left, right, alignment, transform, inverse, translation)
             * left : `Solid` in the manifold's domain within which the manifold and the other are coincident.
             * right : `Solid` in the other's domain within which the manifold and the other are coincident.
             * alignment : scalar value holding the normal alignment between the manifold and the other (the dot product of their unit normals).

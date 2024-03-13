@@ -50,7 +50,7 @@ class Boundary:
         -----
         The point is computed by evaluating the boundary manifold by an arbitrary point in the domain of the boundary.
         """
-        return self.manifold.point(self.domain.any_point())
+        return self.manifold.evaluate(self.domain.any_point())
 
 class Solid:
     """
@@ -260,7 +260,7 @@ class Solid:
         for boundary in self.boundaries:
             def domainF(domainPoint):
                 evalPoint = np.atleast_1d(domainPoint)
-                point = boundary.manifold.point(evalPoint)
+                point = boundary.manifold.evaluate(evalPoint)
 
                 # fHat passes the scalar given by integrate.quad into the first coordinate of the vector for f.
                 def fHat(x):
@@ -329,7 +329,7 @@ class Solid:
         for boundary in self.boundaries:
             def integrand(domainPoint):
                 evalPoint = np.atleast_1d(domainPoint)
-                point = boundary.manifold.point(evalPoint)
+                point = boundary.manifold.evaluate(evalPoint)
                 normal = boundary.manifold.normal(evalPoint)
                 fValue = f(point, normal, *args)
                 return np.dot(fValue, boundary.manifold.cofactor_normal(domainPoint))
@@ -387,7 +387,7 @@ class Solid:
             # Fast winding number calculation for a number line specialized to catch boundary edges.
             for boundary in self.boundaries:
                 normal = boundary.manifold.normal(0.0)
-                separation = np.dot(normal, boundary.manifold.point(0.0) - point)
+                separation = np.dot(normal, boundary.manifold.evaluate(0.0) - point)
                 if -2.0 * Manifold.minSeparation < separation < Manifold.minSeparation:
                     onBoundaryNormal = normal
                     break

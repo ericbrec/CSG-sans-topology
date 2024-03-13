@@ -77,24 +77,19 @@ class Manifold:
         """
         return None
 
-    def any_point(self):
+    def midpoint(self):
         """
-        Return an arbitrary point on the manifold.
+        Return the midpoint of the manifold.
 
         Returns
         -------
         point : `numpy.array`
-            A point on the manifold.
+            The midpoint of the manifold.
 
         See Also
         --------
         `Solid.any_point` : Return an arbitrary point on the solid.
         `Boundary.any_point` : Return an arbitrary point on the boundary.
-
-        Notes
-        -----
-        The any_point method for solids and boundaries do not call this method, because the point returned 
-        may not be within the solid or boundary.
         """
         return None
 

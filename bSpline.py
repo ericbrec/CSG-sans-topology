@@ -81,24 +81,19 @@ class BSpline(Manifold):
         """
         return self.spline(domainPoint)
 
-    def any_point(self):
+    def midpoint(self):
         """
-        Return an arbitrary point on the spline.
+        Return the midpoint of the spline.
 
         Returns
         -------
         point : `numpy.array`
-            A point on the spline.
+            The midpoint of the spline.
 
         See Also
         --------
         `Solid.any_point` : Return an arbitrary point on the solid.
         `Boundary.any_point` : Return an arbitrary point on the boundary.
-
-        Notes
-        -----
-        The any_point method for solids and boundaries do not call this method, because the point returned 
-        may not be within the solid or boundary.
         """
         domain = self.spline.domain().T
         return self.spline(0.5 * (domain[0] + domain[1]))
@@ -509,7 +504,7 @@ class BSpline(Manifold):
         if not slice.boundaries:
             if slice.dimension == 2:
                 logging.info(f"check containment: {self.spline.metadata['Name']}")
-            if solid.contains_point(self.any_point()):
+            if solid.contains_point(self.midpoint()):
                 self.establish_domain_bounds(slice, bounds)
             return
 

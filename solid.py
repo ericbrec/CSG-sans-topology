@@ -471,7 +471,8 @@ class Solid:
         See Also
         --------
         `intersection` : Intersect two solids.
-        `manifold.Manifold.intersect_manifold` : Intersect two manifolds.
+        `manifold.Manifold.intersect` : Intersect two manifolds.
+        `manifold.Manifold.cached_intersect` : Intersect two manifolds, caching the result for twins.
         `manifold.Manifold.complete_slice` : Add any missing inherent (implicit) boundaries of this manifold's domain to the given slice.
 
         Notes
@@ -500,7 +501,7 @@ class Solid:
         # Intersect each of this solid's boundaries with the manifold.
         for boundary in self.boundaries:
             # Intersect manifolds, checking if the intersection is already in the cache.
-            intersections, isTwin = boundary.manifold.cached_intersect_manifold(manifold, cache)
+            intersections, isTwin = boundary.manifold.cached_intersect(manifold, cache)
             if intersections is NotImplemented:
                 raise NotImplementedError()
 

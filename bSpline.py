@@ -224,7 +224,7 @@ class BSpline(Manifold):
         """
         self.normalDirection *= -1.0
 
-    def intersect_manifold(self, other):
+    def intersect(self, other):
         """
         Intersect a spline or hyperplane.
 
@@ -380,7 +380,7 @@ class BSpline(Manifold):
             
             # Surface-Surface intersection.
             elif nDep == 2:
-                logging.info(f"intersect_manifold({self.spline.metadata['Name']}, {other.spline.metadata['Name']})")
+                logging.info(f"intersect({self.spline.metadata['Name']}, {other.spline.metadata['Name']})")
                 # Find the intersection contours, which are returned as splines.
                 swap = False
                 try:
@@ -393,7 +393,7 @@ class BSpline(Manifold):
                 # Convert each contour into a Manifold.Crossing.
                 if swap:
                     spline = other.spline.subtract(self.spline)
-                    logging.info(f"intersect_manifold({other.spline.metadata['Name']}, {self.spline.metadata['Name']})")
+                    logging.info(f"intersect({other.spline.metadata['Name']}, {self.spline.metadata['Name']})")
                     contours = spline.contours()
                     for contour in contours:
                         # Swap left and right, compared to not swapped.

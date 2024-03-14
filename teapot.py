@@ -390,7 +390,7 @@ if __name__ == "__main__":
         boundary2 = utils.find_boundary(teapot2, name2)
 
         cache = {}
-        intersections, isTwin = boundary2.manifold.cached_intersect_manifold(boundary1.manifold, cache)
+        intersections, isTwin = boundary2.manifold.cached_intersect(boundary1.manifold, cache)
 
         for u in np.linspace(0.0, 1.0, 21):
             leftPoint = boundary2.manifold.spline(intersections[0].left.spline(u))

@@ -263,7 +263,7 @@ class Hyperplane(Manifold):
         if hasattr(self, '_cofactorNormal'):
             self._cofactorNormal = -self._cofactorNormal
 
-    def intersect_manifold(self, other):
+    def intersect(self, other):
         """
         Intersect two hyperplanes.
 

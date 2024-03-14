@@ -10,7 +10,7 @@ class Manifold:
     # If two points are within 0.01 of each each other, they are coincident
     minSeparation = 0.01
 
-    # Return type for intersect_manifold
+    # Return type for intersect
     Crossing = namedtuple('Crossing', ('left','right'))
     Coincidence = namedtuple('Coincidence', ('left', 'right', 'alignment', 'transform', 'inverse', 'translation'))
 
@@ -226,7 +226,7 @@ class Manifold:
         """
         pass
 
-    def intersect_manifold(self, other):
+    def intersect(self, other):
         """
         Intersect two manifolds (self and other).
 
@@ -257,7 +257,7 @@ class Manifold:
 
         See Also
         --------
-        `cached_intersect_manifold` : Intersect two manifolds, caching the result for twins (same intersection but swapping self and other).
+        `cached_intersect` : Intersect two manifolds, caching the result for twins (same intersection but swapping self and other).
         `solid.Solid.slice` : slice the solid by a manifold.
 
         Notes
@@ -266,7 +266,7 @@ class Manifold:
         """
         return NotImplemented
 
-    def cached_intersect_manifold(self, other, cache = None):
+    def cached_intersect(self, other, cache = None):
         """
         Intersect two manifolds, caching the result for twins (same intersection but swapping self and other).
 
@@ -303,7 +303,7 @@ class Manifold:
 
         See Also
         --------
-        `intersect_manifold` : Intersect two manifolds.
+        `intersect` : Intersect two manifolds.
         `solid.Solid.slice` : slice the solid by a manifold.
 
         Notes
@@ -324,10 +324,10 @@ class Manifold:
 
         # If intersections not previously computed, compute them now.
         if intersections is None:
-            intersections = self.intersect_manifold(other)
+            intersections = self.intersect(other)
             if intersections is NotImplemented:
                 # Try the other way around in case other knows how to intersect self.
-                intersections = other.intersect_manifold(self)
+                intersections = other.intersect(self)
                 isTwin = True
             # Store intersections in cache.
             if cache is not None:

@@ -125,22 +125,6 @@ class Hyperplane(Manifold):
         """
         return np.dot(self._tangentSpace, domainPoint) + self._point
 
-    def midpoint(self):
-        """
-        Return the midpoint of the hyperplane.
-
-        Returns
-        -------
-        point : `numpy.array`
-            The midpoint of the hyperplane.
-
-        See Also
-        --------
-        `Solid.any_point` : Return an arbitrary point on the solid.
-        `Boundary.any_point` : Return an arbitrary point on the boundary.
-        """
-        return self._point
-
     def tangent_space(self, domainPoint):
         """
         Return the tangent space.
@@ -393,4 +377,4 @@ class Hyperplane(Manifold):
         assert self.domain_dimension() == slice.dimension
         assert self.range_dimension() == solid.dimension
         if slice.dimension == 0:
-            slice.containsInfinity = solid.contains_point(self.midpoint())
+            slice.containsInfinity = solid.contains_point(self._point)

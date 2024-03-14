@@ -85,22 +85,6 @@ class Manifold:
         """
         return None
 
-    def midpoint(self):
-        """
-        Return the midpoint of the manifold.
-
-        Returns
-        -------
-        point : `numpy.array`
-            The midpoint of the manifold.
-
-        See Also
-        --------
-        `Solid.any_point` : Return an arbitrary point on the solid.
-        `Boundary.any_point` : Return an arbitrary point on the boundary.
-        """
-        return None
-
     def tangent_space(self, domainPoint):
         """
         Return the tangent space.

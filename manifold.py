@@ -47,7 +47,7 @@ class Manifold:
         """
         return 0
 
-    def normal(self, domainPoint):
+    def normal(self, domainPoint, normalize=True, indices=None):
         """
         Return the normal.
 
@@ -55,6 +55,14 @@ class Manifold:
         ----------
         domainPoint : `numpy.array`
             The 1D array at which to evaluate the normal.
+        
+        normalize : `boolean`, optional
+            If True the returned normal will have unit length (the default). Otherwise, the normal's length will
+            be the area of the tangent space (for two independent variables, its the length of the cross product of tangent vectors).
+        
+        indices : `iterable`, optional
+            An iterable of normal indices to calculate. For example, `indices=(0, 3)` will return a vector of length 2
+            with the first and fourth values of the normal. If `None`, all normal values are returned (the default).
 
         Returns
         -------
@@ -108,54 +116,6 @@ class Manifold:
         """
         return None
 
-    def cofactor_normal(self, domainPoint):
-        """
-        Return the cofactor normal.
-
-        Parameters
-        ----------
-        domainPoint : `numpy.array`
-            The 1D array at which to evaluate the cofactor normal.
-
-        Returns
-        -------
-        cofactorNormal : `numpy.array`
-
-        Notes
-        -----
-        The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
-
-        See Also
-        --------
-        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
-        """
-        return None
-
-    def first_cofactor(self, domainPoint):
-        """
-        Return the first coordinate of the cofactor normal.
-
-        Parameters
-        ----------
-        domainPoint : `numpy.array`
-            The 1D array at which to evaluate the first cofactor.
-
-        Returns
-        -------
-        firstCofactor : scalar
-
-        Notes
-        -----
-        The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
-
-        See Also
-        --------
-        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
-        """
-        return 0.0
-
     def determinant(self, domainPoint):
         """
         Returns the determinant, which is the length of the cofactor normal (also the normal dotted with the cofactor normal).
@@ -163,13 +123,13 @@ class Manifold:
         Parameters
         ----------
         domainPoint : `numpy.array`
-            The 1D array at which to evaluate the first cofactor.
+            The 1D array at which to evaluate the determinant.
 
         Returns
         -------
         determinant : scalar
         """
-        return np.dot(self.normal(domainPoint), self.cofactor_normal(domainPoint))
+        return np.dot(self.normal(domainPoint), self.normal(domainPoint, False))
 
     def transform(self, matrix, matrixInverseTranspose = None):
         """

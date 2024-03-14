@@ -51,7 +51,7 @@ class BSpline(Manifold):
         """
         return self.spline.nDep
 
-    def normal(self, domainPoint):
+    def normal(self, domainPoint, normalize=True, indices=None):
         """
         Return the normal.
 
@@ -59,12 +59,20 @@ class BSpline(Manifold):
         ----------
         domainPoint : `numpy.array`
             The 1D array at which to evaluate the normal.
+        
+        normalize : `boolean`, optional
+            If True the returned normal will have unit length (the default). Otherwise, the normal's length will
+            be the area of the tangent space (for two independent variables, its the length of the cross product of tangent vectors).
+        
+        indices : `iterable`, optional
+            An iterable of normal indices to calculate. For example, `indices=(0, 3)` will return a vector of length 2
+            with the first and fourth values of the normal. If `None`, all normal values are returned (the default).
 
         Returns
         -------
         normal : `numpy.array`
         """
-        return self.normalDirection * self.spline.normal(domainPoint)
+        return self.normalDirection * self.spline.normal(domainPoint, normalize, indices)
 
     def evaluate(self, domainPoint):
         """
@@ -118,54 +126,6 @@ class BSpline(Manifold):
             tangentSpace[:, i] = self.spline.derivative(wrt, domainPoint)
             wrt[i] = 0
         return tangentSpace
-
-    def cofactor_normal(self, domainPoint):
-        """
-        Return the cofactor normal.
-
-        Parameters
-        ----------
-        domainPoint : `numpy.array`
-            The 1D array at which to evaluate the cofactor normal.
-
-        Returns
-        -------
-        cofactorNormal : `numpy.array`
-
-        Notes
-        -----
-        The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
-
-        See Also
-        --------
-        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
-        """
-        return self.normalDirection * self.spline.normal(domainPoint, False)
-
-    def first_cofactor(self, domainPoint):
-        """
-        Return the first coordinate of the cofactor normal.
-
-        Parameters
-        ----------
-        domainPoint : `numpy.array`
-            The 1D array at which to evaluate the first cofactor.
-
-        Returns
-        -------
-        firstCofactor : scalar
-
-        Notes
-        -----
-        The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
-
-        See Also
-        --------
-        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
-        """
-        return self.normalDirection * self.spline.normal(domainPoint, False, (0,))
 
     def transform(self, matrix, matrixInverseTranspose = None):
         """

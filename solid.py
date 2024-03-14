@@ -270,7 +270,7 @@ class Solid:
 
                 # Calculate Integral(f) * first cofactor. Note that quad returns a tuple: (integral, error bound).
                 returnValue = 0.0
-                firstCofactor = boundary.manifold.first_cofactor(evalPoint)
+                firstCofactor = boundary.manifold.normal(evalPoint, False, (0,))
                 if abs(x0 - point[0]) > epsabs and abs(firstCofactor) > epsabs:
                     returnValue = integrate.quad(fHat, x0, point[0], epsabs=epsabs, epsrel=epsrel, *quadArgs)[0] * firstCofactor
                 return returnValue
@@ -332,7 +332,7 @@ class Solid:
                 point = boundary.manifold.evaluate(evalPoint)
                 normal = boundary.manifold.normal(evalPoint)
                 fValue = f(point, normal, *args)
-                return np.dot(fValue, boundary.manifold.cofactor_normal(domainPoint))
+                return np.dot(fValue, boundary.manifold.normal(domainPoint, False))
 
             if boundary.domain.dimension > 0:
                 # Add the contribution to the Volume integral from this boundary.

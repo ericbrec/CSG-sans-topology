@@ -61,7 +61,7 @@ class Hyperplane(Manifold):
         """
         return len(self._normal)
 
-    def normal(self, domainPoint):
+    def normal(self, domainPoint, normalize=True, indices=None):
         """
         Return the normal.
 
@@ -69,12 +69,46 @@ class Hyperplane(Manifold):
         ----------
         domainPoint : `numpy.array`
             The 1D array at which to evaluate the normal.
+        
+        normalize : `boolean`, optional
+            If True the returned normal will have unit length (the default). Otherwise, the normal's length will
+            be the area of the tangent space (for two independent variables, its the length of the cross product of tangent vectors).
+        
+        indices : `iterable`, optional
+            An iterable of normal indices to calculate. For example, `indices=(0, 3)` will return a vector of length 2
+            with the first and fourth values of the normal. If `None`, all normal values are returned (the default).
 
         Returns
         -------
         normal : `numpy.array`
         """
-        return self._normal
+        if normalize:
+            normal = self._normal
+        else:
+            # Compute and cache cofactor normal on demand.
+            if not hasattr(self, '_cofactorNormal'):
+                dimension = self.range_dimension()
+                if dimension > 1:
+                    minor = np.zeros((dimension-1, dimension-1))
+                    self._cofactorNormal = np.array(self._normal) # We change it, so make a copy.
+                    sign = 1.0
+                    for i in range(dimension):
+                        if i > 0:
+                            minor[0:i, :] = self._tangentSpace[0:i, :]
+                        if i < dimension - 1:
+                            minor[i:, :] = self._tangentSpace[i+1:, :]
+                        self._cofactorNormal[i] = sign * np.linalg.det(minor)
+                        sign *= -1.0
+            
+                    # Ensure cofactorNormal points in the same direction as normal.
+                    if np.dot(self._cofactorNormal, self._normal) < 0.0:
+                        self._cofactorNormal = -self._cofactorNormal
+                else:
+                    self._cofactorNormal = self._normal
+            
+            normal = self._cofactorNormal
+        
+        return normal if indices is None else normal[(indices,)]
 
     def evaluate(self, domainPoint):
         """
@@ -121,75 +155,6 @@ class Hyperplane(Manifold):
         tangentSpace : `numpy.array`
         """
         return self._tangentSpace
-
-    def cofactor_normal(self, domainPoint):
-        """
-        Return the cofactor normal.
-
-        Parameters
-        ----------
-        domainPoint : `numpy.array`
-            The 1D array at which to evaluate the cofactor normal.
-
-        Returns
-        -------
-        cofactorNormal : `numpy.array`
-
-        Notes
-        -----
-        The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
-
-        See Also
-        --------
-        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
-        """
-        # Compute and cache cofactor normal on demand.
-        if not hasattr(self, '_cofactorNormal'):
-            dimension = self.range_dimension()
-            if dimension > 1:
-                minor = np.zeros((dimension-1, dimension-1))
-                self._cofactorNormal = np.array(self._normal) # We change it, so make a copy.
-                sign = 1.0
-                for i in range(dimension):
-                    if i > 0:
-                        minor[0:i, :] = self._tangentSpace[0:i, :]
-                    if i < dimension - 1:
-                        minor[i:, :] = self._tangentSpace[i+1:, :]
-                    self._cofactorNormal[i] = sign * np.linalg.det(minor)
-                    sign *= -1.0
-        
-                # Ensure cofactorNormal points in the same direction as normal.
-                if np.dot(self._cofactorNormal, self._normal) < 0.0:
-                    self._cofactorNormal = -self._cofactorNormal
-            else:
-                self._cofactorNormal = self._normal
-        
-        return self._cofactorNormal
-
-    def first_cofactor(self, domainPoint):
-        """
-        Return the first coordinate of the cofactor normal.
-
-        Parameters
-        ----------
-        domainPoint : `numpy.array`
-            The 1D array at which to evaluate the first cofactor.
-
-        Returns
-        -------
-        firstCofactor : scalar
-
-        Notes
-        -----
-        The cofactor normal is the normal formed by the cross-product of the tangent space vectors (the tangents).
-
-        See Also
-        --------
-        `solid.Solid.volume_integral` : Compute the volume integral of a function within the solid.
-        `solid.Solid.surface_integral` : Compute the surface integral of a vector field on the boundary of the solid.
-        """
-        return self.cofactor_normal(domainPoint)[0]
 
     def transform(self, matrix, matrixInverseTranspose = None):
         """

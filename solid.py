@@ -14,9 +14,6 @@ class Boundary:
     domain : `Solid`
         The region of the domain of the manifold that's within the boundary.
     
-    tangentSpace : array-like
-        A array of tangents that are linearly independent and orthogonal to the normal.
-    
     See also
     --------
     `Solid` : A region that separates space into an inside and outside, defined by a collection of boundaries.
@@ -26,9 +23,6 @@ class Boundary:
 
         self.manifold = manifold
         self.domain = domain
-
-    def __str__(self):
-        return "{0}, {1}".format(self.manifold, "Contains infinity" if self.domain.containsInfinity else "Excludes infinity")
 
     def __repr__(self):
         return "Boundary({0}, {1})".format(self.manifold.__repr__(), self.domain.__repr__())
@@ -330,9 +324,10 @@ class Solid:
             def integrand(domainPoint):
                 evalPoint = np.atleast_1d(domainPoint)
                 point = boundary.manifold.evaluate(evalPoint)
-                normal = boundary.manifold.normal(evalPoint)
+                cofactorNormal = boundary.manifold.normal(evalPoint, False)
+                normal = cofactorNormal / np.linalg.norm(cofactorNormal)
                 fValue = f(point, normal, *args)
-                return np.dot(fValue, boundary.manifold.normal(domainPoint, False))
+                return np.dot(fValue, cofactorNormal)
 
             if boundary.domain.dimension > 0:
                 # Add the contribution to the Volume integral from this boundary.

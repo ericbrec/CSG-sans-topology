@@ -32,9 +32,6 @@ class Hyperplane(Manifold):
         self._tangentSpace = np.atleast_1d(np.array(tangentSpace))
         if not np.allclose(self._tangentSpace.T @ self._normal, 0.0): raise ValueError("normal must be orthogonal to tangent space")
 
-    def __str__(self):
-        return "normal: {0}, point: {1}".format(self._normal, self._point)
-
     def __repr__(self):
         return "Hyperplane({0}, {1}, {2})".format(self._normal, self._point, self._tangentSpace)
 

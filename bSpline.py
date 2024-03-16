@@ -21,9 +21,6 @@ class BSpline(Manifold):
         self.spline = spline
         self.normalDirection = 1.0
 
-    def __str__(self):
-        return self.spline.__str__()
-
     def __repr__(self):
         return self.spline.__repr__()
 

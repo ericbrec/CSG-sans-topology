@@ -1,4 +1,5 @@
-import solid as sld
+from solid import Solid
+from hyperplane import Hyperplane
 import solidUtils as utils
 import matplotlib.pyplot as plt
 import player as player
@@ -20,7 +21,7 @@ class InteractiveCanvas:
         if axis >= 0:
             self.key = key
             self.ax.set_title("slice solid by {axis}-axis".format(axis=key))
-            hyperplane = utils.hyperplane_axis_aligned(self.solid.dimension, axis, self.offset)
+            hyperplane = Hyperplane.create_axis_aligned(self.solid.dimension, axis, self.offset)
         else:
             hyperplane = self.hyperplane
 
@@ -33,16 +34,16 @@ class InteractiveCanvas:
         self.offset = offset
         self.hyperplane._point = self.offset * self.hyperplane._normal
         self.slice = self.solid.slice(self.hyperplane)
-        if not isinstance(self.slice, sld.Solid):
-            self.slice = sld.Solid(self.solid.dimension, False)
+        if not isinstance(self.slice, Solid):
+            self.slice = Solid(self.solid.dimension, False)
         self.lines.set_segments(utils.create_segments_from_solid(self.slice))
 
     def on_radio_press(self, event):
         """Callback for radio button selection."""
         self.hyperplane = self.ConstructHyperplane(event)
         self.slice = self.solid.slice(self.hyperplane)
-        if not isinstance(self.slice, sld.Solid):
-            self.slice = sld.Solid(self.solid.dimension, False)
+        if not isinstance(self.slice, Solid):
+            self.slice = Solid(self.solid.dimension, False)
         self.lines.set_segments(utils.create_segments_from_solid(self.slice))
         self.canvas.draw()
 
@@ -68,7 +69,7 @@ class InteractiveCanvas:
         self.player = player.Player(fig, self.animateSlice, -4.0, 4.0, 0.2, -4.0, init_func=self.initializeCanvas)
 
 if __name__ == "__main__":
-    square = utils.create_hypercube([1,1], [0,0])
+    square = Hyperplane.create_hypercube([2,2], [-1,-1])
     star = utils.create_star(2.0, [0.0, 0.0], 90.0*6.28/360.0)
     extrudedSquare = utils.extrude_solid(square,[[-2,2,-4],[2,-2,4]])
     extrudedStar = utils.extrude_solid(star,[[-2,-2,-4],[2,2,4]])

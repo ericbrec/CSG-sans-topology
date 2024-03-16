@@ -78,45 +78,6 @@ def create_segments_from_solid(solid, includeManifold=False):
     
     return segments
 
-def hyperplane_axis_aligned(dimension, axis, offset, flipNormal=False):
-    assert dimension > 0
-    diagonal = np.identity(dimension)
-    sign = -1.0 if flipNormal else 1.0
-    normal = sign * diagonal[:,axis]
-    point = offset * normal
-    if dimension > 1:
-        tangentSpace = np.delete(diagonal, axis, axis=1)
-    else:
-        tangentSpace = np.array([0.0])
-    
-    return Hyperplane(normal, point, tangentSpace)
-
-def create_hypercube(size, position = None):
-    dimension = len(size)
-    solid = Solid(dimension, False)
-    if position is None:
-        position = [0.0]*dimension
-    else:
-        assert len(position) == dimension
-
-    for i in range(dimension):
-        if dimension > 1:
-            domainSize = size.copy()
-            del domainSize[i]
-            domainPosition = position.copy()
-            del domainPosition[i]
-            domain1 = create_hypercube(domainSize, domainPosition)
-            domain2 = create_hypercube(domainSize, domainPosition)
-        else:
-            domain1 = Solid(0, True)
-            domain2 = Solid(0, True)
-        hyperplane = hyperplane_axis_aligned(dimension, i, size[i] + position[i], False)
-        solid.boundaries.append(Boundary(hyperplane,domain1))
-        hyperplane = hyperplane_axis_aligned(dimension, i, size[i] - position[i], True)
-        solid.boundaries.append(Boundary(hyperplane,domain2))
-
-    return solid
-
 def hyperplane_1D(normal, offset):
     assert np.isscalar(normal) or len(normal) == 1
     normalizedNormal = np.atleast_1d(normal)
@@ -271,10 +232,10 @@ def extrude_solid(solid, path):
         point = nextPoint
 
     # Add end cap boundaries
-    extrudedHyperplane = hyperplane_axis_aligned(extrusion.dimension, solid.dimension, 0.0, True)
+    extrudedHyperplane = Hyperplane.create_axis_aligned(extrusion.dimension, solid.dimension, 0.0, True)
     extrudedHyperplane.translate(path[0])
     extrusion.boundaries.append(Boundary(extrudedHyperplane, solid))
-    extrudedHyperplane = hyperplane_axis_aligned(extrusion.dimension, solid.dimension, 0.0, False)
+    extrudedHyperplane = Hyperplane.create_axis_aligned(extrusion.dimension, solid.dimension, 0.0, False)
     extrudedHyperplane.translate(path[-1])
     extrusion.boundaries.append(Boundary(extrudedHyperplane, solid))
 

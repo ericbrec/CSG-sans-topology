@@ -120,13 +120,13 @@ if __name__ == "__main__":
 
     triangleSplineA = utils.create_smooth_solid_from_points(2, [[1,1],[-2,-2],[1,-2]])
 
-    squareA = utils.create_hypercube([1.5,1.5], [-1,-1])
+    squareA = Hyperplane.create_hypercube([3.0, 3.0], [-2.5,-2.5])
     print(squareA.volume_integral(lambda x: 1.0), 3.0*3.0)
     print(squareA.surface_integral(lambda x, n: n), 3.0*4.0)
     print(squareA.winding_number(np.array([0.,0.])))
     print(squareA.winding_number(np.array([-0.23870968,1.])))
-    #squareB = utils.create_hypercube([1,1], [1.2,-0.005])
-    squareB = utils.create_hypercube([1,1], [0.5, 0.5])
+    #squareB = Hyperplane.create_hypercube([2,2], [0.2,-1.005])
+    squareB = Hyperplane.create_hypercube([2,2], [-0.5, -0.5])
     print(squareB.volume_integral(lambda x: 1.0), 2.0*2.0)
     print(squareB.surface_integral(lambda x, n: n), 2.0*4.0)
 

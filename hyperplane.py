@@ -1,5 +1,5 @@
 import numpy as np
-from solid import Solid
+from solid import Solid, Boundary
 from manifold import Manifold
 
 class Hyperplane(Manifold):
@@ -378,3 +378,85 @@ class Hyperplane(Manifold):
         assert self.range_dimension() == solid.dimension
         if slice.dimension == 0:
             slice.containsInfinity = solid.contains_point(self._point)
+
+    @staticmethod
+    def create_axis_aligned(dimension, axis, offset, flipNormal=False):
+        """
+        Create an axis-aligned hyperplane.
+
+        Parameters
+        ----------
+        dimension : `int`
+            The dimension of the hyperplane.
+
+        axis : `int`
+            The number of the axis (0 for x, 1 for y, ...).
+        
+        offset : `float`
+            The offset from zero along the axis of a point on the hyperplane. 
+        
+        flipNormal : `bool`, optional
+            A Boolean indicating that the normal should point toward in the negative direction along the axis. 
+            Default is False, meaning the normal points in the positive direction along the axis.
+
+        Returns
+        -------
+        hyperplane : `Hyperplane`
+            The axis-aligned hyperplane.
+        """
+        assert dimension > 0
+        diagonal = np.identity(dimension)
+        sign = -1.0 if flipNormal else 1.0
+        normal = sign * diagonal[:,axis]
+        point = offset * normal
+        if dimension > 1:
+            tangentSpace = np.delete(diagonal, axis, axis=1)
+        else:
+            tangentSpace = np.array([0.0])
+        
+        return Hyperplane(normal, point, tangentSpace)
+
+    @staticmethod
+    def create_hypercube(size, origin = None):
+        """
+        Create a solid hypercube.
+
+        Parameters
+        ----------
+        size : array-like
+            The widths of the sides of the hypercube. 
+            The length of size determines the dimension of the hypercube. 
+            The hypercube will span from origin to origin + size.
+
+        origin : array-like
+            The origin of the hypercube. Default is the zero vector.
+
+        Returns
+        -------
+        hypercube : `Solid`
+            The hypercube.
+        """
+        dimension = len(size)
+        solid = Solid(dimension, False)
+        if origin is None:
+            origin = [0.0]*dimension
+        else:
+            assert len(origin) == dimension
+
+        for i in range(dimension):
+            if dimension > 1:
+                domainSize = size.copy()
+                del domainSize[i]
+                domainOrigin = origin.copy()
+                del domainOrigin[i]
+                domain1 = Hyperplane.create_hypercube(domainSize, domainOrigin)
+                domain2 = Hyperplane.create_hypercube(domainSize, domainOrigin)
+            else:
+                domain1 = Solid(0, True)
+                domain2 = Solid(0, True)
+            hyperplane = Hyperplane.create_axis_aligned(dimension, i, -origin[i], True)
+            solid.boundaries.append(Boundary(hyperplane, domain1))
+            hyperplane = Hyperplane.create_axis_aligned(dimension, i, size[i] + origin[i], False)
+            solid.boundaries.append(Boundary(hyperplane, domain2))
+
+        return solid

@@ -2,6 +2,7 @@ import logging
 import numpy as np
 import solidUtils as utils
 from solid import Solid, Boundary
+from hyperplane import Hyperplane
 from bSpline import BSpline
 from bspy import Spline
 from solidViewer import SolidViewer
@@ -368,10 +369,10 @@ if __name__ == "__main__":
                 coefficients[2,i,j] = teapotVertices[vertex][1]
         teapot1.boundaries.append(Boundary(
             BSpline(Spline(2, 3, (4,4), (4,4), (knots, knots), coefficients, metadata=dict(Name=f"1: {patch[0]}"))),
-            utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
+            Hyperplane.create_hypercube([1.0, 1.0], [0.0, 0.0])))
         teapot2.boundaries.append(Boundary(
             BSpline(Spline(2, 3, (4,4), (4,4), (knots, knots), coefficients, metadata=dict(Name=f"2: {patch[0]}"))),
-            utils.create_hypercube([0.5, 0.5], [0.5, 0.5])))
+            Hyperplane.create_hypercube([1.0, 1.0], [0.0, 0.0])))
 
     viewer.list_solid(teapot1, fillColor=np.array((1, 1, 0, 1),np.float32))
 

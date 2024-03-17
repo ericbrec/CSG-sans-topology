@@ -181,7 +181,7 @@ class Manifold:
 
         Returns
         -------
-        intersections : `list` (Or `NotImplemented` if other is an unknown type of Manifold)
+        intersections : `list` (or `NotImplemented` if other is an unknown type of Manifold)
             A list of intersections between the two manifolds. 
             Each intersection records either a crossing or a coincident region.
 
@@ -224,7 +224,7 @@ class Manifold:
 
         Returns
         -------
-        intersections : `list` (Or `NotImplemented` if other is an unknown type of Manifold)
+        intersections : `list` (or `NotImplemented` if other is an unknown type of Manifold)
             A list of intersections between the two manifolds. 
             Each intersection records either a crossing or a coincident region.
 

@@ -23,8 +23,8 @@ class Hyperplane(Manifold):
     Thus the dimension of the domain is one less than that of the range.
     """
 
-    # If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel
     maxAlignment = 0.99 # 1 - 1/10^2
+    """ If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel."""
 
     def __init__(self, normal, point, tangentSpace):
         self._normal = np.atleast_1d(np.array(normal))
@@ -220,7 +220,7 @@ class Hyperplane(Manifold):
 
         Returns
         -------
-        intersections : `list` (Or `NotImplemented` if other is not a `Hyperplane`)
+        intersections : `list` (or `NotImplemented` if other is not a `Hyperplane`)
             A list of intersections between the two hyperplanes. 
             (Hyperplanes will have at most one intersection, but other types of manifolds can have several.)
             Each intersection records either a crossing or a coincident region.

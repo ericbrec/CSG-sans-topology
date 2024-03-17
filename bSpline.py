@@ -175,7 +175,7 @@ class BSpline(Manifold):
 
         Returns
         -------
-        intersections : `list` (Or `NotImplemented` if other is not a `Hyperplane` nor a `Spline`)
+        intersections : `list` (or `NotImplemented` if other is not a `Hyperplane` nor a `Spline`)
             A list of intersections between the two manifolds. 
             Each intersection records either a crossing or a coincident region.
             Coincident regions are currently not implemented for splines.

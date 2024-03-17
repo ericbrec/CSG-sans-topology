@@ -521,7 +521,6 @@ class Solid:
                     if invertCoincidence:
                         coincidence.containsInfinity = not coincidence.containsInfinity
                     # Next, transform the domain coincidence from the boundary to the given manifold.
-                    # Create copies of the manifolds and boundaries, since we are changing them.
                     for i in range(len(coincidence.boundaries)):
                         domainManifold = coincidence.boundaries[i].manifold
                         if invertCoincidence:

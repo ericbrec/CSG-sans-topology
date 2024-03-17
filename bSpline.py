@@ -212,7 +212,6 @@ class BSpline(Manifold):
         See Also
         --------
         `solid.Solid.slice` : slice the solid by a manifold.
-        `numpy.linalg.svd` : Compute the singular value decomposition of a 2D array.
         `bspy.Spline.zeros` : Find the roots of a spline (nInd must match nDep).
         `bspy.Spline.contours` : Find all the contour curves of a spline whose nInd is one larger than its nDep.
 

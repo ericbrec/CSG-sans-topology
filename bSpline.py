@@ -32,7 +32,7 @@ class BSpline(Manifold):
         -------
         spline : `Spline`
         """
-        spline = BSpline(self.spline.copy(self.spline.metadata))
+        spline = BSpline(self.spline.copy())
         spline.normalDirection = self.normalDirection
         if hasattr(self, "material"):
             spline.material = self.material

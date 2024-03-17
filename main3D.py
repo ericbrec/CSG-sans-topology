@@ -59,7 +59,7 @@ if __name__ == "__main__":
         paraboloid2 = Solid(3,False)
         paraboloid2.boundaries.append(Boundary(spline, Hyperplane.create_hypercube([1.0, 1.0], [0.0, 0.0])))
         paraboloid2.boundaries.append(Boundary(cap, Hyperplane.create_hypercube([2.0, 2.0], [-1.0, -1.0])))
-        paraboloid2.translate(np.array((0.0, 0.5, 0.55)))
+        paraboloid2 = paraboloid2.translate(np.array((0.0, 0.5, 0.55)))
         viewer.list_solid(paraboloid2, "paraboloid2", np.array((0, 1, 0, 1),np.float32))
 
         paraboloid3 = paraboloid + paraboloid2

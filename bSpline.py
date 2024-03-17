@@ -368,12 +368,15 @@ class BSpline(Manifold):
         # Ensure the normals point outwards for both Manifolds in each crossing intersection.
         # Note that evaluating left and right at 0.5 is always valid because either they are points or curves with [0.0, 1.0] domains.
         domainPoint = np.atleast_1d(0.5)
-        for intersection in intersections:
+        for i, intersection in enumerate(intersections):
             if isinstance(intersection, Manifold.Crossing):
-                if np.dot(self.tangent_space(intersection.left.evaluate(domainPoint)) @ intersection.left.normal(domainPoint), other.normal(intersection.right.evaluate(domainPoint))) < 0.0:
-                    intersection.left.flip_normal()
-                if np.dot(other.tangent_space(intersection.right.evaluate(domainPoint)) @ intersection.right.normal(domainPoint), self.normal(intersection.left.evaluate(domainPoint))) < 0.0:
-                    intersection.right.flip_normal()
+                left = intersection.left
+                right = intersection.right
+                if np.dot(self.tangent_space(left.evaluate(domainPoint)) @ left.normal(domainPoint), other.normal(right.evaluate(domainPoint))) < 0.0:
+                    left = left.flip_normal()
+                if np.dot(other.tangent_space(right.evaluate(domainPoint)) @ right.normal(domainPoint), self.normal(left.evaluate(domainPoint))) < 0.0:
+                    right = right.flip_normal()
+                intersections[i] = Manifold.Crossing(left, right)
 
         return intersections
     

@@ -64,7 +64,7 @@ class InteractiveCanvas:
         delta = [0.0]*self.solidB.dimension
         delta[0] = event.xdata - self.origin[0]
         delta[1] = event.ydata - self.origin[1]
-        self.solidB.translate(delta)
+        self.solidB = self.solidB.translate(delta)
         self.origin[0] = event.xdata
         self.origin[1] = event.ydata
 
@@ -139,15 +139,15 @@ if __name__ == "__main__":
     starB = utils.create_star(1.0, [2.0, 2.0], 90.0*np.pi/180.0)
     print(starB.volume_integral(lambda x: 1.0), starArea)
     print(starB.surface_integral(lambda x, n: n), starPerimeter)
-    starB.translate([-2.31895479, -2.69507693])
+    starB = starB.translate([-2.31895479, -2.69507693])
 
     starSplineB = utils.create_star(1.0, [0.0, 0.0], 90.0*6.28/360.0, True)
-    starSplineB.translate([0, -0.75])
+    starSplineB = starSplineB.translate([0, -0.75])
 
     glob1 = Solid(2, False)
     spline = BSpline(Spline(1, 2, (4,), (15,), ((0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 5.0, 7.0, 9.0, 9.0, 9.0, 12.0, 12.0, 12.0, 12.0),), \
         ((0.0, 1.0 / 3, 2.0 / 3, 1.0, 1.0, 1.0, 1.0, -1.0, 6.0, -5.0, 1.0, -1.5, -4.0, -1.0, 0.0), (1.0, 1.0, 1.0, 1.0, 2.5 / 3, 2.0 / 3, 0.5, 0.0, -1.0, -4.0, -1.0, 0.0, 1.0, 4.0, 1.0))))
-    spline.flip_normal()
+    spline = spline.flip_normal()
     domain = Solid(1, False)
     domain.boundaries.append(Boundary(Hyperplane(-1.0, 0.0, 0.0), Solid(0, True)))
     domain.boundaries.append(Boundary(Hyperplane(1.0, 12.0, 0.0), Solid(0, True)))

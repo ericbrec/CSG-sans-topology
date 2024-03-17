@@ -378,10 +378,10 @@ if __name__ == "__main__":
 
     #theta = 180.0 * np.pi / 180 # Touching spouts
     theta = 120.0 * np.pi / 180 # Wide intersection
-    teapot2.transform(np.array(((np.cos(theta), 0.0, np.sin(theta)),
+    teapot2 = teapot2.transform(np.array(((np.cos(theta), 0.0, np.sin(theta)),
 		(0.0, 1.0, 0.0), (-np.sin(theta), 0.0, np.cos(theta)))))
-    #teapot2.translate((5.25, 0.0, 0.15)) # Touching spouts
-    teapot2.translate((0.6, -2.0, 2.0)) # Wide intersection
+    #teapot2 = teapot2.translate((5.25, 0.0, 0.15)) # Touching spouts
+    teapot2 = teapot2.translate((0.6, -2.0, 2.0)) # Wide intersection
     viewer.list_solid(teapot2, fillColor=np.array((0, 1, 0, 1),np.float32))
 
     if False:

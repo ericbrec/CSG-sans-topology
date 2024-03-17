@@ -233,10 +233,10 @@ def extrude_solid(solid, path):
 
     # Add end cap boundaries
     extrudedHyperplane = Hyperplane.create_axis_aligned(extrusion.dimension, solid.dimension, 0.0, True)
-    extrudedHyperplane.translate(path[0])
+    extrudedHyperplane = extrudedHyperplane.translate(path[0])
     extrusion.boundaries.append(Boundary(extrudedHyperplane, solid))
     extrudedHyperplane = Hyperplane.create_axis_aligned(extrusion.dimension, solid.dimension, 0.0, False)
-    extrudedHyperplane.translate(path[-1])
+    extrudedHyperplane = extrudedHyperplane.translate(path[-1])
     extrusion.boundaries.append(Boundary(extrudedHyperplane, solid))
 
     return extrusion

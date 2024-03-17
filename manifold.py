@@ -127,15 +127,17 @@ class Manifold:
         matrixInverseTranspose : `numpy.array`, optional
             The inverse transpose of matrix (computed if not provided).
 
-        Notes
-        -----
-        Transforms the manifold in place, so create a copy as needed.
+        Returns
+        -------
+        manifold : `Manifold`
+            The transformed manifold.
 
         See Also
         --------
         `solid.Solid.transform` : transform the range of the solid.
         """
         assert np.shape(matrix) == (self.range_dimension(), self.range_dimension())
+        return None
 
     def translate(self, delta):
         """
@@ -146,29 +148,32 @@ class Manifold:
         delta : `numpy.array`
             A 1D array translation.
 
-        Notes
-        -----
-        Translates the manifold in place, so create a copy as needed.
+        Returns
+        -------
+        manifold : `Manifold`
+            The translated manifold.
 
         See Also
         --------
         `solid.Solid.translate` : translate the range of the solid.
         """
         assert len(delta) == self.range_dimension()
+        return None
 
     def flip_normal(self):
         """
         Flip the direction of the normal.
 
-        Notes
-        -----
-        Negates the normal in place, so create a copy as needed.
+        Returns
+        -------
+        manifold : `Manifold`
+            The manifold with flipped normal. The manifold retains the same tangent space.
 
         See Also
         --------
         `solid.Solid.complement` : Return the complement of the solid: whatever was inside is outside and vice-versa.
         """
-        pass
+        return None
 
     def intersect(self, other):
         """

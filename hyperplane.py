@@ -149,9 +149,10 @@ class Hyperplane(Manifold):
         matrixInverseTranspose : `numpy.array`, optional
             The inverse transpose of matrix (computed if not provided).
 
-        Notes
-        -----
-        Transforms the hyperplane in place, so create a copy as needed.
+        Returns
+        -------
+        hyperplane : `Hyperplane`
+            The transformed hyperplane.
 
         See Also
         --------
@@ -163,15 +164,16 @@ class Hyperplane(Manifold):
             if matrixInverseTranspose is None:
                 matrixInverseTranspose = np.transpose(np.linalg.inv(matrix))
 
-            self._normal = matrixInverseTranspose @ self._normal
-            self._normal = self._normal / np.linalg.norm(self._normal)
-            if hasattr(self, '_cofactorNormal'):
-                self._cofactorNormal = abs(np.linalg.det(matrix)) * (matrixInverseTranspose @ self._cofactorNormal)
-
-            self._tangentSpace = matrix @ self._tangentSpace
-
-        self._point = matrix @ self._point
-
+            normal = matrixInverseTranspose @ self._normal
+            normal = normal / np.linalg.norm(normal)
+            hyperplane = Hyperplane(normal, matrix @ self._point, matrix @ self._tangentSpace)
+        else:
+            hyperplane = Hyperplane(self._normal, matrix @ self._point, self._tangentSpace)
+    
+        if hasattr(self, "material"):
+            hyperplane.material = self.material
+        return hyperplane
+    
     def translate(self, delta):
         """
         translate the range of the hyperplane.
@@ -181,33 +183,38 @@ class Hyperplane(Manifold):
         delta : `numpy.array`
             A 1D array translation.
 
-        Notes
-        -----
-        Translates the hyperplane in place, so create a copy as needed.
+        Returns
+        -------
+        hyperplane : `Hyperplane`
+            The translated hyperplane.
 
         See Also
         --------
         `solid.Solid.translate` : translate the range of the solid.
         """
         assert len(delta) == self.range_dimension()
-
-        self._point += delta
+        hyperplane = Hyperplane(self._normal, self._point + delta, self._tangentSpace)
+        if hasattr(self, "material"):
+            hyperplane.material = self.material
+        return hyperplane
 
     def flip_normal(self):
         """
         Flip the direction of the normal.
 
-        Notes
-        -----
-        Negates the normal in place, so create a copy as needed.
+        Returns
+        -------
+        hyperplane : `Hyperplane`
+            The hyperplane with flipped normal. The hyperplane retains the same tangent space.
 
         See Also
         --------
         `solid.Solid.complement` : Return the complement of the solid: whatever was inside is outside and vice-versa.
         """
-        self._normal = -self._normal
-        if hasattr(self, '_cofactorNormal'):
-            self._cofactorNormal = -self._cofactorNormal
+        hyperplane = Hyperplane(-self._normal, self._point, self._tangentSpace)
+        if hasattr(self, "material"):
+            hyperplane.material = self.material
+        return hyperplane
 
     def intersect(self, other):
         """

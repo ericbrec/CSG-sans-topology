@@ -119,50 +119,65 @@ class BSpline(Manifold):
         matrixInverseTranspose : `numpy.array`, optional
             The inverse transpose of matrix (computed if not provided).
 
-        Notes
-        -----
-        Transforms the spline in place, so create a copy as needed.
+        Returns
+        -------
+        spline : `BSpline`
+            The transformed spline.
 
         See Also
         --------
         `solid.Solid.transform` : Transform the range of the solid.
         """
         assert np.shape(matrix) == (self.range_dimension(), self.range_dimension())
-        self.spline = self.spline.transform(matrix)
+        spline = BSpline(self.spline.transform(matrix))
+        spline.normalDirection = self.normalDirection
+        if hasattr(self, "material"):
+            spline.material = self.material
+        return spline
         
     def translate(self, delta):
         """
-        translate the range of the hyperplane.
+        translate the range of the spline.
 
         Parameters
         ----------
         delta : `numpy.array`
             A 1D array translation.
 
-        Notes
-        -----
-        Translates the hyperplane in place, so create a copy as needed.
+        Returns
+        -------
+        spline : `BSpline`
+            The translated spline.
 
         See Also
         --------
         `solid.Solid.translate` : translate the range of the solid.
         """
         assert len(delta) == self.range_dimension()
-        self.spline = self.spline.translate(delta)
+        spline = BSpline(self.spline.translate(delta))
+        spline.normalDirection = self.normalDirection
+        if hasattr(self, "material"):
+            spline.material = self.material
+        return spline
 
     def flip_normal(self):
         """
         Flip the direction of the normal.
 
-        Notes
-        -----
-        Negates the normal in place, so create a copy as needed.
+        Returns
+        -------
+        spline : `BSpline`
+            The spline with flipped normal. The spline retains the same tangent space.
 
         See Also
         --------
         `solid.Solid.complement` : Return the complement of the solid: whatever was inside is outside and vice-versa.
         """
-        self.normalDirection *= -1.0
+        spline = BSpline(self.spline)
+        spline.normalDirection = -1.0 * self.normalDirection
+        if hasattr(self, "material"):
+            spline.material = self.material
+        return spline
 
     def intersect(self, other):
         """

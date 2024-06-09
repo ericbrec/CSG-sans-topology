@@ -27,9 +27,9 @@ class Hyperplane(Manifold):
     """ If a shift of 1 in the normal direction of one manifold yields a shift of 10 in the tangent plane intersection, the manifolds are parallel."""
 
     def __init__(self, normal, point, tangentSpace):
-        self._normal = np.atleast_1d(np.array(normal))
-        self._point = np.atleast_1d(np.array(point))
-        self._tangentSpace = np.atleast_1d(np.array(tangentSpace))
+        self._normal = np.atleast_1d(normal)
+        self._point = np.atleast_1d(point)
+        self._tangentSpace = np.atleast_1d(tangentSpace)
         if not np.allclose(self._tangentSpace.T @ self._normal, 0.0): raise ValueError("normal must be orthogonal to tangent space")
 
     def __repr__(self):

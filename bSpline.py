@@ -211,7 +211,7 @@ class BSpline(Manifold):
 
         See Also
         --------
-        `solid.Solid.slice` : slice the solid by a manifold.
+        `solid.Solid.compute_cutout` : Compute the cutout portion of a manifold within a solid.
         `bspy.Spline.zeros` : Find the roots of a spline (nInd must match nDep).
         `bspy.Spline.contours` : Find all the contour curves of a spline whose nInd is one larger than its nDep.
 
@@ -394,8 +394,8 @@ class BSpline(Manifold):
 
         See Also
         --------
-        `solid.Solid.slice` : slice the solid by a manifold.
-        `complete_slice` : Add any missing inherent (implicit) boundaries of this manifold's domain to the given slice.
+        `solid.Solid.compute_cutout` : Compute the cutout portion of a manifold within a solid.
+        `complete_cutout` : Add any missing inherent (implicit) boundaries of this manifold's domain to the given cutout.
 
         Notes
         -----
@@ -426,68 +426,68 @@ class BSpline(Manifold):
             hyperplane = Hyperplane(unitVector, bounds[i][1] * unitVector, tangentSpace)
             domain.boundaries.append(Boundary(hyperplane, domainDomain2))
 
-    def complete_slice(self, slice, solid):
+    def complete_cutout(self, cutout, solid):
         """
-        Add any missing inherent (implicit) boundaries of this manifold's domain to the given slice of the 
-        given solid that are needed to make the slice valid and complete.
+        Add any missing inherent (implicit) boundaries of this manifold's domain to the given cutout of the 
+        given solid that are needed to make the cutout valid and complete.
 
         Parameters
         ----------
-        slice : `solid.Solid`
-            The slice of the given solid formed by the manifold. The slice may be incomplete, missing some of the 
+        cutout : `solid.Solid`
+            The cutout of the given solid formed by the manifold. The cutout may be incomplete, missing some of the 
             manifold's inherent domain boundaries. Its dimension must match `self.domain_dimension()`.
 
         solid : `solid.Solid`
-            The solid being sliced by the manifold. Its dimension must match `self.range_dimension()`.
+            The solid determining the cutout of the manifold. Its dimension must match `self.range_dimension()`.
 
         See Also
         --------
         `establish_domain_bounds` : Establish the outer bounds of a spline's domain.
-        `solid.Solid.slice` : slice the solid by a manifold.
+        `solid.Solid.compute_cutout` : Compute the cutout portion of a manifold within a solid.
 
         Notes
         -----
         A spline's inherent domain is determined by its knot array for each dimension. 
         """
-        assert self.domain_dimension() == slice.dimension
+        assert self.domain_dimension() == cutout.dimension
         assert self.range_dimension() == solid.dimension
-        assert slice.dimension == 1 or slice.dimension == 2
+        assert cutout.dimension == 1 or cutout.dimension == 2
 
         # Spline manifold domains have finite bounds.
-        slice.containsInfinity = False
+        cutout.containsInfinity = False
         bounds = self.spline.domain()
 
         # If manifold (self) has no intersections with solid, just check containment.
-        if not slice.boundaries:
-            if slice.dimension == 2:
+        if not cutout.boundaries:
+            if cutout.dimension == 2:
                 logging.info(f"check containment: {self.spline.metadata['Name']}")
             domain = self.spline.domain().T
             if solid.contains_point(self.spline(0.5 * (domain[0] + domain[1]))):
-                self.establish_domain_bounds(slice, bounds)
+                self.establish_domain_bounds(cutout, bounds)
             return
 
         # For curves, add domain bounds as needed.
-        if slice.dimension == 1:
-            slice.boundaries.sort(key=lambda b: (b.manifold.evaluate(0.0), b.manifold.normal(0.0)))
-            if abs(slice.boundaries[0].manifold._point - bounds[0][0]) >= Manifold.minSeparation and \
-                slice.boundaries[0].manifold._normal > 0.0:
-                slice.boundaries.insert(0, Boundary(Hyperplane(-slice.boundaries[0].manifold._normal, bounds[0][0], 0.0), Solid(0, True)))
-            if abs(slice.boundaries[-1].manifold._point - bounds[0][1]) >= Manifold.minSeparation and \
-                slice.boundaries[-1].manifold._normal < 0.0:
-                slice.boundaries.append(Boundary(Hyperplane(-slice.boundaries[-1].manifold._normal, bounds[0][1], 0.0), Solid(0, True)))
+        if cutout.dimension == 1:
+            cutout.boundaries.sort(key=lambda b: (b.manifold.evaluate(0.0), b.manifold.normal(0.0)))
+            if abs(cutout.boundaries[0].manifold._point - bounds[0][0]) >= Manifold.minSeparation and \
+                cutout.boundaries[0].manifold._normal > 0.0:
+                cutout.boundaries.insert(0, Boundary(Hyperplane(-cutout.boundaries[0].manifold._normal, bounds[0][0], 0.0), Solid(0, True)))
+            if abs(cutout.boundaries[-1].manifold._point - bounds[0][1]) >= Manifold.minSeparation and \
+                cutout.boundaries[-1].manifold._normal < 0.0:
+                cutout.boundaries.append(Boundary(Hyperplane(-cutout.boundaries[-1].manifold._normal, bounds[0][1], 0.0), Solid(0, True)))
 
-        # For surfaces, add bounding box for domain and intersect it with existing slice boundaries.
-        if slice.dimension == 2:
-            boundaryCount = len(slice.boundaries) # Keep track of existing slice boundaries
-            self.establish_domain_bounds(slice, bounds) # Add bounding box boundaries to slice boundaries
-            for boundary in slice.boundaries[boundaryCount:]: # Mark bounding box boundaries as untouched
+        # For surfaces, add bounding box for domain and intersect it with existing cutout boundaries.
+        if cutout.dimension == 2:
+            boundaryCount = len(cutout.boundaries) # Keep track of existing cutout boundaries
+            self.establish_domain_bounds(cutout, bounds) # Add bounding box boundaries to cutout boundaries
+            for boundary in cutout.boundaries[boundaryCount:]: # Mark bounding box boundaries as untouched
                 boundary.touched = False
 
-            # Define function for adding slice points to new bounding box boundaries.
+            # Define function for adding cutout points to new bounding box boundaries.
             def process_domain_point(boundary, domainPoint):
                 point = boundary.manifold.evaluate(domainPoint)
-                # See if and where point touches bounding box of slice.
-                for newBoundary in slice.boundaries[boundaryCount:]:
+                # See if and where point touches bounding box of cutout.
+                for newBoundary in cutout.boundaries[boundaryCount:]:
                     vector = point - newBoundary.manifold._point
                     if abs(np.dot(newBoundary.manifold._normal, vector)) < Manifold.minSeparation:
                         # Add the point onto the new boundary.
@@ -497,7 +497,7 @@ class BSpline(Manifold):
                         break
 
             # Go through existing boundaries and check if either of their endpoints lies on the spline's bounds.
-            for boundary in slice.boundaries[:boundaryCount]:
+            for boundary in cutout.boundaries[:boundaryCount]:
                 domainBoundaries = boundary.domain.boundaries
                 domainBoundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), boundary.manifold.normal(0.0)))
                 process_domain_point(boundary, domainBoundaries[0].manifold._point)
@@ -506,7 +506,7 @@ class BSpline(Manifold):
             
             # For touched boundaries, remove domain bounds that aren't needed.
             boundaryWasTouched = False
-            for newBoundary in slice.boundaries[boundaryCount:]:
+            for newBoundary in cutout.boundaries[boundaryCount:]:
                 if newBoundary.touched:
                     boundaryWasTouched = True
                     domainBoundaries = newBoundary.domain.boundaries
@@ -525,10 +525,10 @@ class BSpline(Manifold):
                 boundaryMap = ((2, 3, 0), (2, 3, -1), (0, 1, 0), (0, 1, -1)) # Map of which bounding box boundaries touch each other
                 while True:
                     noTouches = True
-                    for map, newBoundary, bound in zip(boundaryMap, slice.boundaries[boundaryCount:], bounds.flatten()):
+                    for map, newBoundary, bound in zip(boundaryMap, cutout.boundaries[boundaryCount:], bounds.flatten()):
                         if not newBoundary.touched:
-                            leftBoundary = slice.boundaries[boundaryCount + map[0]]
-                            rightBoundary = slice.boundaries[boundaryCount + map[1]]
+                            leftBoundary = cutout.boundaries[boundaryCount + map[0]]
+                            rightBoundary = cutout.boundaries[boundaryCount + map[1]]
                             if leftBoundary.touched and abs(leftBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
                                 newBoundary.touched = True
                                 noTouches = False
@@ -540,12 +540,12 @@ class BSpline(Manifold):
                 
                 # Remove untouched boundaries.
                 i = boundaryCount
-                while i < len(slice.boundaries):
-                    if not slice.boundaries[i].touched:
-                        del slice.boundaries[i]
+                while i < len(cutout.boundaries):
+                    if not cutout.boundaries[i].touched:
+                        del cutout.boundaries[i]
                     else:
                         i += 1
             else:
-                # No slice boundaries touched the bounding box, so remove bounding box if it's not contained in the solid.
+                # No cutout boundaries touched the bounding box, so remove bounding box if it's not contained in the solid.
                 if not solid.contains_point(self.evaluate(bounds[:,0])):
-                    slice.boundaries = slice.boundaries[:boundaryCount]
+                    cutout.boundaries = cutout.boundaries[:boundaryCount]

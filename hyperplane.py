@@ -248,7 +248,7 @@ class Hyperplane(Manifold):
 
         See Also
         --------
-        `solid.Solid.slice` : slice the solid by a manifold.
+        `solid.Solid.compute_cutout` : Compute the cutout portion of a manifold within a solid.
         `numpy.linalg.svd` : Compute the singular value decomposition of a matrix array.
 
         Notes
@@ -349,19 +349,19 @@ class Hyperplane(Manifold):
 
         return intersections
 
-    def complete_slice(self, slice, solid):
+    def complete_cutout(self, cutout, solid):
         """
-        Add any missing inherent (implicit) boundaries of this manifold's domain to the given slice of the 
-        given solid that are needed to make the slice valid and complete.
+        Add any missing inherent (implicit) boundaries of this manifold's domain to the given cutout of the 
+        given solid that are needed to make the cutout valid and complete.
 
         Parameters
         ----------
-        slice : `solid.Solid`
-            The slice of the given solid formed by the manifold. The slice may be incomplete, missing some of the 
+        cutout : `solid.Solid`
+            The cutout of the given solid formed by the manifold. The cutout may be incomplete, missing some of the 
             manifold's inherent domain boundaries. Its dimension must match `self.domain_dimension()`.
 
         solid : `solid.Solid`
-            The solid being sliced by the manifold. Its dimension must match `self.range_dimension()`.
+            The solid determining the cutout of the manifold. Its dimension must match `self.range_dimension()`.
 
         Parameters
         ----------
@@ -371,17 +371,17 @@ class Hyperplane(Manifold):
 
         See Also
         --------
-        `solid.Solid.slice` : Slice the solid by a manifold.
+        `solid.Solid.compute_cutout` : Compute the cutout portion of a manifold within a solid.
 
         Notes
         -----
         Since hyperplanes have no inherent domain boundaries, this operation only tests for 
         point containment for zero-dimension hyperplanes (points).
         """
-        assert self.domain_dimension() == slice.dimension
+        assert self.domain_dimension() == cutout.dimension
         assert self.range_dimension() == solid.dimension
-        if slice.dimension == 0:
-            slice.containsInfinity = solid.contains_point(self._point)
+        if cutout.dimension == 0:
+            cutout.containsInfinity = solid.contains_point(self._point)
 
     @staticmethod
     def create_axis_aligned(dimension, axis, offset, flipNormal=False):

@@ -399,20 +399,20 @@ if __name__ == "__main__":
             print(leftPoint - rightPoint, np.linalg.norm(leftPoint - rightPoint))
 
         manifold = boundary1.manifold.copy()
-        slice = teapot2.slice(manifold, cache)
-        slicedBoundary = Boundary(manifold, slice)
-        viewer.draw_boundary(slicedBoundary, f"Sliced {name1}")
-        trimmedSlice = boundary1.domain.intersection(slice)
-        trimmedSlicedBoundary = Boundary(manifold.copy(), trimmedSlice)
-        viewer.draw_boundary(trimmedSlicedBoundary, f"Trimmed sliced {name1}")
+        cutout = teapot2.compute_cutout(manifold, cache)
+        cutoutBoundary = Boundary(manifold, cutout)
+        viewer.draw_boundary(cutoutBoundary, f"Cutout {name1}")
+        trimmedCutout = boundary1.domain.intersection(cutout)
+        trimmedCutoutBoundary = Boundary(manifold.copy(), trimmedCutout)
+        viewer.draw_boundary(trimmedCutoutBoundary, f"Trimmed cutout {name1}")
 
         manifold = boundary2.manifold.copy()
-        slice = teapot1.slice(manifold, cache)
-        slicedBoundary = Boundary(manifold, slice)
-        viewer.draw_boundary(slicedBoundary, f"Sliced {name2}")
-        trimmedSlice = boundary2.domain.intersection(slice)
-        trimmedSlicedBoundary = Boundary(manifold.copy(), trimmedSlice)
-        viewer.draw_boundary(trimmedSlicedBoundary, f"Trimmed sliced {name2}")
+        cutout = teapot1.compute_cutout(manifold, cache)
+        cutoutBoundary = Boundary(manifold, cutout)
+        viewer.draw_boundary(cutoutBoundary, f"Cutout {name2}")
+        trimmedCutout = boundary2.domain.intersection(cutout)
+        trimmedCutoutBoundary = Boundary(manifold.copy(), trimmedCutout)
+        viewer.draw_boundary(trimmedCutoutBoundary, f"Trimmed cutout {name2}")
 
     if True:
         teapot3 = teapot1 * teapot2

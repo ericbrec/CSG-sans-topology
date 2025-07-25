@@ -20,7 +20,7 @@ class InteractiveCanvas:
 
         if axis >= 0:
             self.key = key
-            self.ax.set_title("slice solid by {axis}-axis".format(axis=key))
+            self.ax.set_title("cutout solid with {axis}-axis".format(axis=key))
             hyperplane = Hyperplane.create_axis_aligned(self.solid.dimension, axis, self.offset)
         else:
             hyperplane = self.hyperplane
@@ -30,27 +30,27 @@ class InteractiveCanvas:
     def initializeCanvas(self):
         self.ax.set(xlim = (-4, 4), ylim = (-4, 4))
 
-    def animateSlice(self, offset):
+    def animateCutout(self, offset):
         self.offset = offset
         self.hyperplane._point = self.offset * self.hyperplane._normal
-        self.slice = self.solid.slice(self.hyperplane)
-        if not isinstance(self.slice, Solid):
-            self.slice = Solid(self.solid.dimension, False)
-        self.lines.set_segments(utils.create_segments_from_solid(self.slice))
+        self.cutout = self.solid.compute_cutout(self.hyperplane)
+        if not isinstance(self.cutout, Solid):
+            self.cutout = Solid(self.solid.dimension, False)
+        self.lines.set_segments(utils.create_segments_from_solid(self.cutout))
 
     def on_radio_press(self, event):
         """Callback for radio button selection."""
         self.hyperplane = self.ConstructHyperplane(event)
-        self.slice = self.solid.slice(self.hyperplane)
-        if not isinstance(self.slice, Solid):
-            self.slice = Solid(self.solid.dimension, False)
-        self.lines.set_segments(utils.create_segments_from_solid(self.slice))
+        self.cutout = self.solid.compute_cutout(self.hyperplane)
+        if not isinstance(self.cutout, Solid):
+            self.cutout = Solid(self.solid.dimension, False)
+        self.lines.set_segments(utils.create_segments_from_solid(self.cutout))
         self.canvas.draw()
 
     def __init__(self, solid, axis):
 
         fig, self.ax = plt.subplots(figsize=(6, 6))
-        self.ax.set_title("slice solid by {axis}-axis".format(axis=axis))
+        self.ax.set_title("cutout solid with {axis}-axis".format(axis=axis))
         self.ax.axis('scaled')
         self.canvas = self.ax.figure.canvas
 
@@ -66,7 +66,7 @@ class InteractiveCanvas:
         self.lines = LineCollection([], linewidth=1, color="blue")
         self.ax.add_collection(self.lines)
 
-        self.player = player.Player(fig, self.animateSlice, -4.0, 4.0, 0.2, -4.0, init_func=self.initializeCanvas)
+        self.player = player.Player(fig, self.animateCutout, -4.0, 4.0, 0.2, -4.0, init_func=self.initializeCanvas)
 
 if __name__ == "__main__":
     square = Hyperplane.create_hypercube([2,2], [-1,-1])

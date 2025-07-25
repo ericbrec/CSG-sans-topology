@@ -446,25 +446,25 @@ class Solid:
             containment = bool(windingNumber > 0.5)
         return containment
 
-    def slice(self, manifold, cache = None, trimTwin = False):
+    def compute_cutout(self, manifold, cache = None, trimTwin = False):
         """
-        Slice the solid by a manifold.
+        Compute the cutout portion of a manifold within a solid.
 
         Parameters
         ----------
         manifold : `manifold.Manifold`
-            The `Manifold` used to slice the solid.
+            The `Manifold` used to cutout the solid.
         
         cache : `dict`, optional
             A dictionary to cache `Manifold` intersections, speeding computation.
         
         trimTwin : `bool`, default: False
-            Trim coincident boundary twins on subsequent calls to slice (avoids duplication of overlapping regions).
+            Trim coincident boundary twins on subsequent calls to cutout (avoids duplication of overlapping regions).
             Trimming twins is typically only used in conjunction with `intersection`.
 
         Returns
         -------
-        slice : `Solid`
+        cutout : `Solid`
             A region in the domain of `manifold` that intersects with the solid. The region may contain infinity.
 
         See Also
@@ -472,29 +472,29 @@ class Solid:
         `intersection` : Intersect two solids.
         `manifold.Manifold.intersect` : Intersect two manifolds.
         `manifold.Manifold.cached_intersect` : Intersect two manifolds, caching the result for twins.
-        `manifold.Manifold.complete_slice` : Add any missing inherent (implicit) boundaries of this manifold's domain to the given slice.
+        `manifold.Manifold.complete_cutout` : Add any missing inherent (implicit) boundaries of this manifold's domain to the given cutout.
 
         Notes
         -----
-        The dimension of the slice is always one less than the dimension of the solid, since the slice is a region in the domain of the manifold slicing the solid.
+        The dimension of the cutout is always one less than the dimension of the solid, since the cutout is a region in the domain of the manifold.
 
-        To compute the slice of a manifold intersecting the solid, we intersect the manifold with each boundary of the solid. There may be multiple intersections 
+        To compute the cutout of a manifold intersecting the solid, we intersect the manifold with each boundary of the solid. There may be multiple intersections 
         between the manifold and the boundary. Each is either a crossing or a coincident region.
 
         Crossings result in two intersection manifolds: one in the domain of the manifold and one in the domain of the boundary. By construction, both intersection manifolds have the
-        same domain and the same range of the manifold and boundary (the crossing itself). The intersection manifold in the domain of the manifold becomes a boundary of the slice,
-        but we must determine the intersection's domain. For that, we slice the boundary's intersection manifold with the boundary's domain. This recursion continues 
-        until the slice is just a point with no domain.
+        same domain and the same range of the manifold and boundary (the crossing itself). The intersection manifold in the domain of the manifold becomes a boundary of the cutout,
+        but we must determine the intersection's domain. For that, we cutout the boundary's intersection manifold with the boundary's domain. This recursion continues 
+        until the cutout is just a point with no domain.
 
         Coincident regions appear in the domains of the manifold and the boundary. We intersect the boundary's coincident region with the domain of the boundary and then map
-        it to the domain of the manifold. If the coincident regions have normals in opposite directions, they cancel each other out, so we subtract them from the slice by
-        inverting the region and intersecting it with the slice. We use this same technique for removing overlapping coincident regions. If the coincident regions have normals
-        in the same direction, we union them with the slice.
+        it to the domain of the manifold. If the coincident regions have normals in opposite directions, they cancel each other out, so we subtract them from the cutout by
+        inverting the region and intersecting it with the cutout. We use this same technique for removing overlapping coincident regions. If the coincident regions have normals
+        in the same direction, we union them with the cutout.
         """
         assert manifold.range_dimension() == self.dimension
 
-        # Start with an empty slice and no domain coincidences.
-        slice = Solid(self.dimension-1, self.containsInfinity)
+        # Start with an empty cutout and no domain coincidences.
+        cutout = Solid(self.dimension-1, self.containsInfinity)
         coincidences = []
 
         # Intersect each of this solid's boundaries with the manifold.
@@ -509,9 +509,9 @@ class Solid:
                 (left, right) = (intersection.right, intersection.left) if isTwin else (intersection.left, intersection.right)
 
                 if isinstance(intersection, Manifold.Crossing):
-                    domainSlice = boundary.domain.slice(left, cache)
-                    if domainSlice:
-                        slice.boundaries.append(Boundary(right, domainSlice))
+                    domainCutout = boundary.domain.compute_cutout(left, cache)
+                    if domainCutout:
+                        cutout.boundaries.append(Boundary(right, domainCutout))
 
                 elif isinstance(intersection, Manifold.Coincidence):
                     # First, intersect domain coincidence with the domain boundary.
@@ -535,19 +535,19 @@ class Solid:
                     # Finally, add the domain coincidence to the list of coincidences.
                     coincidences.append((invertCoincidence, coincidence))
 
-        # Ensure the slice includes the manifold's inherent (implicit) boundaries, making it valid and complete.
-        manifold.complete_slice(slice, self)
+        # Ensure the cutout includes the manifold's inherent (implicit) boundaries, making it valid and complete.
+        manifold.complete_cutout(cutout, self)
 
         # Now that we have a complete manifold domain, join it with each domain coincidence.
         for coincidence in coincidences:
             if coincidence[0]:
-                # If the domain coincidence is inverted (coincidence[0]), intersect it with the slice, thus removing it.
-                slice = slice.intersection(coincidence[1], cache)
+                # If the domain coincidence is inverted (coincidence[0]), intersect it with the cutout, thus removing it.
+                cutout = cutout.intersection(coincidence[1], cache)
             else:
-                # Otherwise, union the domain coincidence with the slice, thus adding it.
-                slice = slice.union(coincidence[1])
+                # Otherwise, union the domain coincidence with the cutout, thus adding it.
+                cutout = cutout.union(coincidence[1])
 
-        return slice
+        return cutout
 
     def intersection(self, other, cache = None):
         """
@@ -568,19 +568,19 @@ class Solid:
 
         See Also
         --------
-        `slice` : Slice a solid by a manifold.
+        `cutout` : cutout a solid by a manifold.
         `union` : Union two solids.
         `difference` : Subtract one solid from another.
 
         Notes:
         ------
-        To intersect two solids, we slice each solid with the boundaries of the other solid. The slices are the region
-        of the domain that intersect the solid. We then intersect the domain of each boundary with its slice of the other solid. Thus,
+        To intersect two solids, we cutout each solid with the boundaries of the other solid. The cutouts are the region
+        of the domain that intersect the solid. We then intersect the domain of each boundary with its cutout of the other solid. Thus,
         the intersection of two solids becomes a set of intersections within the domains of their boundaries. This recursion continues
         until we are intersecting points whose domains have no boundaries.
 
         The only subtlety is when two boundaries are coincident. To avoid overlapping the coincident region, we keep that region
-        for one slice and trim it away for the other. We use a manifold intersection cache to keep track of these pairs, as well as to reduce computation. 
+        for one cutout and trim it away for the other. We use a manifold intersection cache to keep track of these pairs, as well as to reduce computation. 
         """
         assert self.dimension == other.dimension
 
@@ -594,19 +594,19 @@ class Solid:
         combinedSolid = Solid(self.dimension, self.containsInfinity and other.containsInfinity)
 
         for boundary in self.boundaries:
-            # Slice self boundary manifold by other.
-            slice = other.slice(boundary.manifold, cache, True)
-            # Intersect slice with the boundary's domain.
-            newDomain = boundary.domain.intersection(slice, cache)
+            # cutout self boundary manifold by other.
+            cutout = other.compute_cutout(boundary.manifold, cache, True)
+            # Intersect cutout with the boundary's domain.
+            newDomain = boundary.domain.intersection(cutout, cache)
             if newDomain:
                 # Self boundary intersects other, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
 
         for boundary in other.boundaries:
-            # Slice other boundary manifold by self.
-            slice = self.slice(boundary.manifold, cache, True)
-            # Intersect slice with the boundary's domain.
-            newDomain = boundary.domain.intersection(slice, cache)
+            # cutout other boundary manifold by self.
+            cutout = self.compute_cutout(boundary.manifold, cache, True)
+            # Intersect cutout with the boundary's domain.
+            newDomain = boundary.domain.intersection(cutout, cache)
             if newDomain:
                 # Other boundary intersects self, so create a new boundary with the intersected domain.
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))

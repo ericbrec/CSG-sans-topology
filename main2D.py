@@ -36,14 +36,14 @@ class InteractiveCanvas:
 
     def on_button_press(self, event):
         """Callback for mouse button presses."""
-        if event.inaxes is not self.ax or event.button != MouseButton.firstPart or self.ax.get_navigate_mode() is not None:
+        if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
         self.origin[0] = event.xdata
         self.origin[1] = event.ydata
 
     def on_button_release(self, event):
         """Callback for mouse button releases."""
-        if event.inaxes is not self.ax or event.button != MouseButton.firstPart or self.ax.get_navigate_mode() is not None:
+        if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
 
         self.solidC = self.PerformBooleanOperation(self.op)
@@ -58,7 +58,7 @@ class InteractiveCanvas:
 
     def on_mouse_move(self, event):
         """Callback for mouse movements."""
-        if event.inaxes is not self.ax or event.button != MouseButton.firstPart or self.ax.get_navigate_mode() is not None:
+        if event.inaxes is not self.ax or event.button != MouseButton.LEFT or self.ax.get_navigate_mode() is not None:
             return
         
         delta = [0.0]*self.solidB.dimension

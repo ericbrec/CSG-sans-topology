@@ -219,7 +219,7 @@ class BSpline(Manifold):
         -----
         This method basically wraps the `bspy.Spline.zeros` and `bspy.Spline.contours` calls. We construct a spline that represents the 
         intersection and then call zeros or contours, depending on the dimension. The only subtly is getting the normals of intersections to always 
-        point outward. We do that by picking an intersection point, checking the normal direction, and negateping it as needed.
+        point outward. We do that by picking an intersection point, checking the normal direction, and negating it as needed.
         """
         assert self.range_dimension() == other.range_dimension()
         intersections = []
@@ -428,14 +428,15 @@ class BSpline(Manifold):
 
     def complete_cutout(self, cutout, solid):
         """
-        Add any missing inherent (implicit) boundaries of this manifold's domain to the given cutout of the 
-        given solid that are needed to make the cutout valid and complete.
+        Add any missing inherent (implicit) boundaries of this manifold's domain 
+        that are needed to make the cutout valid and complete.
 
         Parameters
         ----------
         cutout : `solid.Solid`
-            The cutout of the given solid formed by the manifold. The cutout may be incomplete, missing some of the 
-            manifold's inherent domain boundaries. Its dimension must match `self.domain_dimension()`.
+            The cutout portion of this manifold's domain that lies within the given solid. 
+            The cutout may be incomplete, missing some of the manifold's inherent domain boundaries. 
+            Its dimension must match `self.domain_dimension()`.
 
         solid : `solid.Solid`
             The solid determining the cutout of the manifold. Its dimension must match `self.range_dimension()`.

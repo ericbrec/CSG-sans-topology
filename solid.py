@@ -453,7 +453,7 @@ class Solid:
         Parameters
         ----------
         manifold : `manifold.Manifold`
-            The `Manifold` used to cutout the solid.
+            The `Manifold` for which we are computing a cutout within this solid.
         
         cache : `dict`, optional
             A dictionary to cache `Manifold` intersections, speeding computation.
@@ -465,7 +465,7 @@ class Solid:
         Returns
         -------
         cutout : `Solid`
-            A region in the domain of `manifold` that intersects with the solid. The region may contain infinity.
+            A region in the domain of `manifold` that maps within this solid. The region may contain infinity.
 
         See Also
         --------

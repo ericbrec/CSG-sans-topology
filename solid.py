@@ -112,7 +112,7 @@ class Solid:
         """
         solid = Solid(self.dimension, not self.containsInfinity)
         for boundary in self.boundaries:
-            solid.boundaries.append(Boundary(boundary.manifold.flip_normal(), boundary.domain))
+            solid.boundaries.append(Boundary(boundary.manifold.negate_normal(), boundary.domain))
         return solid
 
     def __neg__(self):
@@ -524,7 +524,7 @@ class Solid:
                     for i in range(len(coincidence.boundaries)):
                         domainManifold = coincidence.boundaries[i].manifold
                         if invertCoincidence:
-                            domainManifold = domainManifold.flip_normal()
+                            domainManifold = domainManifold.negate_normal()
                         if isTwin:
                             domainManifold = domainManifold.translate(-intersection.translation)
                             domainManifold = domainManifold.transform(intersection.inverse, intersection.transform.T)

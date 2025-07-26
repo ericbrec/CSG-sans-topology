@@ -48,7 +48,7 @@ def triangulate(solid):
                     rightB += 1
             leftB += 1
 
-    # Second, collect all valid pairings of endpoints (normal not flipped between segments).
+    # Second, collect all valid pairings of endpoints (normal not negated between segments).
     Connection = namedtuple('Connection', ('distance', 'ep1', 'ep2'))
     connections = []
     for i, ep1 in enumerate(endpoints[:-1]):

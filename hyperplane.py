@@ -198,14 +198,14 @@ class Hyperplane(Manifold):
             hyperplane.material = self.material
         return hyperplane
 
-    def flip_normal(self):
+    def negate_normal(self):
         """
-        Flip the direction of the normal.
+        Negate the direction of the normal.
 
         Returns
         -------
         hyperplane : `Hyperplane`
-            The hyperplane with flipped normal. The hyperplane retains the same tangent space.
+            The hyperplane with negated normal. The hyperplane retains the same tangent space.
 
         See Also
         --------
@@ -384,7 +384,7 @@ class Hyperplane(Manifold):
             cutout.containsInfinity = solid.contains_point(self._point)
 
     @staticmethod
-    def create_axis_aligned(dimension, axis, offset, flipNormal=False):
+    def create_axis_aligned(dimension, axis, offset, negateNormal=False):
         """
         Create an axis-aligned hyperplane.
 
@@ -399,7 +399,7 @@ class Hyperplane(Manifold):
         offset : `float`
             The offset from zero along the axis of a point on the hyperplane. 
         
-        flipNormal : `bool`, optional
+        negateNormal : `bool`, optional
             A Boolean indicating that the normal should point toward in the negative direction along the axis. 
             Default is False, meaning the normal points in the positive direction along the axis.
 
@@ -410,7 +410,7 @@ class Hyperplane(Manifold):
         """
         assert dimension > 0
         diagonal = np.identity(dimension)
-        sign = -1.0 if flipNormal else 1.0
+        sign = -1.0 if negateNormal else 1.0
         normal = sign * diagonal[:,axis]
         point = offset * normal
         if dimension > 1:

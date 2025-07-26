@@ -160,14 +160,14 @@ class BSpline(Manifold):
             spline.material = self.material
         return spline
 
-    def flip_normal(self):
+    def negate_normal(self):
         """
-        Flip the direction of the normal.
+        Negate the direction of the normal.
 
         Returns
         -------
         spline : `BSpline`
-            The spline with flipped normal. The spline retains the same tangent space.
+            The spline with negated normal. The spline retains the same tangent space.
 
         See Also
         --------
@@ -219,7 +219,7 @@ class BSpline(Manifold):
         -----
         This method basically wraps the `bspy.Spline.zeros` and `bspy.Spline.contours` calls. We construct a spline that represents the 
         intersection and then call zeros or contours, depending on the dimension. The only subtly is getting the normals of intersections to always 
-        point outward. We do that by picking an intersection point, checking the normal direction, and flipping it as needed.
+        point outward. We do that by picking an intersection point, checking the normal direction, and negateping it as needed.
         """
         assert self.range_dimension() == other.range_dimension()
         intersections = []
@@ -372,9 +372,9 @@ class BSpline(Manifold):
                 left = intersection.left
                 right = intersection.right
                 if np.dot(self.tangent_space(left.evaluate(domainPoint)) @ left.normal(domainPoint), other.normal(right.evaluate(domainPoint))) < 0.0:
-                    left = left.flip_normal()
+                    left = left.negate_normal()
                 if np.dot(other.tangent_space(right.evaluate(domainPoint)) @ right.normal(domainPoint), self.normal(left.evaluate(domainPoint))) < 0.0:
-                    right = right.flip_normal()
+                    right = right.negate_normal()
                 intersections[i] = Manifold.Crossing(left, right)
 
         return intersections

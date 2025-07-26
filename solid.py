@@ -574,8 +574,8 @@ class Solid:
 
         Notes:
         ------
-        To intersect two solids, we cutout each solid with the boundaries of the other solid. The cutouts are the region
-        of the domain that intersect the solid. We then intersect the domain of each boundary with its cutout of the other solid. Thus,
+        To intersect two solids, we compute the cutout portions of each solid's untrimmed boundaries (their manifolds) that lie within the other solid.
+        We then intersect the domain of each boundary (the trim of its manifold) with its cutout. Thus,
         the intersection of two solids becomes a set of intersections within the domains of their boundaries. This recursion continues
         until we are intersecting points whose domains have no boundaries.
 
@@ -594,7 +594,7 @@ class Solid:
         combinedSolid = Solid(self.dimension, self.containsInfinity and other.containsInfinity)
 
         for boundary in self.boundaries:
-            # cutout self boundary manifold by other.
+            # Compute the cutout portion of self's boundary manifold that lies within other.
             cutout = other.compute_cutout(boundary.manifold, cache, True)
             # Intersect cutout with the boundary's domain.
             newDomain = boundary.domain.intersection(cutout, cache)
@@ -603,7 +603,7 @@ class Solid:
                 combinedSolid.boundaries.append(Boundary(boundary.manifold, newDomain))
 
         for boundary in other.boundaries:
-            # cutout other boundary manifold by self.
+            # Compute the cutout portion of other's boundary manifold that lies within self.
             cutout = self.compute_cutout(boundary.manifold, cache, True)
             # Intersect cutout with the boundary's domain.
             newDomain = boundary.domain.intersection(cutout, cache)

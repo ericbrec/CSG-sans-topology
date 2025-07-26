@@ -25,28 +25,28 @@ def triangulate(solid):
     endpoints = []
     for curve in solid.boundaries:
         curve.domain.boundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), -boundary.manifold.normal(0.0)))
-        firstpartB = 0
-        secondpartB = 0
+        firstPartB = 0
+        secondPartB = 0
         boundaryCount = len(curve.domain.boundaries)
-        while firstpartB < boundaryCount:
-            if curve.domain.boundaries[firstpartB].manifold.normal(0.0) < 0.0:
-                firstpartPoint = curve.domain.boundaries[firstpartB].manifold.evaluate(0.0)[0]
-                while secondpartB < boundaryCount:
-                    secondpartPoint = curve.domain.boundaries[secondpartB].manifold.evaluate(0.0)[0]
-                    if firstpartPoint - Manifold.minSeparation < secondpartPoint and curve.domain.boundaries[secondpartB].manifold.normal(0.0) > 0.0:
-                        t = curve.manifold.tangent_space(firstpartPoint)[:,0]
-                        n = curve.manifold.normal(firstpartPoint)
+        while firstPartB < boundaryCount:
+            if curve.domain.boundaries[firstPartB].manifold.normal(0.0) < 0.0:
+                firstPartPoint = curve.domain.boundaries[firstPartB].manifold.evaluate(0.0)[0]
+                while secondPartB < boundaryCount:
+                    secondPartPoint = curve.domain.boundaries[secondPartB].manifold.evaluate(0.0)[0]
+                    if firstPartPoint - Manifold.minSeparation < secondPartPoint and curve.domain.boundaries[secondPartB].manifold.normal(0.0) > 0.0:
+                        t = curve.manifold.tangent_space(firstPartPoint)[:,0]
+                        n = curve.manifold.normal(firstPartPoint)
                         clockwise = t[0] * n[1] - t[1] * n[0] > 0.0
-                        ep1 = Endpoint(curve, firstpartPoint, clockwise, secondpartPoint >= firstpartPoint)
-                        ep2 = Endpoint(curve, secondpartPoint, clockwise, secondpartPoint < firstpartPoint, ep1)
+                        ep1 = Endpoint(curve, firstPartPoint, clockwise, secondPartPoint >= firstPartPoint)
+                        ep2 = Endpoint(curve, secondPartPoint, clockwise, secondPartPoint < firstPartPoint, ep1)
                         ep1.otherEnd = ep2
                         endpoints.append(ep1)
                         endpoints.append(ep2)
-                        firstpartB = secondpartB
-                        secondpartB += 1
+                        firstPartB = secondPartB
+                        secondPartB += 1
                         break
-                    secondpartB += 1
-            firstpartB += 1
+                    secondPartB += 1
+            firstPartB += 1
 
     # Second, collect all valid pairings of endpoints (normal not negated between segments).
     Connection = namedtuple('Connection', ('distance', 'ep1', 'ep2'))

@@ -394,9 +394,9 @@ if __name__ == "__main__":
         intersections, isTwin = boundary2.manifold.cached_intersect(boundary1.manifold, cache)
 
         for u in np.linspace(0.0, 1.0, 21):
-            leftPoint = boundary2.manifold.spline(intersections[0].left.spline(u))
-            rightPoint = boundary1.manifold.spline(intersections[0].right.spline(u))
-            print(leftPoint - rightPoint, np.linalg.norm(leftPoint - rightPoint))
+            firstpartPoint = boundary2.manifold.spline(intersections[0].firstpart.spline(u))
+            secondpartPoint = boundary1.manifold.spline(intersections[0].secondpart.spline(u))
+            print(firstpartPoint - secondpartPoint, np.linalg.norm(firstpartPoint - secondpartPoint))
 
         manifold = boundary1.manifold.copy()
         cutout = teapot2.compute_cutout(manifold, cache)

@@ -195,14 +195,14 @@ class BSpline(Manifold):
             Each intersection records either a crossing or a coincident region.
             Coincident regions are currently not implemented for splines.
 
-            For a crossing, intersection is a `Manifold.Crossing`: (left, right)
-            * left : `Manifold` in the manifold's domain where the manifold and the other cross.
-            * right : `Manifold` in the other's domain where the manifold and the other cross.
+            For a crossing, intersection is a `Manifold.Crossing`: (firstpart, secondpart)
+            * firstpart : `Manifold` in the manifold's domain where the manifold and the other cross.
+            * secondpart : `Manifold` in the other's domain where the manifold and the other cross.
             * Both intersection manifolds have the same domain and range (the crossing between the manifold and the other).
 
-            For a coincident region, intersection is a `Manifold.Coincidence`: (left, right, alignment, transform, inverse, translation)
-            * left : `Solid` in the manifold's domain within which the manifold and the other are coincident.
-            * right : `Solid` in the other's domain within which the manifold and the other are coincident.
+            For a coincident region, intersection is a `Manifold.Coincidence`: (firstpart, secondpart, alignment, transform, inverse, translation)
+            * firstpart : `Solid` in the manifold's domain within which the manifold and the other are coincident.
+            * secondpart : `Solid` in the other's domain within which the manifold and the other are coincident.
             * alignment : scalar value holding the normal alignment between the manifold and the other (the dot product of their unit normals).
             * transform : `numpy.array` holding the transform matrix from the manifold's domain to the other's domain.
             * inverse : `numpy.array` holding the inverse transform matrix from the other's domain to the boundary's domain.
@@ -252,19 +252,19 @@ class BSpline(Manifold):
                             intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[1] + epsilon, 0.0), Hyperplane(1.0, planeBounds[1], 0.0)))
 
                         # Now, create the coincidence.
-                        left = Solid(nDep, False)
-                        left.boundaries.append(Boundary(Hyperplane(-1.0, zero[0], 0.0), Solid(0, True)))
-                        left.boundaries.append(Boundary(Hyperplane(1.0, zero[1], 0.0), Solid(0, True)))
-                        right = Solid(nDep, False)
+                        firstpart = Solid(nDep, False)
+                        firstpart.boundaries.append(Boundary(Hyperplane(-1.0, zero[0], 0.0), Solid(0, True)))
+                        firstpart.boundaries.append(Boundary(Hyperplane(1.0, zero[1], 0.0), Solid(0, True)))
+                        secondpart = Solid(nDep, False)
                         if planeBounds[0] > planeBounds[1]:
                             planeBounds = (planeBounds[1], planeBounds[0])
-                        right.boundaries.append(Boundary(Hyperplane(-1.0, planeBounds[0], 0.0), Solid(0, True)))
-                        right.boundaries.append(Boundary(Hyperplane(1.0, planeBounds[1], 0.0), Solid(0, True)))
+                        secondpart.boundaries.append(Boundary(Hyperplane(-1.0, planeBounds[0], 0.0), Solid(0, True)))
+                        secondpart.boundaries.append(Boundary(Hyperplane(1.0, planeBounds[1], 0.0), Solid(0, True)))
                         alignment = np.dot(self.normal((zero[0],)), other._normal) # Use the first zero, since B-splines are closed on the left
                         width = zero[1] - zero[0]
                         transform = (planeBounds[1] - planeBounds[0]) / width
                         translation = (planeBounds[0] * zero[1] - planeBounds[1] * zero[0]) / width
-                        intersections.append(Manifold.Coincidence(left, right, alignment, np.atleast_2d(transform), np.atleast_2d(1.0 / transform), np.atleast_1d(translation)))
+                        intersections.append(Manifold.Coincidence(firstpart, secondpart, alignment, np.atleast_2d(transform), np.atleast_2d(1.0 / transform), np.atleast_1d(translation)))
                     else:
                         # Intersection is a point, so create a Manifold.Crossing.
                         intersections.append(Manifold.Crossing(Hyperplane(1.0, zero, 0.0), Hyperplane(1.0, projection @ (self.spline((zero,)) - other._point), 0.0)))
@@ -275,16 +275,16 @@ class BSpline(Manifold):
                 contours = spline.contours()
                 # Convert each contour into a Manifold.Crossing.
                 for contour in contours:
-                    # The left portion is the contour returned for the spline-plane intersection. 
-                    left = contour
-                    # The right portion is the contour projected onto the plane's domain, which we compute with samples and a least squares fit.
+                    # The firstpart portion is the contour returned for the spline-plane intersection. 
+                    firstpart = contour
+                    # The secondpart portion is the contour projected onto the plane's domain, which we compute with samples and a least squares fit.
                     tValues = np.linspace(0.0, 1.0, contour.nCoef[0] + 5) # Over-sample a bit to reduce the condition number and avoid singular matrix
                     points = []
                     for t in tValues:
                         zero = contour((t,))
                         points.append(projection @ (self.spline(zero) - other._point))
-                    right = Spline.least_squares(tValues, np.array(points).T, contour.order, contour.knots)
-                    intersections.append(Manifold.Crossing(BSpline(left), BSpline(right)))
+                    secondpart = Spline.least_squares(tValues, np.array(points).T, contour.order, contour.knots)
+                    intersections.append(Manifold.Crossing(BSpline(firstpart), BSpline(secondpart)))
             else:
                 return NotImplemented
         
@@ -317,17 +317,17 @@ class BSpline(Manifold):
                             intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[1][0], 0.0), Hyperplane(1.0, zero[1][1] + epsilon, 0.0)))
 
                         # Now, create the coincidence.
-                        left = Solid(nDep, False)
-                        left.boundaries.append(Boundary(Hyperplane(-1.0, zero[0][0], 0.0), Solid(0, True)))
-                        left.boundaries.append(Boundary(Hyperplane(1.0, zero[1][0], 0.0), Solid(0, True)))
-                        right = Solid(nDep, False)
-                        right.boundaries.append(Boundary(Hyperplane(-1.0, zero[0][1], 0.0), Solid(0, True)))
-                        right.boundaries.append(Boundary(Hyperplane(1.0, zero[1][1], 0.0), Solid(0, True)))
-                        alignment = np.dot(self.normal(zero[0][0]), other.normal(zero[0][1])) # Use the first zeros, since B-splines are closed on the left
+                        firstpart = Solid(nDep, False)
+                        firstpart.boundaries.append(Boundary(Hyperplane(-1.0, zero[0][0], 0.0), Solid(0, True)))
+                        firstpart.boundaries.append(Boundary(Hyperplane(1.0, zero[1][0], 0.0), Solid(0, True)))
+                        secondpart = Solid(nDep, False)
+                        secondpart.boundaries.append(Boundary(Hyperplane(-1.0, zero[0][1], 0.0), Solid(0, True)))
+                        secondpart.boundaries.append(Boundary(Hyperplane(1.0, zero[1][1], 0.0), Solid(0, True)))
+                        alignment = np.dot(self.normal(zero[0][0]), other.normal(zero[0][1])) # Use the first zeros, since B-splines are closed on the firstpart
                         width = zero[1][0] - zero[0][0]
                         transform = (zero[1][1] - zero[0][1]) / width
                         translation = (zero[0][1] * zero[1][0] - zero[1][1] * zero[0][0]) / width
-                        intersections.append(Manifold.Coincidence(left, right, alignment, np.atleast_2d(transform), np.atleast_2d(1.0 / transform), np.atleast_1d(translation)))
+                        intersections.append(Manifold.Coincidence(firstpart, secondpart, alignment, np.atleast_2d(transform), np.atleast_2d(1.0 / transform), np.atleast_1d(translation)))
                     else:
                         # Intersection is a point, so create a Manifold.Crossing.
                         intersections.append(Manifold.Crossing(Hyperplane(1.0, zero[:nDep], 0.0), Hyperplane(1.0, zero[nDep:], 0.0)))
@@ -350,32 +350,32 @@ class BSpline(Manifold):
                     logging.info(f"intersect({other.spline.metadata['Name']}, {self.spline.metadata['Name']})")
                     contours = spline.contours()
                     for contour in contours:
-                        # Swap left and right, compared to not swapped.
-                        left = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
-                        right = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
-                        intersections.append(Manifold.Crossing(BSpline(left), BSpline(right)))
+                        # Swap firstpart and secondpart, compared to not swapped.
+                        firstpart = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
+                        secondpart = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
+                        intersections.append(Manifold.Crossing(BSpline(firstpart), BSpline(secondpart)))
                 else:
                     for contour in contours:
-                        left = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
-                        right = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
-                        intersections.append(Manifold.Crossing(BSpline(left), BSpline(right)))
+                        firstpart = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[:nDep], contour.metadata)
+                        secondpart = Spline(contour.nInd, nDep, contour.order, contour.nCoef, contour.knots, contour.coefs[nDep:], contour.metadata)
+                        intersections.append(Manifold.Crossing(BSpline(firstpart), BSpline(secondpart)))
             else:
                 return NotImplemented
         else:
             return NotImplemented
 
         # Ensure the normals point outwards for both Manifolds in each crossing intersection.
-        # Note that evaluating left and right at 0.5 is always valid because either they are points or curves with [0.0, 1.0] domains.
+        # Note that evaluating firstpart and secondpart at 0.5 is always valid because either they are points or curves with [0.0, 1.0] domains.
         domainPoint = np.atleast_1d(0.5)
         for i, intersection in enumerate(intersections):
             if isinstance(intersection, Manifold.Crossing):
-                left = intersection.left
-                right = intersection.right
-                if np.dot(self.tangent_space(left.evaluate(domainPoint)) @ left.normal(domainPoint), other.normal(right.evaluate(domainPoint))) < 0.0:
-                    left = left.negate_normal()
-                if np.dot(other.tangent_space(right.evaluate(domainPoint)) @ right.normal(domainPoint), self.normal(left.evaluate(domainPoint))) < 0.0:
-                    right = right.negate_normal()
-                intersections[i] = Manifold.Crossing(left, right)
+                firstpart = intersection.firstpart
+                secondpart = intersection.secondpart
+                if np.dot(self.tangent_space(firstpart.evaluate(domainPoint)) @ firstpart.normal(domainPoint), other.normal(secondpart.evaluate(domainPoint))) < 0.0:
+                    firstpart = firstpart.negate_normal()
+                if np.dot(other.tangent_space(secondpart.evaluate(domainPoint)) @ secondpart.normal(domainPoint), self.normal(firstpart.evaluate(domainPoint))) < 0.0:
+                    secondpart = secondpart.negate_normal()
+                intersections[i] = Manifold.Crossing(firstpart, secondpart)
 
         return intersections
     
@@ -527,12 +527,12 @@ class BSpline(Manifold):
                     noTouches = True
                     for map, newBoundary, bound in zip(boundaryMap, cutout.boundaries[boundaryCount:], bounds.flatten()):
                         if not newBoundary.touched:
-                            leftBoundary = cutout.boundaries[boundaryCount + map[0]]
-                            rightBoundary = cutout.boundaries[boundaryCount + map[1]]
-                            if leftBoundary.touched and abs(leftBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
+                            firstpartBoundary = cutout.boundaries[boundaryCount + map[0]]
+                            secondpartBoundary = cutout.boundaries[boundaryCount + map[1]]
+                            if firstpartBoundary.touched and abs(firstpartBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
                                 newBoundary.touched = True
                                 noTouches = False
-                            elif rightBoundary.touched and abs(rightBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
+                            elif secondpartBoundary.touched and abs(secondpartBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
                                 newBoundary.touched = True
                                 noTouches = False
                     if noTouches:

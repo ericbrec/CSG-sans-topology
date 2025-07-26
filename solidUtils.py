@@ -27,28 +27,28 @@ def solid_edges(solid, subdivide = False):
                 yield (boundary.manifold.evaluate(domainEdge[0]), boundary.manifold.evaluate(domainEdge[1]), boundary.manifold.normal(domainEdge[0]))
     else:
         solid.boundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), -boundary.manifold.normal(0.0)))
-        leftB = 0
-        rightB = 0
-        while leftB < len(solid.boundaries):
-            if solid.boundaries[leftB].manifold.normal(0.0) < 0.0:
-                leftPoint = solid.boundaries[leftB].manifold.evaluate(0.0)
-                while rightB < len(solid.boundaries):
-                    rightPoint = solid.boundaries[rightB].manifold.evaluate(0.0)
-                    if leftPoint - Manifold.minSeparation < rightPoint and solid.boundaries[rightB].manifold.normal(0.0) > 0.0:
+        firstpartB = 0
+        secondpartB = 0
+        while firstpartB < len(solid.boundaries):
+            if solid.boundaries[firstpartB].manifold.normal(0.0) < 0.0:
+                firstpartPoint = solid.boundaries[firstpartB].manifold.evaluate(0.0)
+                while secondpartB < len(solid.boundaries):
+                    secondpartPoint = solid.boundaries[secondpartB].manifold.evaluate(0.0)
+                    if firstpartPoint - Manifold.minSeparation < secondpartPoint and solid.boundaries[secondpartB].manifold.normal(0.0) > 0.0:
                         if subdivide:
                             dt = 0.1
-                            t = leftPoint.copy()
-                            while t + dt < rightPoint:
+                            t = firstpartPoint.copy()
+                            while t + dt < secondpartPoint:
                                 yield (t, t + dt)
                                 t += dt
-                            yield (t, rightPoint)
+                            yield (t, secondpartPoint)
                         else:
-                            yield (leftPoint, rightPoint)
-                        leftB = rightB
-                        rightB += 1
+                            yield (firstpartPoint, secondpartPoint)
+                        firstpartB = secondpartB
+                        secondpartB += 1
                         break
-                    rightB += 1
-            leftB += 1
+                    secondpartB += 1
+            firstpartB += 1
 
 
 def create_segments_from_solid(solid, includeManifold=False):

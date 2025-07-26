@@ -2,12 +2,10 @@ from collections import namedtuple
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from solid import Solid, Boundary
 from manifold import Manifold
 from hyperplane import Hyperplane
 from bSpline import BSpline
 from bspy import Spline, Viewer, SplineOpenGLFrame
-import solidUtils as utils
 
 def triangulate(solid):
     assert solid.dimension == 2
@@ -120,152 +118,10 @@ def triangulate(solid):
     gluDeleteTess(tess)
     return np.array(vertices, np.float32)
 
-class SolidOpenGLFrame(SplineOpenGLFrame):
-
-    surfaceFragmentShaderCode = """
-        #version 410 core
-     
-        flat in SplineInfo
-        {
-            int uOrder, vOrder;
-            int uN, vN;
-            int uKnot, vKnot;
-            float uFirst, vFirst;
-            float uSpan, vSpan;
-            float u, v;
-            float uInterval, vInterval;
-        } inData;
-        in vec3 worldPosition;
-        in vec3 splineColor;
-        in vec3 normal;
-        in vec2 parameters;
-        in vec2 pixelPer;
-
-        uniform vec4 uFillColor;
-        uniform vec4 uLineColor;
-        uniform vec3 uLightDirection;
-        uniform int uOptions;
-        uniform sampler2D uTextureMap;
-
-        out vec4 color;
-     
-        void main()
-        {
-        	vec2 tex = vec2((parameters.x - inData.uFirst) / inData.uSpan, (parameters.y - inData.vFirst) / inData.vSpan);
-            float specular = pow(abs(dot(normal, normalize(uLightDirection + worldPosition / length(worldPosition)))), 25.0);
-            bool line = (uOptions & (1 << 2)) > 0 && (pixelPer.x * (parameters.x - inData.uFirst) < 1.5 || pixelPer.x * (inData.uFirst + inData.uSpan - parameters.x) < 1.5);
-            line = line || ((uOptions & (1 << 2)) > 0 && (pixelPer.y * (parameters.y - inData.vFirst) < 1.5 || pixelPer.y * (inData.vFirst + inData.vSpan - parameters.y) < 1.5));
-            line = line || ((uOptions & (1 << 3)) > 0 && pixelPer.x * (parameters.x - inData.u) < 1.5);
-            line = line || ((uOptions & (1 << 3)) > 0 && pixelPer.y * (parameters.y - inData.v) < 1.5);
-            color = line ? uLineColor : ((uOptions & (1 << 1)) > 0 ? vec4(splineColor, uFillColor.a) : vec4(0.0, 0.0, 0.0, 0.0));
-            color.rgb = (0.3 + 0.5 * abs(dot(normal, uLightDirection)) + 0.2 * specular) * color.rgb;
-            if (color.a * texture(uTextureMap, tex).r == 0.0)
-                discard;
-        }
-    """
-
-    def CreateGLResources(self):
-        self.frameBuffer = glGenFramebuffers(1)
-        glBindFramebuffer(GL_FRAMEBUFFER, self.frameBuffer)
-
-        self.textureBuffer = glGenTextures(1)
-        glActiveTexture(GL_TEXTURE1)
-        glBindTexture(GL_TEXTURE_2D, self.textureBuffer)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 512, 512, 0, GL_RED, GL_UNSIGNED_BYTE, None)
-        glActiveTexture(GL_TEXTURE0)
-
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, self.textureBuffer, 0)
-        glDrawBuffers(1, (GL_COLOR_ATTACHMENT0,))
-
-        if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
-            raise ValueError("Framebuffer incomplete")
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
-        SplineOpenGLFrame.CreateGLResources(self)
-
-        glUseProgram(self.surface3Program.surfaceProgram)
-        self.uSurfaceTextureMap = glGetUniformLocation(self.surface3Program.surfaceProgram, 'uTextureMap')
-        glUniform1i(self.uSurfaceTextureMap, 1) # GL_TEXTURE1 is the texture map
-        self.surface3Program.surfaceProgram.check_validate() # Now that textures are assigned, we can validate the program
-        glUseProgram(0)
-
-    def __DrawSurface(self, spline, drawCoefficients):
-        """Draws a trimmed surface, but because it doesn't do any CPU work between drawing 
-        the trim stencil and the surface, it's a little slower that _DrawSpline below."""
-        glBindFramebuffer(GL_FRAMEBUFFER, self.frameBuffer)
-        glDisable(GL_DEPTH_TEST)
-        glViewport(0,0,512,512)
-        if "trim" in spline.metadata:
-            glClearColor(0.0, 0.0, 0.0, 1.0)
-            glClear(GL_COLOR_BUFFER_BIT)
-            glMatrixMode(GL_PROJECTION)
-            glLoadIdentity()
-            bounds = spline.domain()
-            glOrtho(bounds[0, 0], bounds[0, 1], bounds[1, 0], bounds[1, 1], -1.0, 1.0)
-            glColor3f(0.0, 0.0, 0.0)
-            vertices = spline.metadata["trim"]
-            glColor3f(1.0, 0.0, 0.0)
-            glBegin(GL_TRIANGLES)
-            for vertex in vertices:
-                glVertex2fv(vertex)
-            glEnd()
-        else:
-            glClearColor(1.0, 0.0, 0.0, 1.0)
-            glClear(GL_COLOR_BUFFER_BIT)
-        glFlush()
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
-        glEnable(GL_DEPTH_TEST)
-        glViewport(0, 0, self.width, self.height)
-        glClearColor(self.backgroundColor[0], self.backgroundColor[1], self.backgroundColor[2], self.backgroundColor[3])
-        glMatrixMode(GL_PROJECTION)
-        glLoadMatrixf(self.projection)
-        glMatrixMode(GL_MODELVIEW)
-        SplineOpenGLFrame._DrawSurface(self, spline, drawCoefficients)
-
 class SolidViewer(Viewer):
-    def __init__(self, *args, SplineOpenGLFrame=SolidOpenGLFrame, **kw):
-        Viewer.__init__(self, *args, SplineOpenGLFrame=SplineOpenGLFrame, **kw)
+    def __init__(self, *args, **kw):
+        Viewer.__init__(self, *args, **kw)
         self.set_background_color(1.0, 1.0, 1.0)
-
-    def _DrawSplines(self, frame, transform):
-        for spline in self.splineDrawList:
-            if spline.nInd == 2:
-                glBindFramebuffer(GL_FRAMEBUFFER, frame.frameBuffer)
-                glDisable(GL_DEPTH_TEST)
-                glViewport(0,0,512,512)
-                if "trim" in spline.metadata:
-                    glClearColor(0.0, 0.0, 0.0, 1.0)
-                    glClear(GL_COLOR_BUFFER_BIT)
-                    glMatrixMode(GL_PROJECTION)
-                    glLoadIdentity()
-                    bounds = spline.domain()
-                    glOrtho(bounds[0, 0], bounds[0, 1], bounds[1, 0], bounds[1, 1], -1.0, 1.0)
-                    vertices = spline.metadata["trim"]
-                    glColor3f(1.0, 0.0, 0.0)
-                    glBegin(GL_TRIANGLES)
-                    for vertex in vertices:
-                        glVertex2fv(vertex)
-                    glEnd()
-                else:
-                    glClearColor(1.0, 0.0, 0.0, 1.0)
-                    glClear(GL_COLOR_BUFFER_BIT)
-                glFlush()
-
-                glBindFramebuffer(GL_FRAMEBUFFER, 0)
-                glEnable(GL_DEPTH_TEST)
-                glViewport(0, 0, frame.width, frame.height)
-                glClearColor(frame.backgroundColor[0], frame.backgroundColor[1], frame.backgroundColor[2], frame.backgroundColor[3])
-                glMatrixMode(GL_PROJECTION)
-                glLoadMatrixf(frame.projection)
-                glMatrixMode(GL_MODELVIEW)
-
-            frame.DrawSpline(spline, transform)
 
     def list_boundary(self, boundary, name="Boundary", fillColor=None, lineColor=None, options=None, inherit=True, draw=False):
         if boundary.manifold.range_dimension() != 3:
@@ -296,7 +152,9 @@ class SolidViewer(Viewer):
             spline.metadata["lineColor"] = material.lineColor
         if material.options is not None:
             spline.metadata["options"] = material.options
-        spline.metadata["trim"] = vertices
+        if not hasattr(spline, "cache"):
+            spline.cache = {}
+        spline.cache["trim"] = vertices
         if draw:
             self.draw(spline)
         else:

@@ -12,7 +12,7 @@ class Boundary:
         The differentiable function whose range is one dimension higher than its trim that defines the range of the boundary.
     
     trim : `Solid`
-        The region of the trim of the manifold that's within the boundary.
+        The region of the domain of the manifold that's within the boundary.
     
     See also
     --------

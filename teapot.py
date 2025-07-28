@@ -402,7 +402,7 @@ if __name__ == "__main__":
         cutout = teapot2.compute_cutout(manifold, cache)
         cutoutBoundary = Boundary(manifold, cutout)
         viewer.draw_boundary(cutoutBoundary, f"Cutout {name1}")
-        trimmedCutout = boundary1.domain.intersection(cutout)
+        trimmedCutout = boundary1.trim.intersection(cutout)
         trimmedCutoutBoundary = Boundary(manifold.copy(), trimmedCutout)
         viewer.draw_boundary(trimmedCutoutBoundary, f"Trimmed cutout {name1}")
 
@@ -410,7 +410,7 @@ if __name__ == "__main__":
         cutout = teapot1.compute_cutout(manifold, cache)
         cutoutBoundary = Boundary(manifold, cutout)
         viewer.draw_boundary(cutoutBoundary, f"Cutout {name2}")
-        trimmedCutout = boundary2.domain.intersection(cutout)
+        trimmedCutout = boundary2.trim.intersection(cutout)
         trimmedCutoutBoundary = Boundary(manifold.copy(), trimmedCutout)
         viewer.draw_boundary(trimmedCutoutBoundary, f"Trimmed cutout {name2}")
 

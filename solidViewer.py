@@ -22,16 +22,16 @@ def triangulate(solid):
             self.connection = None
     endpoints = []
     for curve in solid.boundaries:
-        curve.domain.boundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), -boundary.manifold.normal(0.0)))
+        curve.trim.boundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), -boundary.manifold.normal(0.0)))
         firstPartB = 0
         secondPartB = 0
-        boundaryCount = len(curve.domain.boundaries)
+        boundaryCount = len(curve.trim.boundaries)
         while firstPartB < boundaryCount:
-            if curve.domain.boundaries[firstPartB].manifold.normal(0.0) < 0.0:
-                firstPartPoint = curve.domain.boundaries[firstPartB].manifold.evaluate(0.0)[0]
+            if curve.trim.boundaries[firstPartB].manifold.normal(0.0) < 0.0:
+                firstPartPoint = curve.trim.boundaries[firstPartB].manifold.evaluate(0.0)[0]
                 while secondPartB < boundaryCount:
-                    secondPartPoint = curve.domain.boundaries[secondPartB].manifold.evaluate(0.0)[0]
-                    if firstPartPoint - Manifold.minSeparation < secondPartPoint and curve.domain.boundaries[secondPartB].manifold.normal(0.0) > 0.0:
+                    secondPartPoint = curve.trim.boundaries[secondPartB].manifold.evaluate(0.0)[0]
+                    if firstPartPoint - Manifold.minSeparation < secondPartPoint and curve.trim.boundaries[secondPartB].manifold.normal(0.0) > 0.0:
                         t = curve.manifold.tangent_space(firstPartPoint)[:,0]
                         n = curve.manifold.normal(firstPartPoint)
                         clockwise = t[0] * n[1] - t[1] * n[0] > 0.0
@@ -127,7 +127,7 @@ class SolidViewer(Viewer):
         if boundary.manifold.range_dimension() != 3:
             return
         Material = namedtuple("Material", ("fillColor", "lineColor", "options"))
-        vertices = triangulate(boundary.domain)
+        vertices = triangulate(boundary.trim)
         if not inherit or not hasattr(boundary.manifold, "material"):
             boundary.manifold.material = Material(fillColor, lineColor, options)
         material = boundary.manifold.material

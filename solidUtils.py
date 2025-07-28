@@ -23,8 +23,8 @@ def solid_edges(solid, subdivide = False):
     """
     if solid.dimension > 1:
         for boundary in solid.boundaries:
-            for domainEdge in solid_edges(boundary.domain, subdivide or not isinstance(boundary.manifold, Hyperplane)):
-                yield (boundary.manifold.evaluate(domainEdge[0]), boundary.manifold.evaluate(domainEdge[1]), boundary.manifold.normal(domainEdge[0]))
+            for trimEdge in solid_edges(boundary.trim, subdivide or not isinstance(boundary.manifold, Hyperplane)):
+                yield (boundary.manifold.evaluate(trimEdge[0]), boundary.manifold.evaluate(trimEdge[1]), boundary.manifold.normal(trimEdge[0]))
     else:
         solid.boundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), -boundary.manifold.normal(0.0)))
         firstPartB = 0
@@ -109,16 +109,16 @@ def create_faceted_solid_from_points(dimension, points, containsInfinity = False
         normal = np.array([-vector[1], vector[0]])
         normal = normal / np.linalg.norm(normal)
         hyperplane = hyperplane_2D(normal,np.dot(normal,point))
-        domain = Solid(dimension-1, False)
+        trim = Solid(dimension-1, False)
         previousPointDomain = hyperplane_domain_from_point(hyperplane, previousPoint)
         pointDomain = hyperplane_domain_from_point(hyperplane, point)
         if previousPointDomain < pointDomain:
-            domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -previousPointDomain), Solid(dimension-2, True)))
-            domain.boundaries.append(Boundary(hyperplane_1D(1.0, pointDomain), Solid(dimension-2, True)))
+            trim.boundaries.append(Boundary(hyperplane_1D(-1.0, -previousPointDomain), Solid(dimension-2, True)))
+            trim.boundaries.append(Boundary(hyperplane_1D(1.0, pointDomain), Solid(dimension-2, True)))
         else:
-            domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -pointDomain), Solid(dimension-2, True)))
-            domain.boundaries.append(Boundary(hyperplane_1D(1.0, previousPointDomain), Solid(dimension-2, True)))
-        solid.boundaries.append(Boundary(hyperplane, domain))
+            trim.boundaries.append(Boundary(hyperplane_1D(-1.0, -pointDomain), Solid(dimension-2, True)))
+            trim.boundaries.append(Boundary(hyperplane_1D(1.0, previousPointDomain), Solid(dimension-2, True)))
+        solid.boundaries.append(Boundary(hyperplane, trim))
         previousPoint = point
 
     return solid
@@ -144,10 +144,10 @@ def create_smooth_solid_from_points(dimension, points, containsInfinity = False)
     dataPoints = np.append(dataPoints, (dataPoints[0],), axis=0)
 
     spline = BSpline(Spline.least_squares(uValues, dataPoints.T, (4,) * (dimension - 1), tolerance = 0.1))
-    domain = Solid(dimension-1, False)
-    domain.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), Solid(dimension-2, True)))
-    domain.boundaries.append(Boundary(hyperplane_1D(1.0, t), Solid(dimension-2, True)))
-    solid.boundaries.append(Boundary(spline, domain))
+    trim = Solid(dimension-1, False)
+    trim.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), Solid(dimension-2, True)))
+    trim.boundaries.append(Boundary(hyperplane_1D(1.0, t), Solid(dimension-2, True)))
+    solid.boundaries.append(Boundary(spline, trim))
 
     return solid
 
@@ -171,10 +171,10 @@ def create_star(radius, center, angle, smooth = False):
         nt = (vertices[1][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[1][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0])
         u = ((vertices[3][0]-vertices[0][0])*(vertices[4][1]-vertices[3][1]) + (vertices[3][1]-vertices[0][1])*(vertices[3][0]-vertices[4][0]))/nt
         for boundary in star.boundaries:
-            u0 = boundary.domain.boundaries[0].manifold._point[0]
-            u1 = boundary.domain.boundaries[1].manifold._point[0]
-            boundary.domain.boundaries.append(Boundary(hyperplane_1D(1.0, u0 + (1.0 - u)*(u1 - u0)), Solid(0, True)))
-            boundary.domain.boundaries.append(Boundary(hyperplane_1D(-1.0, -(u0 + u*(u1 - u0))), Solid(0, True)))
+            u0 = boundary.trim.boundaries[0].manifold._point[0]
+            u1 = boundary.trim.boundaries[1].manifold._point[0]
+            boundary.trim.boundaries.append(Boundary(hyperplane_1D(1.0, u0 + (1.0 - u)*(u1 - u0)), Solid(0, True)))
+            boundary.trim.boundaries.append(Boundary(hyperplane_1D(-1.0, -(u0 + u*(u1 - u0))), Solid(0, True)))
 
     return star
 
@@ -211,22 +211,22 @@ def extrude_solid(solid, path):
                 extruded_tangentSpace[0:solid.dimension, 0:solid.dimension-1] = boundary.manifold._tangentSpace[:,:]
             extruded_tangentSpace[:, solid.dimension-1] = tangent[:]
             extrudedHyperplane = Hyperplane(extruded_normal, extruded_point, extruded_tangentSpace)
-            # Construct a domain for the extruded boundary
-            if boundary.domain.dimension > 0:
-                # Extrude the boundary's domain to include path domain
-                domainPath = []
-                domainPoint = np.full((solid.dimension), 0.0)
-                domainPath.append(domainPoint)
-                domainPoint = np.full((solid.dimension), 0.0)
-                domainPoint[solid.dimension-1] = extent
-                domainPath.append(domainPoint)
-                extrudedDomain = extrude_solid(boundary.domain, domainPath)
+            # Construct a trim for the extruded boundary
+            if boundary.trim.dimension > 0:
+                # Extrude the boundary's trim to include path trim
+                trimPath = []
+                trimPoint = np.full((solid.dimension), 0.0)
+                trimPath.append(trimPoint)
+                trimPoint = np.full((solid.dimension), 0.0)
+                trimPoint[solid.dimension-1] = extent
+                trimPath.append(trimPoint)
+                extrudedTrim = extrude_solid(boundary.trim, trimPath)
             else:
-                extrudedDomain = Solid(solid.dimension, False)
-                extrudedDomain.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), Solid(0, True)))
-                extrudedDomain.boundaries.append(Boundary(hyperplane_1D(1.0, extent), Solid(0, True)))
+                extrudedTrim = Solid(solid.dimension, False)
+                extrudedTrim.boundaries.append(Boundary(hyperplane_1D(-1.0, 0.0), Solid(0, True)))
+                extrudedTrim.boundaries.append(Boundary(hyperplane_1D(1.0, extent), Solid(0, True)))
             # Add extruded boundary
-            extrusion.boundaries.append(Boundary(extrudedHyperplane, extrudedDomain))
+            extrusion.boundaries.append(Boundary(extrudedHyperplane, extrudedTrim))
         
         # Move onto the next point
         point = nextPoint

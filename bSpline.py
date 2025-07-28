@@ -493,13 +493,13 @@ class BSpline(Manifold):
                     if abs(np.dot(newBoundary.manifold._normal, vector)) < Manifold.minSeparation:
                         # Add the point onto the new boundary.
                         normal = np.sign(newBoundary.manifold._tangentSpace.T @ boundary.manifold.normal(domainPoint))
-                        newBoundary.domain.boundaries.append(Boundary(Hyperplane(normal, newBoundary.manifold._tangentSpace.T @ vector, 0.0), Solid(0, True)))
+                        newBoundary.trim.boundaries.append(Boundary(Hyperplane(normal, newBoundary.manifold._tangentSpace.T @ vector, 0.0), Solid(0, True)))
                         newBoundary.touched = True
                         break
 
             # Go through existing boundaries and check if either of their endpoints lies on the spline's bounds.
             for boundary in cutout.boundaries[:boundaryCount]:
-                domainBoundaries = boundary.domain.boundaries
+                domainBoundaries = boundary.trim.boundaries
                 domainBoundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), boundary.manifold.normal(0.0)))
                 process_domain_point(boundary, domainBoundaries[0].manifold._point)
                 if len(domainBoundaries) > 1:
@@ -510,7 +510,7 @@ class BSpline(Manifold):
             for newBoundary in cutout.boundaries[boundaryCount:]:
                 if newBoundary.touched:
                     boundaryWasTouched = True
-                    domainBoundaries = newBoundary.domain.boundaries
+                    domainBoundaries = newBoundary.trim.boundaries
                     assert len(domainBoundaries) > 2
                     domainBoundaries.sort(key=lambda boundary: (boundary.manifold.evaluate(0.0), boundary.manifold.normal(0.0)))
                     # Ensure domain endpoints don't overlap and their normals are consistent.
@@ -530,10 +530,10 @@ class BSpline(Manifold):
                         if not newBoundary.touched:
                             firstPartBoundary = cutout.boundaries[boundaryCount + map[0]]
                             secondPartBoundary = cutout.boundaries[boundaryCount + map[1]]
-                            if firstPartBoundary.touched and abs(firstPartBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
+                            if firstPartBoundary.touched and abs(firstPartBoundary.trim.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
                                 newBoundary.touched = True
                                 noTouches = False
-                            elif secondPartBoundary.touched and abs(secondPartBoundary.domain.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
+                            elif secondPartBoundary.touched and abs(secondPartBoundary.trim.boundaries[map[2]].manifold._point - bound) < Manifold.minSeparation:
                                 newBoundary.touched = True
                                 noTouches = False
                     if noTouches:

@@ -3,7 +3,7 @@ This example code implements our new algorithm for constructive solid geometry i
 
 The example code also deliberately uses rough tolerances (surfaces separated by less than 0.01 are considered touching). We wanted the code to demonstrate the algorithm’s resilience to local errors and ambiguous topologies that challenge prior algorithms.
 
-The code has three base classes: Solid and Boundary found in solid.py, and Manifold found in manifold.py. Manifold is an abstract class that defines basic methods for manifolds. Boundary is a simple container for a Manifold and a domain Solid. Solid is the class that holds the substance of the algorithm.
+The code has three base classes: Solid and Boundary found in solid.py, and Manifold found in manifold.py. Manifold is an abstract class that defines basic methods for manifolds. Boundary is a simple container for a Manifold and a trim Solid. Solid is the class that holds the substance of the algorithm.
 
 In addition, there are two subclasses of Manifold: Hyperplane found in hyperplane.py and BSpline found in bSpline.py. Hyperplane supports hyperplanes of any dimension, including their intersection with other hyperplanes. BSpline supports non-uniform B-Spline curves and surfaces, using the BSpy library for spline evaluation and intersection with other splines and with hyperplanes.
 

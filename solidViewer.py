@@ -142,7 +142,7 @@ class SolidViewer(Viewer):
                 np.array((uvMin, uvMin, uvMax, uvMax), np.float32).T,
                 np.array(((xyzMinMin, xyzMaxMin), (xyzMinMax, xyzMaxMax)), np.float32).T)
         elif isinstance(boundary.manifold, BSpline):
-            spline = boundary.manifold.spline
+            spline = boundary.manifold.spline.copy()
         self.frame.make_drawable(spline)
         if "Name" not in spline.metadata:
             spline.metadata["Name"] = name

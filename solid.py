@@ -483,7 +483,7 @@ class Solid:
 
         Crossings result in two intersection manifolds: one in the domain of the manifold and one in the trim of the boundary. By construction, both intersection manifolds have the
         same domain and the same range of the manifold and boundary (the crossing itself). The intersection manifold in the domain of the manifold becomes a boundary of the cutout,
-        but we must determine the intersection's trim. For that, we cutout the boundary's intersection manifold with the boundary's trim. This recursion continues 
+        but we must determine the intersection's trim. For that, we compute the cutout of the boundary's intersection manifold with the boundary's trim. This recursion continues 
         until the cutout is just a point with no trim.
 
         Coincident regions appear in the domains of the manifold and the boundary. We intersect the boundary's coincident region with the trim of the boundary and then map
